@@ -12,6 +12,7 @@ import {
   getRiskStatus,
   getVacancyHealthStatus
 } from "./dashboard-components.js";
+import { renderPremiumDashboard } from "./dashboard-premium.js";
 
 export function renderLanding(tariffs) {
   return `
@@ -109,30 +110,16 @@ export function renderAppShell(state, content) {
 }
 
 export function renderDashboard(state, filters) {
-  const data = dashboardData(state, state.dashboardFilter);
-  return DashboardPageLayout({
-    title: "Executive Dashboard",
-    subtitle: "Что происходит в HR-системе прямо сейчас и где нужно вмешаться.",
-    meta: [`Тариф Start`, `990 ₽`, `20 оценок`, `1 оценка = ${state.company.assessmentPrice} ₽`],
-    period: state.period,
-    actions: [
-      { label: "Изменить тариф", attrs: "data-open-tariff-picker" },
-      { label: "Пополнить", attrs: "data-action=\"top-up\"" },
-      { label: "Создать оценку", primary: true, attrs: "data-action=\"create-link\"" }
-    ],
-    filters: [...pageFilterConfig.dashboard, ...filters],
-    kpiCards: [
-      { label: "Баланс оценок", value: state.company.balance, caption: state.company.balance < 20 ? "ниже порога" : "доступно", status: state.company.balance < 20 ? "medium" : "good", target: "Кандидаты:Оценка отправлена" },
-      ...data.kpis.map(([label, value, caption]) => ({ label, value, caption, status: statusForLabel(label, value), target: `${state.dashboardFilter}:${label}` }))
-    ],
-    charts: [
-      { title: "Интерактивная воронка", caption: state.dashboardFilter, type: "funnel", items: data.funnel.map(([label, value]) => ({ label, value, target: `${state.dashboardFilter}:${label}` })) },
-      { title: "AI-подсказка", caption: aiAccess(state.company.tariff), items: [[data.aiTitle, 76], ["Следующий шаг", 54], ["Риск", 28]], note: data.aiText }
-    ],
-    heatmap: candidateHeatmap(state),
-    attentionItems: attentionItems(state),
-    table: peopleTableConfig(data.people, state.dashboardFilter)
-  });
+  return renderPremiumDashboard(
+    state,
+    dashboardData,
+    candidateHeatmap,
+    attentionItems,
+    peopleTableConfig,
+    aiAccess,
+    statusForLabel,
+    pageFilterConfig
+  );
 }
 
 export function renderPeople(state) {
