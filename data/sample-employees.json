@@ -1,0 +1,9 @@
+[
+  {
+    "id": "emp_001",
+    "name": "Анна Смирнова",
+    "department": "Engineering",
+    "role": "Senior Developer",
+    "manager_id": "emp_002"
+  }
+]

@@ -1,0 +1,10 @@
+[
+  {
+    "id": "asmnt_001",
+    "type": "candidate",
+    "candidate_id": "cand_001",
+    "vacancy_id": "vac_001",
+    "status": "completed",
+    "score": 78.6
+  }
+]

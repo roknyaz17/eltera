@@ -1,0 +1,10 @@
+node_modules/
+.env
+.env.local
+dist/
+outputs/exports/
+outputs/pdf/
+outputs/xlsx/
+outputs/screenshots/
+outputs/manus-packages/
+*.DS_Store
