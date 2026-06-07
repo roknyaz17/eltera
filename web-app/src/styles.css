@@ -3525,3 +3525,479 @@ small {
     grid-template-columns: 60px repeat(3, minmax(0, 1fr));
   }
 }
+
+/* ============================================================
+   ELT PREMIUM SIDEBAR & TOPBAR — Eltera Brandbook v1.0
+   Dark: #0B1020 bg, #1E5BFF/#00E5D4 accents, Manrope
+   ============================================================ */
+
+/* ---- Sidebar ---- */
+.elt-sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 216px;
+  min-width: 216px;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: rgba(9, 14, 28, 0.97);
+  border-right: 1px solid rgba(30, 91, 255, 0.12);
+  backdrop-filter: blur(20px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+}
+
+.elt-sidebar-logo {
+  padding: 18px 16px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.elt-logo-img {
+  width: 130px;
+  display: block;
+}
+
+/* ---- Nav groups ---- */
+.elt-sidenav {
+  padding: 10px 10px 8px;
+  display: grid;
+  gap: 2px;
+}
+
+.elt-nav-group {
+  margin-bottom: 6px;
+}
+
+.elt-nav-group-label {
+  display: block;
+  padding: 8px 8px 4px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(170, 183, 207, 0.45);
+}
+
+/* ---- Nav items ---- */
+.elt-nav-item {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 7px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #9AAFC8;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  position: relative;
+}
+
+.elt-nav-item:hover {
+  background: rgba(30, 91, 255, 0.08);
+  color: #C8D8F0;
+  border-color: rgba(30, 91, 255, 0.18);
+}
+
+.elt-nav-item.active {
+  background: rgba(30, 91, 255, 0.14);
+  border-color: rgba(30, 91, 255, 0.35);
+  color: #E6F0FF;
+}
+
+.elt-nav-item.active .elt-nav-icon {
+  color: #00E5D4;
+}
+
+.elt-nav-item.locked {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.elt-nav-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #7A96BC;
+  flex-shrink: 0;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.elt-nav-item.active .elt-nav-icon,
+.elt-nav-item:hover .elt-nav-icon {
+  background: rgba(30, 91, 255, 0.15);
+  color: #00E5D4;
+}
+
+.elt-nav-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.elt-nav-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.12);
+  color: #8A9FBD;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.elt-nav-item.active .elt-nav-count {
+  background: rgba(0, 229, 212, 0.15);
+  color: #00E5D4;
+}
+
+.elt-nav-alert {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.18);
+  color: #F87171;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.elt-nav-lock {
+  color: rgba(148, 163, 184, 0.4);
+  display: grid;
+  place-items: center;
+}
+
+/* ---- Sidebar footer ---- */
+.elt-sidebar-footer {
+  padding: 12px 14px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.elt-tariff-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(30, 91, 255, 0.25);
+  border-radius: 8px;
+  background: rgba(30, 91, 255, 0.08);
+}
+
+.elt-tariff-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(170, 183, 207, 0.55);
+}
+
+.elt-tariff-name {
+  font-size: 12px;
+  font-weight: 800;
+  color: #7BA7FF;
+  margin-left: auto;
+}
+
+/* ---- Topbar ---- */
+.elt-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 0 20px;
+  height: 56px;
+  border-bottom: 1px solid rgba(30, 91, 255, 0.1);
+  background: rgba(8, 12, 24, 0.92);
+  backdrop-filter: blur(24px);
+}
+
+.elt-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.elt-workspace-info {
+  display: grid;
+  gap: 1px;
+}
+
+.elt-topbar-label {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(170, 183, 207, 0.45);
+}
+
+.elt-topbar-company {
+  font-size: 13px;
+  font-weight: 700;
+  color: #D6E4FF;
+  white-space: nowrap;
+}
+
+.elt-topbar-center {
+  display: flex;
+  justify-content: center;
+}
+
+.elt-search-wrap {
+  position: relative;
+  width: 280px;
+}
+
+.elt-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(148, 163, 184, 0.5);
+  pointer-events: none;
+}
+
+.elt-search {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px 0 32px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #C8D8F0;
+  font-size: 12.5px;
+  font-family: Manrope, Inter, Arial, sans-serif;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  outline: none;
+}
+
+.elt-search::placeholder {
+  color: rgba(148, 163, 184, 0.4);
+}
+
+.elt-search:focus {
+  border-color: rgba(30, 91, 255, 0.45);
+  background: rgba(30, 91, 255, 0.06);
+}
+
+.elt-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.elt-balance-pill {
+  display: grid;
+  gap: 1px;
+  padding: 6px 10px;
+  border: 1px solid rgba(0, 229, 212, 0.22);
+  border-radius: 8px;
+  background: rgba(0, 229, 212, 0.07);
+}
+
+.elt-balance-label {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(170, 183, 207, 0.5);
+}
+
+.elt-balance-value {
+  font-size: 16px;
+  font-weight: 800;
+  color: #00E5D4;
+  line-height: 1;
+}
+
+.elt-btn-topbar {
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #C8D8F0;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: Manrope, Inter, Arial, sans-serif;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.elt-btn-topbar:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+.elt-btn-topbar-primary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #1E5BFF 0%, #00C4B8 100%);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 800;
+}
+
+.elt-btn-topbar-primary:hover {
+  background: linear-gradient(135deg, #2B68FF 0%, #00D4C8 100%);
+  border-color: transparent;
+}
+
+.elt-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #8A9FBD;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.elt-icon-btn:hover {
+  background: rgba(30, 91, 255, 0.1);
+  border-color: rgba(30, 91, 255, 0.3);
+  color: #C8D8F0;
+}
+
+.elt-notif-btn {
+  position: relative;
+}
+
+.elt-notif-dot {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #00E5D4;
+  border: 1.5px solid rgba(8, 12, 24, 0.9);
+}
+
+.elt-avatar-btn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1E5BFF, #00E5D4);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  font-family: Manrope, Inter, Arial, sans-serif;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Light theme overrides for elt-* components */
+.lightTheme .elt-sidebar {
+  background: rgba(248, 250, 252, 0.98);
+  border-right-color: rgba(15, 23, 42, 0.1);
+}
+
+.lightTheme .elt-nav-group-label {
+  color: rgba(100, 116, 139, 0.6);
+}
+
+.lightTheme .elt-nav-item {
+  color: #475569;
+}
+
+.lightTheme .elt-nav-item:hover {
+  background: rgba(30, 91, 255, 0.06);
+  color: #1E3A6E;
+  border-color: rgba(30, 91, 255, 0.15);
+}
+
+.lightTheme .elt-nav-item.active {
+  background: rgba(30, 91, 255, 0.1);
+  border-color: rgba(30, 91, 255, 0.28);
+  color: #1E3A6E;
+}
+
+.lightTheme .elt-nav-icon {
+  background: rgba(15, 23, 42, 0.05);
+  color: #64748B;
+}
+
+.lightTheme .elt-tariff-badge {
+  background: rgba(30, 91, 255, 0.06);
+  border-color: rgba(30, 91, 255, 0.18);
+}
+
+.lightTheme .elt-tariff-name {
+  color: #1E5BFF;
+}
+
+.lightTheme .elt-topbar {
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom-color: rgba(15, 23, 42, 0.08);
+}
+
+.lightTheme .elt-topbar-company {
+  color: #0F172A;
+}
+
+.lightTheme .elt-search {
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #0F172A;
+}
+
+.lightTheme .elt-search::placeholder {
+  color: rgba(100, 116, 139, 0.5);
+}
+
+.lightTheme .elt-btn-topbar {
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(15, 23, 42, 0.14);
+  color: #334155;
+}
+
+.lightTheme .elt-icon-btn {
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #64748B;
+}
+
+/* Ensure appShell uses elt-sidebar width */
+.appShell {
+  grid-template-columns: 216px minmax(0, 1fr) !important;
+}
+
+/* Responsive: collapse sidebar on mobile */
+@media (max-width: 768px) {
+  .elt-sidebar {
+    display: none;
+  }
+  .appShell {
+    grid-template-columns: 1fr !important;
+  }
+}

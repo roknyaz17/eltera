@@ -45,6 +45,17 @@ export function buildNavItems(state, counts) {
   }));
 }
 
+export function buildNavGroups(state, counts) {
+  const items = buildNavItems(state, counts);
+  const groups = [
+    { key: "main", label: "Обзор" },
+    { key: "tools", label: "Инструменты" },
+    { key: "analytics", label: "Аналитика" },
+    { key: "account", label: "Аккаунт" }
+  ];
+  return groups.map((g) => ({ ...g, items: items.filter((i) => i.group === g.key) }));
+}
+
 export function DashboardPageLayout(config) {
   return `
     <section class="dashboardPage">

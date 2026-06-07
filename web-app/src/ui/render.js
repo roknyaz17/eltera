@@ -6,6 +6,7 @@ import {
   EmployeePreview,
   StatusBadge,
   VacancyPreview,
+  buildNavGroups,
   buildNavItems,
   getConversionStatus,
   getFitStatus,
@@ -77,36 +78,86 @@ export function renderLogin() {
 }
 
 export function renderAppShell(state, content) {
-  const navItems = buildNavItems(state, navCounts(state));
+  const counts = navCounts(state);
+  const navGroups = buildNavGroups(state, counts);
+  const isDark = state.theme !== "light";
   return `
-    <div class="appShell ${state.theme === "light" ? "lightTheme" : "darkTheme"}">
-      <aside class="sidebar">
-        <img class="appLogo" src="${state.theme === "light" ? "/assets/eltera_logo_horizontal_on_light.svg" : "/assets/eltera_logo_horizontal_on_dark.svg"}" alt="Eltera">
-        <nav class="sideNav">
-          ${navItems.map((item) => navItem(item, state.view)).join("")}
+    <div class="appShell ${isDark ? "darkTheme" : "lightTheme"}">
+      <aside class="elt-sidebar">
+        <div class="elt-sidebar-logo">
+          <img src="${isDark ? "/assets/eltera_logo_horizontal_on_dark.svg" : "/assets/eltera_logo_horizontal_on_light.svg"}" alt="Eltera" class="elt-logo-img">
+        </div>
+        <nav class="elt-sidenav">
+          ${navGroups.map((group) => `
+            <div class="elt-nav-group">
+              <span class="elt-nav-group-label">${group.label}</span>
+              ${group.items.map((item) => eltNavItem(item, state.view)).join("")}
+            </div>
+          `).join("")}
         </nav>
-        <div class="sideSoon"><b>Доступ по тарифам</b><span>TalentCheck: VPR/ePR · TalentPro: сравнение · TalentStudio: 360, AI, API</span></div>
+        <div class="elt-sidebar-footer">
+          <div class="elt-tariff-badge">
+            <span class="elt-tariff-label">Тариф</span>
+            <span class="elt-tariff-name">${state.company.tariff}</span>
+          </div>
+        </div>
       </aside>
       <div class="appMain">
-        <header class="appTopbar">
-          <div><span class="miniLabel">Workspace</span><strong>${state.company.name}</strong></div>
-          <div class="topbarActions">
-            <input class="search" placeholder="Поиск по людям, вакансиям и отчетам">
-            <div class="tariffPill"><span>Тариф</span><b>${state.company.tariff}</b></div>
-            <div class="balanceBox">
-              <div><span>Баланс оценок</span><b>${state.company.balance}</b></div>
-              <button data-action="top-up">Пополнить</button>
+        <header class="elt-topbar">
+          <div class="elt-topbar-left">
+            <div class="elt-workspace-info">
+              <span class="elt-topbar-label">Workspace</span>
+              <strong class="elt-topbar-company">${state.company.name}</strong>
             </div>
-            <button class="button subtle" data-action="create-link">Создать оценку</button>
-            <button class="iconButton" title="Переключить тему" data-action="toggle-theme">${state.theme === "light" ? "☀" : "☾"}</button>
-            <button class="iconButton" title="Уведомления">●</button>
-            <button class="profileButton" title="Профиль">РК</button>
+          </div>
+          <div class="elt-topbar-center">
+            <div class="elt-search-wrap">
+              <svg class="elt-search-icon" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.4"/><line x1="9.5" y1="9.5" x2="12.5" y2="12.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              <input class="elt-search" placeholder="Поиск по людям, вакансиям и отчетам">
+            </div>
+          </div>
+          <div class="elt-topbar-right">
+            <div class="elt-balance-pill">
+              <span class="elt-balance-label">Баланс оценок</span>
+              <strong class="elt-balance-value">${state.company.balance}</strong>
+            </div>
+            <button class="elt-btn-topbar" data-action="top-up">Пополнить</button>
+            <button class="elt-btn-topbar elt-btn-topbar-primary" data-action="create-link">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              Создать оценку
+            </button>
+            <button class="elt-icon-btn" title="Переключить тему" data-action="toggle-theme">
+              ${isDark
+                ? `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M12 8.5A5.5 5.5 0 0 1 5.5 2a5.5 5.5 0 1 0 6.5 6.5z" fill="currentColor" opacity=".8"/></svg>`
+                : `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2.5" fill="currentColor"/><line x1="7" y1="1" x2="7" y2="2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="7" y1="11.5" x2="7" y2="13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="1" y1="7" x2="2.5" y2="7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="11.5" y1="7" x2="13" y2="7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>`
+              }
+            </button>
+            <button class="elt-icon-btn elt-notif-btn" title="Уведомления">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5a4 4 0 0 1 4 4v2.5l1 1.5H2l1-1.5V5.5a4 4 0 0 1 4-4z" stroke="currentColor" stroke-width="1.3" fill="none" opacity=".85"/><path d="M5.5 11.5a1.5 1.5 0 0 0 3 0" stroke="currentColor" stroke-width="1.3" fill="none" opacity=".7"/></svg>
+              <span class="elt-notif-dot"></span>
+            </button>
+            <button class="elt-avatar-btn" title="Профиль">РК</button>
           </div>
         </header>
         <main class="appContent">${content}${renderModal(state)}</main>
       </div>
     </div>
   `;
+}
+
+function eltNavItem(item, activeView) {
+  const isActive = activeView === item.id;
+  return `<button
+    class="elt-nav-item${isActive ? " active" : ""}${item.locked ? " locked" : ""}"
+    data-view="${item.id}"
+    title="${item.label}"
+  >
+    <span class="elt-nav-icon">${item.icon}</span>
+    <span class="elt-nav-label">${item.label}</span>
+    ${item.count !== null && item.count !== undefined ? `<span class="elt-nav-count">${item.count}</span>` : ""}
+    ${item.alertCount ? `<span class="elt-nav-alert">${item.alertCount}</span>` : ""}
+    ${item.locked ? `<span class="elt-nav-lock"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="2" y="4.5" width="6" height="5" rx="1" stroke="currentColor" stroke-width="1.1" fill="none" opacity=".6"/><path d="M3.5 4.5V3a1.5 1.5 0 0 1 3 0v1.5" stroke="currentColor" stroke-width="1.1" fill="none" opacity=".6"/></svg></span>` : ""}
+  </button>`;
 }
 
 export function renderDashboard(state, filters) {
