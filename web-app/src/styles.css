@@ -4488,12 +4488,10 @@ small {
 }
 .elt-search-wrap:focus-within {
   width: 340px;
-  border-color: transparent;
+  border: 1.5px solid #1E5BFF;
   background-image: none;
   background-origin: initial;
   background-clip: initial;
-  border: 1.5px solid #1E5BFF;
-  box-shadow: 0 0 14px rgba(30,91,255,0.22);
 }
 
 .elt-search-icon { color: rgba(230,242,255,.3); flex-shrink: 0; }
@@ -4661,7 +4659,6 @@ small {
   background-clip: initial;
   background-origin: initial;
   background-color: #fff;
-  box-shadow: 0 0 14px rgba(30,91,255,0.18);
 }
 .lightTheme .elt-search { color: #0A0F1E; }
 .lightTheme .elt-search::placeholder { color: rgba(10,15,30,.35); }
