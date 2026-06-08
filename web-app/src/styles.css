@@ -5713,3 +5713,97 @@ small {
   background: rgba(0,0,0,.04);
   border-color: rgba(0,0,0,.08);
 }
+
+/* ── Tariff Upgrade Modal ── */
+.elt-upgrade-modal {
+  background: #111A33;
+  border: 1px solid rgba(30,91,255,.18);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 820px;
+  padding: 32px;
+  position: relative;
+  box-shadow: 0 24px 80px rgba(0,0,0,.5);
+}
+.elt-upgrade-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.elt-upgrade-eyebrow {
+  font-size: 10px; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: #00E5D4; margin-bottom: 6px;
+}
+.elt-upgrade-title { font-size: 22px; font-weight: 700; color: #E6F2FF; margin-bottom: 4px; }
+.elt-upgrade-subtitle { font-size: 13px; color: rgba(230,242,255,.45); }
+.elt-upgrade-current-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(0,229,212,.08); border: 1px solid rgba(0,229,212,.2);
+  border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 600;
+  color: #00E5D4; margin: 12px 0 24px;
+}
+.elt-upgrade-current-badge::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: #00E5D4; box-shadow: 0 0 6px #00E5D4;
+}
+.elt-upgrade-grid { display: grid; gap: 14px; }
+.elt-upgrade-grid-1 { grid-template-columns: 1fr; max-width: 360px; }
+.elt-upgrade-grid-2 { grid-template-columns: repeat(2, 1fr); }
+.elt-upgrade-grid-3 { grid-template-columns: repeat(3, 1fr); }
+.elt-upgrade-card {
+  background: #0B1020; border: 1px solid rgba(30,91,255,.15);
+  border-radius: 14px; padding: 20px; cursor: pointer;
+  transition: all .2s; position: relative; overflow: hidden;
+}
+.elt-upgrade-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, #1E5BFF, #00E5D4); opacity: 0; transition: opacity .2s;
+}
+.elt-upgrade-card:hover { border-color: rgba(30,91,255,.4); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(30,91,255,.15); }
+.elt-upgrade-card:hover::before { opacity: 1; }
+.elt-upgrade-card-top { border-color: rgba(0,229,212,.3); background: rgba(0,229,212,.04); }
+.elt-upgrade-card-top::before { opacity: 1; background: linear-gradient(90deg, #00E5D4, #1E5BFF); }
+.elt-upgrade-rec-label {
+  position: absolute; top: 12px; right: 12px;
+  background: rgba(0,229,212,.12); border: 1px solid rgba(0,229,212,.25);
+  border-radius: 20px; font-size: 9px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: #00E5D4; padding: 3px 8px;
+}
+.elt-upgrade-tier { font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(230,242,255,.35); margin-bottom: 8px; }
+.elt-upgrade-name { font-size: 18px; font-weight: 700; color: #E6F2FF; margin-bottom: 4px; }
+.elt-upgrade-price { font-size: 13px; color: rgba(230,242,255,.5); margin-bottom: 14px; }
+.elt-upgrade-price strong { font-size: 16px; font-weight: 700; color: #E6F2FF; }
+.elt-upgrade-features { list-style: none; margin-bottom: 18px; padding: 0; }
+.elt-upgrade-features li { font-size: 12px; color: rgba(230,242,255,.6); padding: 3px 0; display: flex; align-items: center; gap: 7px; }
+.elt-upgrade-features li::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: rgba(0,229,212,.5); flex-shrink: 0; }
+.elt-upgrade-btn { width: 100%; padding: 10px; border-radius: 10px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; font-family: inherit; }
+.elt-upgrade-btn-blue { background: linear-gradient(135deg, #1E5BFF, #0040CC); color: #fff; }
+.elt-upgrade-btn-blue:hover { opacity: .9; }
+.elt-upgrade-btn-teal { background: linear-gradient(135deg, #00E5D4, #00B8AA); color: #0A0F1E; }
+.elt-upgrade-btn-teal:hover { opacity: .9; }
+.elt-upgrade-max-block {
+  background: rgba(0,229,212,.05); border: 1px solid rgba(0,229,212,.15);
+  border-radius: 14px; padding: 20px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.elt-upgrade-max-icon { width: 44px; height: 44px; border-radius: 12px; background: rgba(0,229,212,.1); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.elt-upgrade-max-text { flex: 1; }
+.elt-upgrade-max-text h3 { font-size: 15px; font-weight: 700; color: #E6F2FF; margin-bottom: 4px; }
+.elt-upgrade-max-text p { font-size: 12px; color: rgba(230,242,255,.5); }
+.elt-upgrade-contact-btn {
+  padding: 10px 20px; border-radius: 10px; border: 1px solid rgba(0,229,212,.3);
+  background: rgba(0,229,212,.08); color: #00E5D4; font-size: 13px; font-weight: 600;
+  cursor: pointer; white-space: nowrap; font-family: inherit; text-decoration: none; transition: all .15s;
+}
+.elt-upgrade-contact-btn:hover { background: rgba(0,229,212,.15); }
+.lightTheme .elt-upgrade-modal { background: #fff; border-color: rgba(30,91,255,.12); }
+.lightTheme .elt-upgrade-title { color: #0A0F1E; }
+.lightTheme .elt-upgrade-card { background: #F8FAFC; border-color: rgba(30,91,255,.12); }
+.lightTheme .elt-upgrade-card-top { background: rgba(0,229,212,.03); }
+.lightTheme .elt-upgrade-name { color: #0A0F1E; }
+.lightTheme .elt-upgrade-price { color: #64748B; }
+.lightTheme .elt-upgrade-price strong { color: #0A0F1E; }
+.lightTheme .elt-upgrade-features li { color: #475569; }
+.lightTheme .elt-upgrade-max-block { background: rgba(0,229,212,.03); }
+.lightTheme .elt-upgrade-max-text h3 { color: #0A0F1E; }
+.lightTheme .elt-upgrade-max-text p { color: #64748B; }

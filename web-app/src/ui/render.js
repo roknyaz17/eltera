@@ -979,7 +979,7 @@ function renderModal(state) {
     return `<div class="modalBackdrop"><div class="modal modalWide">${mHead(profile.title, '🎯')}<div class="modal-inner"><p class="modal-subtitle">${profile.description}</p><div class="competencyModalGrid"><article>${miniBars(profile.professional.map((item) => [item, 24]))}</article><article>${miniBars(profile.personal.map((item) => [item, 18]))}</article></div><div class="profileExplain"><b>Шкала достоверности</b><p>Проверяет противоречивые ответы, социальную желательность и попытку выглядеть лучше. Вес достоверности: 15%.</p><b>Интерпретация</b><p>Итоговая рекомендация не заменяет интервью, а показывает зоны для проверки, красные флаги и вопросы для нанимающего менеджера.</p></div></div></div></div>`;
   }
   if (state.modal?.type === "tariffs") {
-    return `<div class="modalBackdrop"><div class="modal modalWide">${mHead('Изменить тариф', '⚡')}<div class="modal-inner"><p class="modal-subtitle">Start — текущий базовый доступ. Для смены доступны только основные тарифы.</p><div class="tariffPicker">${["TalentCheck", "TalentPro", "TalentStudio"].map((name) => `<button class="panel tariffMini" data-select-tariff="${name}"><b>${name}</b><span>${tariffDescription(name)}</span></button>`).join('')}</div></div></div></div>`;
+    return renderTariffUpgradeModal(state);
   }
   if (state.modal?.type === "locked") {
     return `<div class="modalBackdrop"><div class="modal">${mHead('Функция недоступна', '🔒')}<div class="modal-inner"><p class="modal-subtitle">${state.modal.message}</p><button class="blueButton" data-open-tariff-picker>Изменить тариф</button></div></div></div>`;
@@ -1380,6 +1380,105 @@ function assessmentProfile(id) {
     professional: ["Профиль роли", "Ситуационные кейсы", "Работа с данными", "Коммуникация", "Контроль результата"],
     personal: ["Ответственность", "Дисциплина", "Обучаемость", "Стрессоустойчивость", "Достоверность"]
   };
+}
+
+function renderTariffUpgradeModal(state) {
+  const TARIFFS = [
+    {
+      id: 'Start',
+      tier: 'FREE',
+      name: 'Start',
+      price: '990 ₽',
+      features: ['До 20 оценок', 'Базовые отчёты', 'PDF-отчёт', 'AI-рекомендация']
+    },
+    {
+      id: 'TalentCheck',
+      tier: 'BASE',
+      name: 'TalentCheck',
+      price: '4 900 ₽',
+      features: ['Индивидуальные оценки', 'Базовые отчёты', 'PDF-отчёт', 'AI-рекомендация: VPR / ePR']
+    },
+    {
+      id: 'TalentPro',
+      tier: 'PRO',
+      name: 'TalentPro',
+      price: '12 900 ₽',
+      features: ['Всё из TalentCheck', 'Сравнение кандидатов', 'Расширенные отчёты', 'Групповые оценки', 'Больше профилей']
+    },
+    {
+      id: 'TalentStudio',
+      tier: 'STUDIO',
+      name: 'TalentStudio',
+      price: '29 900 ₽',
+      features: ['Всё из TalentPro', 'Оценка 360°', 'Полный AI-ассистент', 'API-интеграции', 'Белый лейбл', 'Приоритетная поддержка']
+    }
+  ];
+
+  const order = ['Start', 'TalentCheck', 'TalentPro', 'TalentStudio'];
+  const current = state.company.tariff || 'Start';
+  const currentIdx = order.indexOf(current);
+  const available = TARIFFS.filter((t, i) => i > currentIdx);
+
+  // Самый дорогой из доступных — рекомендуемый
+  const topId = available.length > 0 ? available[available.length - 1].id : null;
+
+  const closeBtn = `<button class="modal-close-btn" data-action="close-modal" title="Закрыть"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>`;
+
+  // Максимальный тариф — Enterprise-предложение
+  if (available.length === 0) {
+    return `<div class="modalBackdrop">
+      <div class="modal elt-upgrade-modal">
+        <div class="elt-upgrade-header">
+          <div>
+            <div class="elt-upgrade-eyebrow">Ваш тариф</div>
+            <div class="elt-upgrade-title">У вас максимальный тариф</div>
+            <div class="elt-upgrade-subtitle">TalentStudio открывает все возможности платформы</div>
+          </div>
+          ${closeBtn}
+        </div>
+        <div class="elt-upgrade-current-badge">Текущий тариф: ${current}</div>
+        <div class="elt-upgrade-max-block">
+          <div class="elt-upgrade-max-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="#00E5D4" opacity=".9"/></svg>
+          </div>
+          <div class="elt-upgrade-max-text">
+            <h3>Вы используете TalentStudio</h3>
+            <p>Нужны индивидуальные условия для крупной компании? Свяжитесь с нами — обсудим Enterprise-план.</p>
+          </div>
+          <a href="mailto:hello@eltera.ai" class="elt-upgrade-contact-btn">Написать нам</a>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // Есть доступные тарифы — показываем сетку
+  const cols = available.length === 1 ? 'elt-upgrade-grid-1' : available.length === 2 ? 'elt-upgrade-grid-2' : 'elt-upgrade-grid-3';
+  const cards = available.map((t) => {
+    const isTop = t.id === topId;
+    return `<div class="elt-upgrade-card${isTop ? ' elt-upgrade-card-top' : ''}">
+      ${isTop ? `<div class="elt-upgrade-rec-label">Рекомендуем</div>` : ''}
+      <div class="elt-upgrade-tier">${t.tier}</div>
+      <div class="elt-upgrade-name">${t.name}</div>
+      <div class="elt-upgrade-price"><strong>${t.price}</strong> / месяц</div>
+      <ul class="elt-upgrade-features">${t.features.map((f) => `<li>${f}</li>`).join('')}</ul>
+      <button class="elt-upgrade-btn${isTop ? ' elt-upgrade-btn-teal' : ' elt-upgrade-btn-blue'}" data-select-tariff="${t.id}">Перейти на ${t.name}</button>
+    </div>`;
+  }).join('');
+
+  return `<div class="modalBackdrop">
+    <div class="modal elt-upgrade-modal">
+      <div class="elt-upgrade-header">
+        <div>
+          <div class="elt-upgrade-eyebrow">Улучшить тариф</div>
+          <div class="elt-upgrade-title">Выберите следующий шаг</div>
+          <div class="elt-upgrade-subtitle">Доступны тарифы выше вашего текущего</div>
+        </div>
+        ${closeBtn}
+      </div>
+      <div class="elt-upgrade-current-badge">Текущий тариф: ${current}</div>
+      <div class="elt-upgrade-grid ${cols}">${cards}</div>
+    </div>
+  </div>`;
 }
 
 function tariffDescription(name) {

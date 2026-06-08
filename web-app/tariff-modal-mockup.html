@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tariff Upgrade Modal — Eltera</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Manrope', system-ui, sans-serif;
+    background: #0A0F1E;
+    color: #E6F2FF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  /* ── Overlay ── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.65);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 24px;
+  }
+
+  /* ── Modal ── */
+  .modal {
+    background: #111A33;
+    border: 1px solid rgba(30,91,255,.18);
+    border-radius: 20px;
+    width: 100%;
+    max-width: 780px;
+    padding: 32px;
+    position: relative;
+    box-shadow: 0 24px 80px rgba(0,0,0,.5);
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 20px; right: 20px;
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    border: 1px solid rgba(230,242,255,.1);
+    background: rgba(230,242,255,.05);
+    color: rgba(230,242,255,.5);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    transition: all .15s;
+  }
+  .modal-close:hover { background: rgba(230,242,255,.1); color: #E6F2FF; }
+
+  /* ── Header ── */
+  .modal-header { margin-bottom: 8px; }
+  .modal-eyebrow {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: #00E5D4;
+    margin-bottom: 6px;
+  }
+  .modal-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #E6F2FF;
+    margin-bottom: 4px;
+  }
+  .modal-subtitle {
+    font-size: 13px;
+    color: rgba(230,242,255,.45);
+  }
+
+  /* ── Current badge ── */
+  .current-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0,229,212,.08);
+    border: 1px solid rgba(0,229,212,.2);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #00E5D4;
+    margin-bottom: 24px;
+    margin-top: 12px;
+  }
+  .current-badge::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #00E5D4;
+    box-shadow: 0 0 6px #00E5D4;
+  }
+
+  /* ── Tariff grid ── */
+  .tariff-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .tariff-card {
+    background: #0B1020;
+    border: 1px solid rgba(30,91,255,.15);
+    border-radius: 14px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all .2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .tariff-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #1E5BFF, #00E5D4);
+    opacity: 0;
+    transition: opacity .2s;
+  }
+  .tariff-card:hover {
+    border-color: rgba(30,91,255,.4);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(30,91,255,.15);
+  }
+  .tariff-card:hover::before { opacity: 1; }
+
+  /* Recommended card */
+  .tariff-card.recommended {
+    border-color: rgba(0,229,212,.3);
+    background: rgba(0,229,212,.04);
+  }
+  .tariff-card.recommended::before { opacity: 1; background: linear-gradient(90deg, #00E5D4, #1E5BFF); }
+
+  .tariff-rec-label {
+    position: absolute;
+    top: 12px; right: 12px;
+    background: rgba(0,229,212,.12);
+    border: 1px solid rgba(0,229,212,.25);
+    border-radius: 20px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #00E5D4;
+    padding: 3px 8px;
+  }
+
+  .tariff-tier {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: rgba(230,242,255,.35);
+    margin-bottom: 8px;
+  }
+  .tariff-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #E6F2FF;
+    margin-bottom: 4px;
+  }
+  .tariff-price {
+    font-size: 13px;
+    color: rgba(230,242,255,.5);
+    margin-bottom: 14px;
+  }
+  .tariff-price strong {
+    font-size: 16px;
+    font-weight: 700;
+    color: #E6F2FF;
+  }
+
+  .tariff-features {
+    list-style: none;
+    margin-bottom: 18px;
+  }
+  .tariff-features li {
+    font-size: 12px;
+    color: rgba(230,242,255,.6);
+    padding: 3px 0;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .tariff-features li::before {
+    content: '';
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: rgba(0,229,212,.5);
+    flex-shrink: 0;
+  }
+
+  .tariff-btn {
+    width: 100%;
+    padding: 10px;
+    border-radius: 10px;
+    border: none;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+    font-family: inherit;
+  }
+  .tariff-btn-primary {
+    background: linear-gradient(135deg, #1E5BFF, #0040CC);
+    color: #fff;
+  }
+  .tariff-btn-primary:hover { opacity: .9; }
+  .tariff-btn-teal {
+    background: linear-gradient(135deg, #00E5D4, #00B8AA);
+    color: #0A0F1E;
+  }
+  .tariff-btn-teal:hover { opacity: .9; }
+
+  /* ── TalentStudio — max tier ── */
+  .modal-max {
+    background: rgba(0,229,212,.05);
+    border: 1px solid rgba(0,229,212,.15);
+    border-radius: 14px;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .modal-max-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: rgba(0,229,212,.1);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .modal-max-text h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #E6F2FF;
+    margin-bottom: 4px;
+  }
+  .modal-max-text p {
+    font-size: 12px;
+    color: rgba(230,242,255,.5);
+  }
+  .modal-max-btn {
+    margin-left: auto;
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: 1px solid rgba(0,229,212,.3);
+    background: rgba(0,229,212,.08);
+    color: #00E5D4;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: inherit;
+    transition: all .15s;
+  }
+  .modal-max-btn:hover { background: rgba(0,229,212,.15); }
+
+  /* ── Tabs for demo ── */
+  .demo-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  .demo-tab {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(230,242,255,.1);
+    background: transparent;
+    color: rgba(230,242,255,.5);
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .15s;
+  }
+  .demo-tab.active {
+    background: rgba(30,91,255,.15);
+    border-color: rgba(30,91,255,.3);
+    color: #E6F2FF;
+  }
+  .demo-tab:hover { border-color: rgba(30,91,255,.3); color: #E6F2FF; }
+
+  .demo-label {
+    font-size: 11px;
+    color: rgba(230,242,255,.3);
+    margin-bottom: 16px;
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+
+<div class="modal-overlay">
+  <div class="modal">
+    <button class="modal-close">✕</button>
+
+    <!-- Переключатель демо-режима -->
+    <div class="demo-tabs">
+      <button class="demo-tab active" onclick="showUpgrade()">Тариф TalentPro (апгрейд)</button>
+      <button class="demo-tab" onclick="showMax()">Тариф TalentStudio (максимум)</button>
+    </div>
+
+    <!-- === РЕЖИМ АПГРЕЙДА === -->
+    <div id="view-upgrade">
+      <div class="modal-header">
+        <div class="modal-eyebrow">Улучшить тариф</div>
+        <div class="modal-title">Выберите следующий шаг</div>
+        <div class="modal-subtitle">Доступны тарифы выше вашего текущего</div>
+      </div>
+
+      <div class="current-badge">Текущий тариф: TalentPro</div>
+
+      <div class="tariff-grid" style="grid-template-columns: 1fr;">
+        <!-- TalentStudio (единственный выше TalentPro) -->
+        <div class="tariff-card recommended" style="max-width: 340px; margin: 0 auto; width: 100%;">
+          <div class="tariff-rec-label">Рекомендуем</div>
+          <div class="tariff-tier">Studio</div>
+          <div class="tariff-name">TalentStudio</div>
+          <div class="tariff-price"><strong>29 900 ₽</strong> / месяц</div>
+          <ul class="tariff-features">
+            <li>Все из TalentPro</li>
+            <li>Оценка 360°</li>
+            <li>Полный AI-ассистент</li>
+            <li>API-интеграции</li>
+            <li>Белый лейбл</li>
+            <li>Приоритетная поддержка</li>
+          </ul>
+          <button class="tariff-btn tariff-btn-teal">Перейти на TalentStudio</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- === РЕЖИМ МАКСИМАЛЬНОГО ТАРИФА === -->
+    <div id="view-max" style="display:none;">
+      <div class="modal-header">
+        <div class="modal-eyebrow">Ваш тариф</div>
+        <div class="modal-title">У вас максимальный тариф</div>
+        <div class="modal-subtitle">TalentStudio открывает все возможности платформы</div>
+      </div>
+
+      <div class="current-badge">Текущий тариф: TalentStudio</div>
+
+      <div class="modal-max">
+        <div class="modal-max-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="#00E5D4" opacity=".9"/>
+          </svg>
+        </div>
+        <div class="modal-max-text">
+          <h3>Вы используете TalentStudio</h3>
+          <p>Нужны индивидуальные условия для крупной компании? Свяжитесь с нами — обсудим Enterprise-план.</p>
+        </div>
+        <button class="modal-max-btn">Написать нам</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // Демо-переключатель
+  function showUpgrade() {
+    document.getElementById('view-upgrade').style.display = '';
+    document.getElementById('view-max').style.display = 'none';
+    document.querySelectorAll('.demo-tab')[0].classList.add('active');
+    document.querySelectorAll('.demo-tab')[1].classList.remove('active');
+  }
+  function showMax() {
+    document.getElementById('view-upgrade').style.display = 'none';
+    document.getElementById('view-max').style.display = '';
+    document.querySelectorAll('.demo-tab')[0].classList.remove('active');
+    document.querySelectorAll('.demo-tab')[1].classList.add('active');
+  }
+
+  // Также показываем вариант для Start (3 тарифа)
+  // Для демо добавим третью вкладку
+  const tabs = document.querySelector('.demo-tabs');
+  const btn = document.createElement('button');
+  btn.className = 'demo-tab';
+  btn.textContent = 'Тариф Start (3 варианта)';
+  btn.onclick = showStart;
+  tabs.appendChild(btn);
+
+  function showStart() {
+    document.getElementById('view-upgrade').innerHTML = `
+      <div class="modal-header">
+        <div class="modal-eyebrow">Улучшить тариф</div>
+        <div class="modal-title">Выберите следующий шаг</div>
+        <div class="modal-subtitle">Доступны тарифы выше вашего текущего</div>
+      </div>
+      <div class="current-badge">Текущий тариф: Start</div>
+      <div class="tariff-grid">
+        <div class="tariff-card">
+          <div class="tariff-tier">Base</div>
+          <div class="tariff-name">TalentCheck</div>
+          <div class="tariff-price"><strong>4 900 ₽</strong> / месяц</div>
+          <ul class="tariff-features">
+            <li>Индивидуальные оценки</li>
+            <li>Базовые отчёты</li>
+            <li>PDF-отчёт</li>
+            <li>AI-рекомендация</li>
+          </ul>
+          <button class="tariff-btn tariff-btn-primary">Выбрать</button>
+        </div>
+        <div class="tariff-card recommended">
+          <div class="tariff-rec-label">Популярный</div>
+          <div class="tariff-tier">Pro</div>
+          <div class="tariff-name">TalentPro</div>
+          <div class="tariff-price"><strong>12 900 ₽</strong> / месяц</div>
+          <ul class="tariff-features">
+            <li>Всё из TalentCheck</li>
+            <li>Сравнение кандидатов</li>
+            <li>Расширенные отчёты</li>
+            <li>Групповые оценки</li>
+            <li>Больше профилей</li>
+          </ul>
+          <button class="tariff-btn tariff-btn-teal">Выбрать</button>
+        </div>
+        <div class="tariff-card">
+          <div class="tariff-tier">Studio</div>
+          <div class="tariff-name">TalentStudio</div>
+          <div class="tariff-price"><strong>29 900 ₽</strong> / месяц</div>
+          <ul class="tariff-features">
+            <li>Всё из TalentPro</li>
+            <li>Оценка 360°</li>
+            <li>Полный AI-ассистент</li>
+            <li>API-интеграции</li>
+            <li>Белый лейбл</li>
+          </ul>
+          <button class="tariff-btn tariff-btn-primary">Выбрать</button>
+        </div>
+      </div>
+    `;
+    document.getElementById('view-upgrade').style.display = '';
+    document.getElementById('view-max').style.display = 'none';
+    document.querySelectorAll('.demo-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.demo-tab')[2].classList.add('active');
+  }
+</script>
+</body>
+</html>
