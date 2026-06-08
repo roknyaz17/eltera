@@ -1287,3 +1287,75 @@ document.addEventListener("input", (event) => {
     event.target.style.height = Math.min(event.target.scrollHeight, 100) + "px";
   }
 });
+
+// ── Filter panel handlers ─────────────────────────────────────────────────────
+document.addEventListener("click", (event) => {
+  // Open filters modal
+  if (event.target.closest("[data-action='open-filters']")) {
+    const page = state.page || "candidates";
+    const pageFilterMap = {
+      candidates: ["Вакансия","Источник","Статус","Результат оценки","Тип подбора","Ответственный","Город","Соответствие","Риск"],
+      employees: ["Отдел","Должность","Руководитель","Проект","Тип сотрудника","Риск","Адаптация","Performance Review","360"],
+      vacancies: ["Источник","Статус","Тип подбора","Ответственный","Город","Конверсия","Подходящие"],
+      adaptation: ["Отдел","Руководитель","Этап адаптации","Причина риска","Статус"],
+      "360": ["Руководитель","Отдел","Статус","Расхождение","Компетенция"],
+      performance: ["Отдел","Руководитель","Сегмент 9-box","Потенциал","Результативность"],
+      reports: ["Тип","Статус","Вакансия / отдел","Ответственный"],
+      dashboard: ["Все направления","Статус","Ответственный"],
+    };
+    const filters = pageFilterMap[page] || pageFilterMap.candidates;
+    state.modal = { type: "filters", filters, active: state.activeFilters?.[page] || {} };
+    render();
+    return;
+  }
+
+  // Apply filters
+  if (event.target.closest("[data-action='apply-filters-modal']")) {
+    const page = state.page || "candidates";
+    if (!state.activeFilters) state.activeFilters = {};
+    state.activeFilters[page] = state.modal?.active || {};
+    state.modal = null;
+    saveState();
+    render();
+    return;
+  }
+
+  // Clear all filters in modal
+  if (event.target.closest("[data-action='clear-filters-modal']")) {
+    if (state.modal?.type === "filters") {
+      state.modal = { ...state.modal, active: {} };
+      render();
+    }
+    return;
+  }
+
+  // Toggle filter option in modal
+  const fpKey = event.target.closest("[data-fp-key]")?.dataset.fpKey;
+  const fpVal = event.target.closest("[data-fp-val]") !== null ? event.target.closest("[data-fp-key]")?.dataset.fpVal : null;
+  if (fpKey !== undefined && fpVal !== undefined && state.modal?.type === "filters") {
+    state.modal = { ...state.modal, active: { ...state.modal.active, [fpKey]: fpVal } };
+    render();
+    return;
+  }
+
+  // Remove active filter tag (×) from toolbar
+  const removeFilter = event.target.closest("[data-remove-filter]")?.dataset.removeFilter;
+  if (removeFilter) {
+    const page = state.page || "candidates";
+    if (state.activeFilters?.[page]) {
+      delete state.activeFilters[page][removeFilter];
+      saveState();
+      render();
+    }
+    return;
+  }
+
+  // Clear all filters from toolbar
+  if (event.target.closest("[data-action='clear-filters']")) {
+    const page = state.page || "candidates";
+    if (state.activeFilters) state.activeFilters[page] = {};
+    saveState();
+    render();
+    return;
+  }
+});

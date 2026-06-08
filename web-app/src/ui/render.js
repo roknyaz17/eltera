@@ -1294,6 +1294,61 @@ function renderModal(state) {
     const max = Math.floor(state.referrals.available / state.company.assessmentPrice);
     return `<div class="modalBackdrop"><div class="modal">${mHead('Потратить бонусы', '🎁')}<div class="modal-inner"><p class="modal-subtitle">Доступно: ${state.referrals.available.toLocaleString('ru-RU')} бонусов. 1 оценка = ${state.company.assessmentPrice} ₽.</p><div class="bonusOptions"><button class="blueButton" data-buy-bonus-assessments="${max}">Докупить ${max} оценок</button><button class="button subtle">Компенсировать часть тарифа</button><button class="button subtle">Оплатить тариф бонусами</button></div></div></div></div>`;
   }
+
+  if (state.modal?.type === "filters") {
+    const filters = state.modal.filters || [];
+    const active = state.modal.active || {};
+    const filterOptions = {
+      "Вакансия": ["Менеджер по продажам", "HR-рекрутер", "Frontend-разработчик"],
+      "Источник": ["HeadHunter", "SuperJob", "Avito", "Telegram", "Ручная", "API", "Импорт"],
+      "Статус": ["Откликнулся", "Оценка отправлена", "Оценка пройдена", "Подходит", "Интервью", "Оффер", "Не подходит"],
+      "Результат оценки": ["Высокий (80%+)", "Средний (60-79%)", "Низкий (<60%)"],
+      "Тип подбора": ["Внешний", "Внутренний", "Проектный"],
+      "Ответственный": ["Иван Петров", "Анна Сергеева", "Ольга Смирнова"],
+      "Город": ["Москва", "Санкт-Петербург", "Екатеринбург", "Новосибирск"],
+      "Соответствие": ["Высокое (80%+)", "Среднее (60-79%)", "Низкое (<60%)"],
+      "Риск": ["Низкий", "Средний", "Высокий"],
+      "Отдел": ["Отдел продаж", "Операционный", "Контакт-центр", "Финансы"],
+      "Должность": ["Менеджер", "Специалист", "Руководитель"],
+      "Руководитель": ["Иван Петров", "Анна Сергеева", "Ольга Смирнова"],
+      "Проект": ["Проект A", "Проект B"],
+      "Тип сотрудника": ["Стафф", "Аутсорсинг", "Стажёр"],
+      "Адаптация": ["На адаптации", "Завершил", "Риск"],
+      "Performance Review": ["Пройден", "Не пройден"],
+      "360": ["Пройден", "Не пройден"],
+      "Сегмент 9-box": ["HiPo", "Звезда", "Лидер", "Стабильный", "Зона риска"],
+      "Потенциал": ["Высокий", "Средний", "Низкий"],
+      "Результативность": ["Высокая", "Средняя", "Низкая"],
+      "Этап адаптации": ["7 дней", "14 дней", "30 дней", "60 дней", "90 дней"],
+      "Причина риска": ["Нагрузка", "Конфликт", "Зарплата", "Неясность задач"],
+      "Конверсия": ["Высокая (>30%)", "Средняя (10-30%)", "Низкая (<10%)"],
+      "Подходящие": ["Есть", "Нет"],
+      "Расхождение": ["Высокое", "Среднее", "Низкое"],
+      "Компетенция": ["Ответственность", "Коммуникация", "Лидерство", "Аналитика"],
+      "Тип": ["Кандидат", "Сотрудник", "Групповая"],
+      "Вакансия / отдел": ["Менеджер по продажам", "HR-рекрутер", "Отдел продаж"],
+      "Все направления": ["Кандидаты", "Сотрудники", "Групповые"]
+    };
+    const rows = filters.map((f) => {
+      const opts = filterOptions[f] || [];
+      const cur = active[f] || "";
+      return '<div class="elt-fp-row">' +
+        '<label class="elt-fp-label">' + f + '</label>' +
+        '<div class="elt-fp-opts">' +
+          '<button class="elt-fp-opt ' + (!cur ? 'active' : '') + '" data-fp-key="' + f + '" data-fp-val="">Все</button>' +
+          opts.map((o) => '<button class="elt-fp-opt ' + (cur === o ? 'active' : '') + '" data-fp-key="' + f + '" data-fp-val="' + o + '">' + o + '</button>').join('') +
+        '</div>' +
+      '</div>';
+    }).join('');
+    const activeCount = Object.values(active).filter(Boolean).length;
+    return '<div class="modalBackdrop"><div class="modal elt-filters-modal">' +
+      mHead('Фильтры', '⧦') +
+      '<div class="modal-inner elt-fp-inner">' + rows + '</div>' +
+      '<div class="elt-fp-footer">' +
+        '<button class="elt-btn-ghost" data-action="clear-filters-modal">Сбросить все' + (activeCount ? ' (' + activeCount + ')' : '') + '</button>' +
+        '<button class="blueButton" data-action="apply-filters-modal">Применить</button>' +
+      '</div></div></div>';
+  }
   if (state.modal === "withdraw") {
     return `<div class="modalBackdrop"><form class="modal" data-withdraw-form>${mHead('Вывести бонусы на карту', '💳')}<div class="modal-inner"><label>Сумма вывода<input name="amount" type="number" max="${state.referrals.available}" value="${Math.min(3000, state.referrals.available)}"></label><label>Номер карты<input name="card" placeholder="0000 0000 0000 0000"></label><label>ФИО получателя<input name="name" placeholder="Иванов Иван"></label><label>Банк<input name="bank" placeholder="Сбербанк"></label><label>Телефон<input name="phone" placeholder="+7..."></label><label>Комментарий<input name="comment" placeholder="Комментарий"></label><button class="blueButton" type="submit">Создать заявку на вывод</button></div></form></div>`;
   }

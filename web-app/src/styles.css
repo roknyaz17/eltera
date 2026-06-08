@@ -6695,3 +6695,92 @@ body.light .oc-view-toggle { background: rgba(0,0,0,.06); }
 .lightTheme .elt-fb-tag { background: rgba(0,180,160,.08); border-color: rgba(0,180,160,.25); color: #009688; }
 .lightTheme .elt-fb-clear { color: rgba(10,15,30,.3); }
 .lightTheme .elt-fb-clear:hover { color: rgba(10,15,30,.6); }
+
+/* ── Filters Modal Panel ────────────────────────────────────────────────────── */
+
+.elt-filters-modal {
+  width: 560px;
+  max-width: 96vw;
+}
+.elt-fp-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+.elt-fp-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.elt-fp-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(230,242,255,.4);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.elt-fp-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.elt-fp-opt {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 20px;
+  color: rgba(230,242,255,.5);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 4px 11px;
+  cursor: pointer;
+  transition: all .13s;
+  white-space: nowrap;
+}
+.elt-fp-opt:hover {
+  background: rgba(30,91,255,.1);
+  border-color: rgba(30,91,255,.3);
+  color: rgba(230,242,255,.85);
+}
+.elt-fp-opt.active {
+  background: rgba(0,229,212,.12);
+  border-color: rgba(0,229,212,.35);
+  color: #00E5D4;
+  font-weight: 600;
+}
+.elt-fp-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px 0;
+  border-top: 1px solid rgba(255,255,255,.06);
+  margin-top: 4px;
+  gap: 10px;
+}
+.elt-fp-footer .elt-btn-ghost {
+  background: none;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px;
+  color: rgba(230,242,255,.4);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.elt-fp-footer .elt-btn-ghost:hover {
+  border-color: rgba(255,255,255,.2);
+  color: rgba(230,242,255,.7);
+}
+.elt-fp-footer .blueButton {
+  flex: 1;
+  max-width: 180px;
+}
+
+/* Light theme */
+.lightTheme .elt-fp-label { color: rgba(10,15,30,.4); }
+.lightTheme .elt-fp-opt { background: rgba(0,0,0,.04); border-color: rgba(0,0,0,.08); color: rgba(10,15,30,.5); }
+.lightTheme .elt-fp-opt:hover { background: rgba(30,91,255,.08); border-color: rgba(30,91,255,.25); color: #1E5BFF; }
+.lightTheme .elt-fp-opt.active { background: rgba(0,180,160,.1); border-color: rgba(0,180,160,.3); color: #009688; }
