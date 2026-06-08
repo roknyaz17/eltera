@@ -126,7 +126,7 @@ function PremiumKpiCard(card) {
         ${iconSvg}
         <i class="elt-kpi-dot"></i>
       </div>
-      <strong class="elt-kpi-value">${card.value}</strong>
+      <strong class="elt-kpi-value" ${/^\d/.test(String(card.value)) ? `data-countup="${parseFloat(String(card.value).replace(/[^\d.]/g,''))}" data-countup-suffix="${String(card.value).replace(/^[\d.,\s]+/,'')}"` : ""}>${card.value}</strong>
       <div class="elt-kpi-footer">
         <span class="elt-kpi-label">${card.label}</span>
         ${card.trend ? `<span class="elt-kpi-trend">${card.trend}</span>` : ""}
@@ -149,7 +149,7 @@ function premiumBarChart(items) {
           <div class="elt-bar-row ${pStatusClass(status)}">
             <span class="elt-bar-label">${label}</span>
             <div class="elt-bar-track">
-              <div class="elt-bar-fill" style="width:${w}%"></div>
+              <div class="elt-bar-fill" data-bar-width="${w}" style="width:0%"></div>
             </div>
             <strong class="elt-bar-value">${value}</strong>
           </div>
@@ -177,11 +177,11 @@ function premiumFunnel(items) {
           <button class="elt-funnel-step ${pStatusClass(status)} ${isLast ? "elt-funnel-last" : ""}" data-open-list="${item.target || `Кандидаты:${label}`}">
             <div class="elt-funnel-row">
               <span class="elt-funnel-label">${label}</span>
-              <b class="elt-funnel-count">${value}</b>
+              <b class="elt-funnel-count" ${/^\d/.test(String(value)) ? `data-countup="${parseFloat(String(value).replace(/[^\d.]/g,''))}"` : ""}>${value}</b>
               ${convLabel ? `<em class="elt-funnel-conv">${convLabel}</em>` : ""}
             </div>
             <div class="elt-funnel-bar">
-              <div class="elt-funnel-fill" style="width:${pctVal}%"></div>
+              <div class="elt-funnel-fill" data-bar-width="${pctVal}" data-bar-delay="${idx * 60}" style="width:0%"></div>
             </div>
           </button>
         `;
@@ -457,7 +457,8 @@ function barChart(items) {
     const num = Number(value) || 1;
     const pct = total > 0 ? Math.round(num / total * 100) : 0;
     const status = item.status || getFitStatus(pct);
-    return `<div class="mini-bar-row status-${status}"><span class="mini-bar-label">${label}</span><i class="mini-bar-track"><b class="mini-bar-fill" style="width:${Math.max(6, num / max * 100)}%"></b></i><strong class="mini-bar-value">${value}</strong><em class="mini-bar-pct">${pct}%</em></div>`;
+    const barW = Math.max(6, Math.round(num / max * 100));
+    return `<div class="mini-bar-row status-${status}"><span class="mini-bar-label">${label}</span><i class="mini-bar-track"><b class="mini-bar-fill" data-bar-width="${barW}" style="width:0%"></b></i><strong class="mini-bar-value" data-countup="${num}">${value}</strong><em class="mini-bar-pct" data-countup="${pct}" data-countup-suffix="%">${pct}%</em></div>`;
   }).join("")}</div>`;
 }
 

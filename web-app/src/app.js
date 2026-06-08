@@ -1,3 +1,4 @@
+import { runPageAnimations } from "./ui/animations.js";
 import {
   commonCompetencies,
   professionalCompetencies,
@@ -457,11 +458,12 @@ function render() {
     if (typeof morphdom !== 'undefined') {
       const tmp = document.createElement('div');
       tmp.innerHTML = newHTML;
-      // morphdom с childrenOnly: сравниваем детей app с детьми tmp
       morphdom(app, tmp, { childrenOnly: true });
     } else {
       app.innerHTML = newHTML;
     }
+    // Запускаем count-up и animated bars после обновления DOM
+    requestAnimationFrame(() => runPageAnimations(app));
   }
 
   // View Transitions API — плавная смена страниц
