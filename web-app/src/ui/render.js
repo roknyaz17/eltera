@@ -85,7 +85,7 @@ export function renderAppShell(state, content) {
     <div class="appShell ${isDark ? "darkTheme" : "lightTheme"}">
       <aside class="elt-sidebar">
         <div class="elt-sidebar-logo">
-          <img src="${isDark ? "/assets/eltera_logo_horizontal_on_dark.svg" : "/assets/eltera_logo_horizontal_on_light.svg"}" alt="Eltera" class="elt-logo-img">
+          <img src="${isDark ? "/assets/eltera_logo_horizontal_on_dark.svg?v=2" : "/assets/eltera_logo_horizontal_on_light.svg?v=2"}" alt="Eltera" class="elt-logo-img">
         </div>
         <nav class="elt-sidenav">
           ${navGroups.map((group) => `
