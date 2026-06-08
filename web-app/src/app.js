@@ -371,7 +371,13 @@ function questionsForProfession(professionId) {
 function render() {
   const route = currentRoute();
   state.route = route.route;
-  if (route.view) state.view = route.view;
+  if (route.view && route.view !== state.view) {
+    // Close filters modal on page navigation
+    if (state.modal?.type === "filters") state.modal = null;
+    state.view = route.view;
+  } else if (route.view) {
+    state.view = route.view;
+  }
   if (route.reportId) state.reportId = route.reportId;
 
   if (route.route === "dev") {
@@ -421,8 +427,6 @@ function render() {
   }
 
   document.body.className = state.theme === "light" ? "appBody light" : "appBody dark";
-  // Close modal on page navigation
-  if (state.modal && state.modal.type === "filters") state.modal = null;
   let content = "";
 
   if (state.view === "dashboard") content = renderDashboard(state, dashboardFilters);
