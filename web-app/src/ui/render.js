@@ -2277,21 +2277,21 @@ function renderAssessmentWizard(state) {
               <span class="aw-field-label">Роли оценщиков</span>
               <span class="aw-pr-scale-desc">Минимум 2 роли. Каждая роль получает отдельную ссылку.</span>
               <div class="aw-role-list">
-                <div class="aw-role-row">
+                <div class="aw-role-row ${roles360.self?'':'off'}">
                   <div class="aw-role-info">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M2 14c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
                     <div><strong>Самооценка</strong><span>Сотрудник оценивает себя сам</span></div>
                   </div>
                   <button class="aw-role-toggle ${roles360.self?'on':''}" data-aw-role="self" data-aw-role-val="toggle">${roles360.self?'Вкл':'Выкл'}</button>
                 </div>
-                <div class="aw-role-row">
+                <div class="aw-role-row ${roles360.manager?'':'off'}">
                   <div class="aw-role-info">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2l1.5 3 3.5.5-2.5 2.5.6 3.5L8 10l-3.1 1.5.6-3.5L3 5.5 6.5 5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
                     <div><strong>Руководитель</strong><span>Прямой руководитель</span></div>
                   </div>
                   <button class="aw-role-toggle ${roles360.manager?'on':''}" data-aw-role="manager" data-aw-role-val="toggle">${roles360.manager?'Вкл':'Выкл'}</button>
                 </div>
-                <div class="aw-role-row">
+                <div class="aw-role-row ${roles360.peers>0?'':'off'}">
                   <div class="aw-role-info">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.4"/><circle cx="11" cy="5" r="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M1 14c0-2.21 1.79-4 4-4M15 14c0-2.21-1.79-4-4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
                     <div><strong>Коллеги</strong><span>Сотрудники одного уровня</span></div>
@@ -2302,7 +2302,7 @@ function renderAssessmentWizard(state) {
                     <button class="aw-cnt-btn" data-aw-role="peers" data-aw-role-val="inc">+</button>
                   </div>
                 </div>
-                <div class="aw-role-row">
+                <div class="aw-role-row ${roles360.reports>0?'':'off'}">
                   <div class="aw-role-info">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M2 14c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M8 9v5M5.5 11.5l2.5-2.5 2.5 2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     <div><strong>Подчинённые</strong><span>Сотрудники в подчинении</span></div>
