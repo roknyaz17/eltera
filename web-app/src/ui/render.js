@@ -1188,6 +1188,34 @@ function renderModal(state) {
   if (state.modal?.type === "locked") {
     return `<div class="modalBackdrop"><div class="modal">${mHead('Функция недоступна', '🔒')}<div class="modal-inner"><p class="modal-subtitle">${state.modal.message}</p><button class="blueButton" data-open-tariff-picker>Изменить тариф</button></div></div></div>`;
   }
+  if (state.modal?.type === "add-employee") {
+    const depts = (state.departments || []).map(d => d.name);
+    const managers = (state.employees || []).map(e => e.fullName);
+    const managerOptions = [
+      `<option value="">— не назначен —</option>`,
+      ...managers.map(m => `<option value="${m}">${m}</option>`)
+    ].join("");
+    const deptOptions = [
+      `<option value="">— выберите отдел —</option>`,
+      ...depts.map(d => `<option value="${d}">${d}</option>`)
+    ].join("");
+    return `<div class="modalBackdrop"><form class="modal" data-add-employee-form>
+      ${mHead('Добавить сотрудника', '👤')}
+      <div class="modal-inner">
+        <p class="modal-subtitle">Новый сотрудник будет добавлен в структуру компании.</p>
+        <div class="elt-form-grid">
+          <label class="elt-label">Имя<input class="elt-input" name="firstName" placeholder="Иван" required></label>
+          <label class="elt-label">Фамилия<input class="elt-input" name="lastName" placeholder="Иванов" required></label>
+          <label class="elt-label">Должность<input class="elt-input" name="position" placeholder="Менеджер по продажам" required></label>
+          <label class="elt-label">Отдел<select class="elt-select" name="department">${deptOptions}</select></label>
+          <label class="elt-label">Руководитель<select class="elt-select" name="manager">${managerOptions}</select></label>
+          <label class="elt-label">Проект<input class="elt-input" name="project" placeholder="Общий контур"></label>
+        </div>
+        <button class="blueButton" type="submit" style="margin-top:8px;width:100%">Добавить сотрудника</button>
+      </div>
+    </form></div>`;
+  }
+
   if (state.modal === "spendBonuses") {
     const max = Math.floor(state.referrals.available / state.company.assessmentPrice);
     return `<div class="modalBackdrop"><div class="modal">${mHead('Потратить бонусы', '🎁')}<div class="modal-inner"><p class="modal-subtitle">Доступно: ${state.referrals.available.toLocaleString('ru-RU')} бонусов. 1 оценка = ${state.company.assessmentPrice} ₽.</p><div class="bonusOptions"><button class="blueButton" data-buy-bonus-assessments="${max}">Докупить ${max} оценок</button><button class="button subtle">Компенсировать часть тарифа</button><button class="button subtle">Оплатить тариф бонусами</button></div></div></div></div>`;

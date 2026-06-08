@@ -643,6 +643,10 @@ document.addEventListener("click", (event) => {
     buyAssessments(20);
   }
   if (action === "print-report") window.print();
+  if (action === "add-structure-member") {
+    state.modal = { type: "add-employee" };
+    render();
+  }
   if (action === "copy-ref") navigator.clipboard?.writeText(`${location.origin}${location.pathname}#/ref/roman123`);
   if (action === "open-bonus-modal") {
     state.modal = "spendBonuses";
@@ -794,6 +798,33 @@ document.addEventListener("submit", (event) => {
   if (event.target.matches("[data-withdraw-form]")) {
     event.preventDefault();
     createWithdrawal(event.target);
+  }
+
+  if (event.target.matches("[data-add-employee-form]")) {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+    const firstName = (fd.get("firstName") || "").trim();
+    const lastName = (fd.get("lastName") || "").trim();
+    const fullName = [lastName, firstName].filter(Boolean).join(" ");
+    if (!fullName) return;
+    const newEmp = {
+      id: `emp-${Date.now()}`,
+      fullName,
+      position: (fd.get("position") || "").trim(),
+      department: (fd.get("department") || "").trim() || "Без отдела",
+      project: (fd.get("project") || "").trim() || "Общий контур",
+      manager: (fd.get("manager") || "").trim() || "Не назначен",
+      startDate: new Date().toISOString().slice(0, 10),
+      fit: 0,
+      turnoverRisk: "не оценен",
+      burnout: "не оценен",
+      satisfaction: 0,
+      recommendation: "Оценка ещё не проведена."
+    };
+    state.employees.unshift(newEmp);
+    state.modal = null;
+    saveState();
+    render();
   }
 });
 
