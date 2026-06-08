@@ -452,27 +452,25 @@ function render() {
 
   const newHTML = renderAppShell(state, content || renderDashboard(state, dashboardFilters));
 
-  // View Transitions API — плавная смена страниц
-  if (document.startViewTransition && state._prevView !== state.view) {
-    state._prevView = state.view;
-    document.startViewTransition(() => {
-      if (typeof morphdom !== 'undefined') {
-        const tmp = document.createElement('div');
-        tmp.innerHTML = newHTML;
-        morphdom(app, tmp.firstChild || app, { childrenOnly: true });
-      } else {
-        app.innerHTML = newHTML;
-      }
-    });
-  } else {
-    state._prevView = state.view;
+  // Функция обновления DOM через morphdom или innerHTML
+  function applyDOM() {
     if (typeof morphdom !== 'undefined') {
       const tmp = document.createElement('div');
       tmp.innerHTML = newHTML;
-      morphdom(app, tmp.firstChild || app, { childrenOnly: true });
+      // morphdom с childrenOnly: сравниваем детей app с детьми tmp
+      morphdom(app, tmp, { childrenOnly: true });
     } else {
       app.innerHTML = newHTML;
     }
+  }
+
+  // View Transitions API — плавная смена страниц
+  if (document.startViewTransition && state._prevView !== state.view) {
+    state._prevView = state.view;
+    document.startViewTransition(applyDOM);
+  } else {
+    state._prevView = state.view;
+    applyDOM();
   }
 }
 
