@@ -4620,6 +4620,10 @@ small {
 .lightTheme .elt-panel-caption { color: rgba(10,15,30,.4); }
 .lightTheme .elt-funnel-label { color: rgba(10,15,30,.65); }
 .lightTheme .elt-funnel-count { color: #0A0F1E; }
+.lightTheme .elt-funnel-pct { color: rgba(10,15,30,.38); }
+.lightTheme .elt-funnel-step { background: rgba(0,0,0,.025) !important; border-color: rgba(0,0,0,.06) !important; }
+.lightTheme .elt-funnel-step:hover { background: rgba(30,91,255,.07); border-color: rgba(30,91,255,.2); }
+.lightTheme .elt-funnel-bar { background: rgba(0,0,0,.06); }
 .lightTheme .elt-bar-label { color: rgba(10,15,30,.65); }
 .lightTheme .elt-bar-value { color: #0A0F1E; }
 .lightTheme .elt-sidebar { background: #F7F9FC; border-color: rgba(0,0,0,.07); }
@@ -4662,6 +4666,8 @@ small {
 .lightTheme .elt-radar-label { fill: rgba(10,15,30,.55); }
 .lightTheme .elt-radar-ring { stroke: rgba(0,0,0,.07); }
 .lightTheme .elt-radar-axis { stroke: rgba(0,0,0,.08); }
+.lightTheme .elt-radar-legend-item span { color: rgba(10,15,30,.6); }
+.lightTheme .elt-radar-dot { stroke: #F0F4FF; }
 .lightTheme .elt-tariff-badge { background: rgba(0,229,212,.06); border-color: rgba(0,229,212,.2); }
 .lightTheme .elt-tariff-nav:hover { background: rgba(30,91,255,.07); }
 .lightTheme .elt-tariff-nav-label { color: rgba(10,15,30,.35); }
