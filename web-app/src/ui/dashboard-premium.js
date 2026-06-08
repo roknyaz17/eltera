@@ -471,28 +471,19 @@ export function renderPremiumDashboard(state, dashboardData, candidateHeatmapFn,
       <!-- ── Header ── -->
       <header class="elt-dash-header">
         <div class="elt-dash-header-left">
-          <span class="elt-mini-label">Executive Dashboard · ${state.company.tariff} · ${state.period}</span>
-          <h1 class="elt-dash-title">HR-аналитика компании</h1>
-          <p class="elt-dash-subtitle">Что происходит в HR-системе прямо сейчас и где нужно вмешаться.</p>
+          <span class="elt-mini-label">HR-аналитика · ${state.company.tariff}</span>
+          <h1 class="elt-dash-title">Главная</h1>
         </div>
         <div class="elt-dash-header-actions">
           <button class="elt-btn-ghost" data-open-tariff-picker>Изменить тариф</button>
-          <button class="elt-btn-ghost" data-action="top-up">Пополнить</button>
-          <button class="elt-btn-primary" data-action="create-link">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-            Создать оценку
-          </button>
         </div>
       </header>
 
       <!-- ── Filter bar ── -->
       <section class="elt-filter-bar">
-        <div class="elt-period-pills">
-          ${periods.map((p) => `<button class="elt-pill ${p === state.period ? "active" : ""}" data-period="${p}">${p}</button>`).join("")}
-        </div>
-        <div class="elt-filter-pills">
-          ${filters.map((f) => `<button class="elt-pill ${f === state.dashboardFilter ? "active" : ""}" data-dashboard-filter="${f}">${f}</button>`).join("")}
-        </div>
+        ${periods.map((p) => `<button class="elt-pill ${p === state.period ? "active" : ""}" data-period="${p}">${p}</button>`).join("")}
+        <span class="elt-filter-sep"></span>
+        ${filters.map((f) => `<button class="elt-pill ${f === state.dashboardFilter ? "active" : ""}" data-dashboard-filter="${f}">${f}</button>`).join("")}
       </section>
 
       <!-- ── KPI Grid ── -->

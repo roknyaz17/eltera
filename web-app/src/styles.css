@@ -2697,8 +2697,8 @@ small {
 .elt-dashboard {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 24px 28px 60px;
+  gap: 16px;
+  padding: 20px 24px 48px;
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
@@ -2733,7 +2733,7 @@ small {
 }
 
 .elt-dash-title {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--text, #E6F2FF);
   margin: 0;
@@ -2742,10 +2742,10 @@ small {
 }
 
 .elt-dash-subtitle {
-  font-size: 13px;
-  color: rgba(230,242,255,.5);
+  font-size: 12px;
+  color: rgba(230,242,255,.4);
   margin: 0;
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
 .elt-dash-header-actions {
@@ -2794,34 +2794,27 @@ small {
 
 .elt-filter-bar {
   display: flex;
-  gap: 10px;
+  gap: 4px;
   align-items: center;
   flex-wrap: wrap;
 }
 
-.elt-period-pills,
-.elt-filter-pills {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
-.elt-period-pills::after {
-  content: "";
+.elt-filter-sep {
   width: 1px;
-  height: 20px;
+  height: 18px;
   background: rgba(230,242,255,.12);
   align-self: center;
   margin: 0 4px;
+  flex-shrink: 0;
 }
 
 .elt-pill {
   background: rgba(255,255,255,.04);
   border: 1px solid rgba(255,255,255,.08);
-  color: rgba(230,242,255,.55);
+  color: rgba(230,242,255,.5);
   border-radius: 20px;
-  padding: 4px 12px;
-  font-size: 12px;
+  padding: 3px 10px;
+  font-size: 11.5px;
   font-family: inherit;
   cursor: pointer;
   transition: all .15s;
@@ -2860,18 +2853,17 @@ small {
 /* ── KPI Card ────────────────────────────────────────────────────────────── */
 
 .elt-kpi {
-  background: rgba(17,26,51,.75);
-  border: 1px solid rgba(30,91,255,.14);
-  border-radius: 14px;
-  padding: 16px 18px 14px;
+  background: rgba(17,26,51,.8);
+  border: 1px solid rgba(30,91,255,.18);
+  border-radius: 12px;
+  padding: 14px 16px 12px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   position: relative;
   overflow: hidden;
   transition: border-color .2s, transform .15s;
   cursor: default;
-  backdrop-filter: blur(8px);
 }
 .elt-kpi.clickable { cursor: pointer; }
 .elt-kpi.clickable:hover {
@@ -2919,7 +2911,7 @@ small {
 .elt-kpi.status-neutral .elt-kpi-dot { background: #1E5BFF; box-shadow: 0 0 6px #1E5BFF; }
 
 .elt-kpi-value {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 700;
   color: #E6F2FF;
   letter-spacing: -.02em;
@@ -2977,11 +2969,10 @@ small {
 /* ── Panel ───────────────────────────────────────────────────────────────── */
 
 .elt-panel {
-  background: rgba(17,26,51,.7);
-  border: 1px solid rgba(30,91,255,.13);
-  border-radius: 16px;
+  background: rgba(17,26,51,.8);
+  border: 1px solid rgba(30,91,255,.18);
+  border-radius: 12px;
   overflow: hidden;
-  backdrop-filter: blur(8px);
   transition: border-color .2s;
 }
 .elt-panel:hover { border-color: rgba(30,91,255,.2); }
@@ -2995,8 +2986,8 @@ small {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 18px 12px;
-  border-bottom: 1px solid rgba(30,91,255,.1);
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid rgba(30,91,255,.15);
   gap: 8px;
 }
 
@@ -3042,19 +3033,19 @@ small {
 .elt-funnel {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 14px 16px;
+  gap: 3px;
+  padding: 10px 14px;
   flex: 1;
 }
 
 .elt-funnel-step {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
   background: rgba(255,255,255,.03);
   border: 1px solid rgba(255,255,255,.05);
-  border-radius: 10px;
-  padding: 9px 12px;
+  border-radius: 8px;
+  padding: 7px 10px;
   cursor: pointer;
   transition: background .15s, border-color .15s;
   text-align: left;
@@ -3448,9 +3439,9 @@ small {
 /* ── Attention Panel ─────────────────────────────────────────────────────── */
 
 .elt-attention {
-  background: rgba(17,26,51,.65);
-  border: 1px solid rgba(245,158,11,.15);
-  border-radius: 16px;
+  background: rgba(17,26,51,.8);
+  border: 1px solid rgba(30,91,255,.18);
+  border-radius: 12px;
   overflow: hidden;
 }
 
@@ -3468,8 +3459,8 @@ small {
 .elt-attention-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 18px;
+  gap: 10px;
+  padding: 12px 16px;
   background: rgba(17,26,51,.8);
   cursor: pointer;
   border: none;
@@ -3681,7 +3672,7 @@ small {
 }
 
 .elt-table th {
-  padding: 10px 16px;
+  padding: 8px 14px;
   text-align: left;
   font-size: 11px;
   font-weight: 600;
@@ -3692,7 +3683,7 @@ small {
 }
 
 .elt-table td {
-  padding: 11px 16px;
+  padding: 9px 14px;
   color: rgba(230,242,255,.75);
   border-bottom: 1px solid rgba(30,91,255,.07);
   vertical-align: middle;
@@ -3728,7 +3719,7 @@ small {
 
 .elt-sidebar {
   background: #0B1020;
-  border-right: 1px solid rgba(30,91,255,.12);
+  border-right: 1px solid rgba(30,91,255,.28);
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -3743,8 +3734,8 @@ small {
 .elt-sidebar::-webkit-scrollbar { display: none; }
 
 .elt-sidebar-logo {
-  padding: 20px 18px 16px;
-  border-bottom: 1px solid rgba(30,91,255,.1);
+  padding: 16px 16px 14px;
+  border-bottom: 1px solid rgba(30,91,255,.15);
   flex-shrink: 0;
 }
 
@@ -3855,8 +3846,8 @@ small {
 }
 
 .elt-sidebar-footer {
-  padding: 12px 14px;
-  border-top: 1px solid rgba(30,91,255,.1);
+  padding: 10px 12px;
+  border-top: 1px solid rgba(30,91,255,.15);
   flex-shrink: 0;
 }
 
@@ -3887,16 +3878,15 @@ small {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 24px;
-  height: 54px;
-  background: linear-gradient(180deg, rgba(13,19,38,.98) 0%, rgba(11,16,32,.97) 100%);
-  border-bottom: 1px solid rgba(30,91,255,.2);
+  padding: 0 20px;
+  height: 52px;
+  background: #0B1020;
+  border-bottom: 1px solid rgba(30,91,255,.28);
   position: sticky;
   top: 0;
   z-index: 9;
-  backdrop-filter: blur(12px);
   flex-shrink: 0;
-  box-shadow: 0 1px 0 rgba(30,91,255,.08), 0 4px 16px rgba(0,0,0,.25);
+  box-shadow: 0 1px 12px rgba(0,0,0,.35);
 }
 
 .elt-topbar-left { display: flex; align-items: center; gap: 12px; }
@@ -4021,6 +4011,12 @@ small {
   grid-template-columns: 216px minmax(0, 1fr);
   min-height: 100vh;
   background: #0A0F1E;
+}
+
+/* Sidebar и topbar — единый тёмно-синий фон */
+.darkTheme .elt-sidebar,
+.darkTheme .elt-topbar {
+  background: #0B1020;
 }
 
 .appMain {
