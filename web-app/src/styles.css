@@ -6191,3 +6191,43 @@ small {
 .devTextarea { resize: vertical; min-height: 80px; }
 .devSelect { appearance: none; cursor: pointer; }
 .devFormActions { display: flex; gap: 8px; margin-top: 16px; }
+
+/* ===== ORG CHART ===== */
+.oc-layout { display: grid; grid-template-columns: 320px 1fr; gap: 16px; align-items: start; }
+.oc-list-panel { background: var(--panel); border-radius: 14px; border: 1px solid var(--border); overflow: hidden; }
+.oc-list-head { padding: 14px 16px 10px; font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--text-muted); text-transform: uppercase; border-bottom: 1px solid var(--border); }
+.oc-list-body { padding: 8px 0; max-height: 420px; overflow-y: auto; }
+.oc-list-node { display: flex; align-items: center; gap: 10px; padding: 8px 16px; cursor: pointer; transition: background .15s; position: relative; }
+.oc-list-node:hover { background: rgba(30,91,255,.07); }
+.oc-list-node.selected { background: rgba(30,91,255,.13); }
+.oc-list-connector { font-size: 13px; color: var(--text-muted); opacity: .5; flex-shrink: 0; margin-right: -4px; }
+.oc-list-avatar { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.oc-list-info { flex: 1; min-width: 0; }
+.oc-list-name { display: block; font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.oc-list-pos { display: block; font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.oc-role-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; flex-shrink: 0; }
+.oc-role-ceo { background: rgba(30,91,255,.18); color: #1E5BFF; }
+.oc-role-head { background: rgba(0,229,212,.15); color: #00E5D4; }
+.oc-role-emp { background: rgba(255,255,255,.07); color: var(--text-muted); }
+.oc-selected-card { padding: 14px 16px; border-top: 1px solid var(--border); }
+.oc-sel-name { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+.oc-sel-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--border); }
+.oc-sel-row span { color: var(--text-muted); }
+.oc-sel-row b { color: var(--text); font-weight: 600; }
+.oc-chart-panel { background: var(--panel); border-radius: 14px; border: 1px solid var(--border); padding: 24px 16px; overflow-x: auto; }
+.oc-chart-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.oc-chart-row-ceo { margin-bottom: 0; }
+.oc-chart-connector-v { width: 2px; height: 24px; background: var(--border); margin: 0 auto; }
+.oc-chart-connector-h { height: 2px; background: var(--border); margin: 0 auto; max-width: 100%; }
+.oc-card { background: rgba(255,255,255,.04); border: 1px solid var(--border); border-radius: 12px; padding: 14px 12px; width: 140px; text-align: center; cursor: pointer; transition: border-color .15s, transform .15s; flex-shrink: 0; }
+.oc-card:hover { border-color: #1E5BFF; transform: translateY(-2px); }
+.oc-card-avatar { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #fff; margin: 0 auto 8px; }
+.oc-card-name { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 3px; line-height: 1.3; }
+.oc-card-pos { font-size: 10px; color: var(--text-muted); margin-bottom: 6px; line-height: 1.3; }
+.oc-card-dept { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; display: inline-block; }
+.oc-view-toggle { display: flex; background: rgba(255,255,255,.06); border-radius: 20px; padding: 3px; gap: 2px; }
+.oc-view-btn { background: none; border: none; padding: 5px 14px; border-radius: 16px; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: all .15s; }
+.oc-view-btn.active { background: #1E5BFF; color: #fff; }
+body.light .oc-card { background: #fff; }
+body.light .oc-role-emp { background: rgba(0,0,0,.06); color: #666; }
+body.light .oc-view-toggle { background: rgba(0,0,0,.06); }

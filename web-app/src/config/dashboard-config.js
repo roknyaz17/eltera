@@ -17,7 +17,8 @@ const svg = {
   api: `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M4 5L2 7l2 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".8"/><path d="M10 5l2 2-2 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".8"/><line x1="8.5" y1="3" x2="5.5" y2="11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".6"/></svg>`,
   support: `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.4" fill="none" opacity=".8"/><path d="M5.5 5.5a1.5 1.5 0 0 1 3 .5c0 1-1.5 1.5-1.5 2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none" opacity=".9"/><circle cx="7" cy="10" r=".8" fill="currentColor" opacity=".9"/></svg>`,
   gratitude: `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 12S2 8.5 2 5.5a2.5 2.5 0 0 1 5-0c0-1.38 1.12-2.5 2.5-2.5S12 4.12 12 5.5C12 8.5 7 12 7 12z" fill="currentColor" opacity=".8"/></svg>`,
-  settings: `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2" stroke="currentColor" stroke-width="1.3" fill="none" opacity=".9"/><path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M2.93 11.07l1.06-1.06M10.01 3.99l1.06-1.06" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".7"/></svg>`
+  settings: `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2" stroke="currentColor" stroke-width="1.3" fill="none" opacity=".9"/><path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M2.93 11.07l1.06-1.06M10.01 3.99l1.06-1.06" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".7"/></svg>`,
+  structure: `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="5" y="1" width="4" height="3" rx="1" stroke="currentColor" stroke-width="1.3" fill="none" opacity=".9"/><rect x="1" y="10" width="4" height="3" rx="1" stroke="currentColor" stroke-width="1.3" fill="none" opacity=".7"/><rect x="9" y="10" width="4" height="3" rx="1" stroke="currentColor" stroke-width="1.3" fill="none" opacity=".7"/><line x1="7" y1="4" x2="7" y2="7" stroke="currentColor" stroke-width="1.2" opacity=".6"/><line x1="3" y1="7" x2="11" y2="7" stroke="currentColor" stroke-width="1.2" opacity=".5"/><line x1="3" y1="7" x2="3" y2="10" stroke="currentColor" stroke-width="1.2" opacity=".6"/><line x1="11" y1="7" x2="11" y2="10" stroke="currentColor" stroke-width="1.2" opacity=".6"/></svg>`
 };
 
 export const navConfig = [
@@ -25,6 +26,7 @@ export const navConfig = [
   { id: "candidates", label: "Кандидаты", icon: svg.candidates, countKey: "", alertKey: "", group: "main" },
   { id: "employees", label: "Сотрудники", icon: svg.employees, countKey: "", alertKey: "", group: "main" },
   { id: "vacancies", label: "Вакансии", icon: svg.vacancies, countKey: "", alertKey: "", group: "main" },
+  { id: "structure", label: "Структура", icon: svg.structure, countKey: "", alertKey: "", group: "main" },
   { id: "assessments", label: "Профили", icon: svg.assessments, countKey: "", alertKey: "", group: "tools" },
   { id: "constructor", label: "Конструктор", icon: svg.constructor, countKey: "", alertKey: "", group: "tools" },
   { id: "links", label: "Оценки", icon: svg.links, countKey: "", alertKey: "", group: "tools" },

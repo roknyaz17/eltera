@@ -327,12 +327,150 @@ export function renderEmployees(state) {
 }
 
 export function renderStructure(state) {
+  // Build org tree from employees + departments
+  // CEO is always first, then heads, then employees
+  const deptColors = {
+    "Отдел продаж": "#1E5BFF",
+    "Операционный отдел": "#00E5D4",
+    "Контакт-центр": "#F59E0B",
+    "Финансы": "#10B981"
+  };
+  const deptShort = {
+    "Отдел продаж": "Продажи",
+    "Операционный отдел": "Операции",
+    "Контакт-центр": "Контакт-центр",
+    "Финансы": "Финансы"
+  };
+
+  // CEO node (from company)
+  const ceo = { id: "ceo", fullName: "Алексей Козлов", position: "Генеральный директор", department: "Управление", role: "CEO", managerId: null };
+
+  // Heads from departments
+  const heads = state.departments.map((d, i) => ({
+    id: `head-${i}`,
+    fullName: d.head,
+    position: `Рук. ${deptShort[d.name] || d.name}`,
+    department: d.name,
+    role: "Head",
+    managerId: "ceo"
+  }));
+
+  // Employees
+  const emps = state.employees.map((e) => {
+    const head = heads.find(h => h.fullName === e.manager);
+    return { ...e, role: "Emp", managerId: head ? head.id : "ceo" };
+  });
+
+  const allNodes = [ceo, ...heads, ...emps];
+
+  function initials(name) {
+    return name.split(" ").slice(0, 2).map(w => w[0]).join("");
+  }
+  function avatarColor(role) {
+    if (role === "CEO") return "linear-gradient(135deg,#1E5BFF,#00E5D4)";
+    if (role === "Head") return "linear-gradient(135deg,#00E5D4,#0B8A7E)";
+    return "linear-gradient(135deg,#1E3A6E,#2A4A8A)";
+  }
+  function deptColor(dept) { return deptColors[dept] || "#1E5BFF"; }
+
+  // Hierarchical list
+  function renderListNode(node, depth) {
+    const children = allNodes.filter(n => n.managerId === node.id);
+    const indent = depth * 28;
+    const roleLabel = node.role === "CEO" ? "CEO" : node.role === "Head" ? "Head" : "Emp";
+    const roleCls = node.role === "CEO" ? "oc-role-ceo" : node.role === "Head" ? "oc-role-head" : "oc-role-emp";
+    return `
+      <div class="oc-list-node" style="padding-left:${indent}px" data-oc-select="${node.id}">
+        ${depth > 0 ? `<span class="oc-list-connector">└</span>` : ""}
+        <div class="oc-list-avatar" style="background:${avatarColor(node.role)}">${initials(node.fullName)}</div>
+        <div class="oc-list-info">
+          <span class="oc-list-name">${node.fullName}</span>
+          <span class="oc-list-pos">${node.position}</span>
+        </div>
+        <span class="oc-role-badge ${roleCls}">${roleLabel}</span>
+      </div>
+      ${children.map(c => renderListNode(c, depth + 1)).join("")}
+    `;
+  }
+
+  // Visual org chart card
+  function renderChartCard(node) {
+    const color = deptColor(node.department);
+    const deptLabel = deptShort[node.department] || node.department;
+    return `
+      <div class="oc-card" data-oc-select="${node.id}">
+        <div class="oc-card-avatar" style="background:${avatarColor(node.role)}">${initials(node.fullName)}</div>
+        <div class="oc-card-name">${node.fullName}</div>
+        <div class="oc-card-pos">${node.position}</div>
+        <div class="oc-card-dept" style="background:${color}22;color:${color}">${deptLabel}</div>
+      </div>
+    `;
+  }
+
+  const ceoChildren = heads;
+  const empsByHead = {};
+  heads.forEach(h => {
+    empsByHead[h.id] = emps.filter(e => e.managerId === h.id);
+  });
+
+  const totalEmps = state.employees.length;
+  const totalDepts = state.departments.length;
+
   return `
-    <section class="pageHead"><div><span class="miniLabel">Структура компании</span><h1>Компания → отделы → руководители → сотрудники</h1><p>Сотрудники попадают в дерево после добавления в компанию. Кандидаты остаются в подборе до статуса “Принят”.</p></div><button class="blueButton" data-action="create-link">Добавить сотрудника</button></section>
-    <section class="panel orgPanel">
-      <div class="orgRoot"><b>${state.company.name}</b><span>70 сотрудников · ${state.departments.length} отдела</span></div>
-      <div class="orgTree">${state.departments.map((dept) => `<div class="orgNode"><b>${dept.name}</b><span>Руководитель: ${dept.head}</span><em>${dept.employees} сотрудников · ${dept.risk} в зоне риска</em><div><button class="button subtle" data-open-card="${dept.name}">Открыть отдел</button><button class="button subtle" data-action="create-link">Оценить отдел</button><button class="button subtle" data-open-locked="Оценка 360 доступна на тарифе TalentStudio.">360 по руководителю</button></div></div>`).join("")}</div>
-    </section>
+    <div class="elt-page-wrap">
+      <div class="elt-page-header">
+        <div class="elt-page-header-left">
+          <span class="elt-mini-label">СТРУКТУРА КОМПАНИИ</span>
+          <h1 class="elt-page-title">Организационная структура</h1>
+          <p class="elt-page-subtitle">${totalEmps + 5} сотрудников · ${totalDepts} отдела · 1 уровень управления</p>
+        </div>
+        <div class="elt-page-actions">
+          <div class="oc-view-toggle">
+            <button class="oc-view-btn active" data-oc-view="list">Список</button>
+            <button class="oc-view-btn" data-oc-view="chart">Org Chart</button>
+          </div>
+          <button class="elt-btn-primary" data-action="add-structure-member">+ Добавить</button>
+        </div>
+      </div>
+
+      <div class="oc-layout">
+        <!-- Left: hierarchical list -->
+        <div class="oc-list-panel">
+          <div class="oc-list-head">Иерархия</div>
+          <div class="oc-list-body" id="ocListBody">
+            ${renderListNode(ceo, 0)}
+          </div>
+          <div class="oc-selected-card" id="ocSelectedCard">
+            <div class="oc-sel-name">Алексей Козлов — выбран</div>
+            <div class="oc-sel-row"><span>Должность</span><b>Генеральный директор</b></div>
+            <div class="oc-sel-row"><span>Отдел</span><b>Управление</b></div>
+            <div class="oc-sel-row"><span>Подчинённых</span><b>${heads.length} руководителя</b></div>
+            <div class="oc-sel-row"><span>Всего в команде</span><b>${totalEmps + heads.length + 1} чел.</b></div>
+          </div>
+        </div>
+
+        <!-- Right: visual org chart -->
+        <div class="oc-chart-panel" id="ocChartPanel">
+          <!-- CEO row -->
+          <div class="oc-chart-row oc-chart-row-ceo">
+            ${renderChartCard(ceo)}
+          </div>
+          <!-- Connector -->
+          <div class="oc-chart-connector-v"></div>
+          <div class="oc-chart-connector-h" style="width:${Math.max(1, ceoChildren.length - 1) * 180}px"></div>
+          <!-- Heads row -->
+          <div class="oc-chart-row">
+            ${ceoChildren.map(h => renderChartCard(h)).join("")}
+          </div>
+          <!-- Connector -->
+          <div class="oc-chart-connector-v"></div>
+          <!-- Employees row -->
+          <div class="oc-chart-row">
+            ${emps.map(e => renderChartCard(e)).join("")}
+          </div>
+        </div>
+      </div>
+    </div>
   `;
 }
 
