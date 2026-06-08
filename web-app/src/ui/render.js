@@ -417,21 +417,21 @@ export function renderStructure(state) {
   const totalDepts = state.departments.length;
 
   return `
-    <div class="elt-page-wrap">
-      <div class="elt-page-header">
-        <div class="elt-page-header-left">
+    <div class="elt-dashboard">
+      <header class="elt-dash-header">
+        <div class="elt-dash-header-left">
           <span class="elt-mini-label">СТРУКТУРА КОМПАНИИ</span>
-          <h1 class="elt-page-title">Организационная структура</h1>
-          <p class="elt-page-subtitle">${totalEmps + 5} сотрудников · ${totalDepts} отдела · 1 уровень управления</p>
+          <h1 class="elt-dash-title">Организационная структура</h1>
+          <p class="elt-dash-subtitle">${totalEmps + heads.length + 1} сотрудников · ${totalDepts} отдела · 1 уровень управления</p>
         </div>
-        <div class="elt-page-actions">
+        <div class="elt-dash-header-actions">
           <div class="oc-view-toggle">
             <button class="oc-view-btn active" data-oc-view="list">Список</button>
             <button class="oc-view-btn" data-oc-view="chart">Org Chart</button>
           </div>
           <button class="elt-btn-primary" data-action="add-structure-member">+ Добавить</button>
         </div>
-      </div>
+      </header>
 
       <div class="oc-layout">
         <!-- Left: hierarchical list -->
