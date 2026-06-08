@@ -6559,3 +6559,139 @@ body.light .oc-view-toggle { background: rgba(0,0,0,.06); }
   background: rgba(255,255,255,.05);
   margin: 2px 0;
 }
+
+/* ── Filter Bar Variant 3 (Collapsed) ──────────────────────────────────────── */
+
+.elt-filter-bar-v3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 0;
+}
+.elt-filter-bar-v3::-webkit-scrollbar { display: none; }
+
+/* Period segment */
+.elt-fb-period {
+  display: flex;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 1px;
+  flex-shrink: 0;
+}
+.elt-fb-period-btn {
+  background: none;
+  border: none;
+  color: rgba(230,242,255,.4);
+  font-size: 11.5px;
+  font-family: inherit;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .15s;
+}
+.elt-fb-period-btn:hover {
+  color: rgba(230,242,255,.75);
+  background: rgba(255,255,255,.05);
+}
+.elt-fb-period-btn.active {
+  background: rgba(30,91,255,.25);
+  color: #E6F2FF;
+  font-weight: 600;
+}
+
+/* Filters button */
+.elt-fb-filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 8px;
+  color: rgba(230,242,255,.5);
+  font-size: 11.5px;
+  font-family: inherit;
+  padding: 5px 11px;
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+  transition: all .15s;
+}
+.elt-fb-filter-btn:hover {
+  background: rgba(30,91,255,.1);
+  border-color: rgba(30,91,255,.3);
+  color: rgba(230,242,255,.85);
+}
+
+/* Active filter count badge */
+.elt-fb-badge {
+  background: #1E5BFF;
+  color: #fff;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+/* Active filter tags */
+.elt-fb-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0,229,212,.08);
+  border: 1px solid rgba(0,229,212,.22);
+  border-radius: 20px;
+  color: #00E5D4;
+  font-size: 11px;
+  font-family: inherit;
+  padding: 3px 9px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  cursor: default;
+}
+.elt-fb-tag-more {
+  background: rgba(255,255,255,.04);
+  border-color: rgba(255,255,255,.1);
+  color: rgba(230,242,255,.4);
+  cursor: pointer;
+}
+.elt-fb-tag-x {
+  opacity: .5;
+  font-size: 11px;
+  cursor: pointer;
+  line-height: 1;
+  transition: opacity .1s;
+}
+.elt-fb-tag-x:hover { opacity: 1; }
+
+/* Clear button */
+.elt-fb-clear {
+  background: none;
+  border: none;
+  color: rgba(230,242,255,.25);
+  font-size: 11px;
+  font-family: inherit;
+  padding: 4px 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+  transition: color .15s;
+}
+.elt-fb-clear:hover { color: rgba(230,242,255,.6); }
+
+/* Light theme overrides */
+.lightTheme .elt-fb-period { background: rgba(0,0,0,.04); border-color: rgba(0,0,0,.07); }
+.lightTheme .elt-fb-period-btn { color: rgba(10,15,30,.45); }
+.lightTheme .elt-fb-period-btn.active { background: rgba(30,91,255,.15); color: #1E5BFF; }
+.lightTheme .elt-fb-filter-btn { background: rgba(0,0,0,.04); border-color: rgba(0,0,0,.08); color: rgba(10,15,30,.5); }
+.lightTheme .elt-fb-filter-btn:hover { background: rgba(30,91,255,.08); border-color: rgba(30,91,255,.25); color: #1E5BFF; }
+.lightTheme .elt-fb-tag { background: rgba(0,180,160,.08); border-color: rgba(0,180,160,.25); color: #009688; }
+.lightTheme .elt-fb-clear { color: rgba(10,15,30,.3); }
+.lightTheme .elt-fb-clear:hover { color: rgba(10,15,30,.6); }

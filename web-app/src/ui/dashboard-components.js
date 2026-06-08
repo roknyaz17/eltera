@@ -96,10 +96,22 @@ function PremiumFilterBar(filters, activePeriod = "30 дней") {
   if (!filters || !filters.length) return "";
   const periods = ["Сегодня", "7 дней", "14 дней", "30 дней", "90 дней", "Весь период", "Произвольный период"];
   const activeFilters = filters.filter((f) => !periods.includes(f));
+  const periodBtns = ["7 дней","14 дней","30 дней","90 дней","Весь период"];
+  // Variant 3: collapsed — period segment + Filters button + active tags
   return `
-    <section class="elt-filter-bar">
-      ${periods.filter((p) => filters.includes(p) || ["7 дней","14 дней","30 дней","90 дней","Весь период"].includes(p)).map((p) => `<button class="elt-pill ${p === activePeriod ? "active" : ""}" data-period="${p}">${p}</button>`).join("")}
-      ${activeFilters.length ? `<span class="elt-filter-sep"></span>${activeFilters.map((f) => `<button class="elt-pill">${f}</button>`).join("")}<button class="elt-pill elt-pill-apply">Применить</button><button class="elt-pill elt-pill-reset">Сбросить</button>` : ""}
+    <section class="elt-filter-bar elt-filter-bar-v3">
+      <div class="elt-fb-period">
+        ${periodBtns.map((p) => `<button class="elt-fb-period-btn ${p === activePeriod ? "active" : ""}" data-period="${p}">${p === "Весь период" ? "Всё" : p}</button>`).join("")}
+      </div>
+      <span class="elt-filter-sep"></span>
+      <button class="elt-fb-filter-btn" data-action="open-filters">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 3.5h10M3.5 6.5h6M5.5 9.5h2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Фильтры
+        ${activeFilters.length ? `<span class="elt-fb-badge">${activeFilters.length}</span>` : ""}
+      </button>
+      ${activeFilters.length ? `<span class="elt-filter-sep"></span>${activeFilters.slice(0, 3).map((f) => `<span class="elt-fb-tag">${f} <span class="elt-fb-tag-x" data-remove-filter="${f}">×</span></span>`).join("")}
+      ${activeFilters.length > 3 ? `<span class="elt-fb-tag elt-fb-tag-more">+${activeFilters.length - 3}</span>` : ""}
+      <button class="elt-fb-clear" data-action="clear-filters">Сбросить</button>` : ""}
     </section>
   `;
 }

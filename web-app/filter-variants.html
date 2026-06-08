@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Filter Bar Variants — Eltera</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0A0F1E;
+    font-family: 'Manrope', system-ui, sans-serif;
+    color: #E6F2FF;
+    padding: 32px 24px;
+    min-height: 100vh;
+  }
+  h1 { font-size: 13px; color: rgba(230,242,255,.35); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 32px; }
+  .variant { margin-bottom: 40px; }
+  .variant-label {
+    font-size: 11px;
+    color: rgba(230,242,255,.3);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .variant-label b { color: #00E5D4; font-size: 12px; }
+  .variant-label span { color: rgba(230,242,255,.2); }
+
+  /* ─── Shared base ─── */
+  button { font-family: inherit; cursor: pointer; transition: all .15s; }
+
+  /* ══════════════════════════════════════════════
+     ВАРИАНТ 1 — Одна строка: период + dropdown-фильтры
+  ══════════════════════════════════════════════ */
+  .v1-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #111A33;
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: 10px;
+    padding: 6px 10px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+  .v1-period-group {
+    display: flex;
+    gap: 2px;
+    background: rgba(255,255,255,.04);
+    border-radius: 7px;
+    padding: 2px;
+    flex-shrink: 0;
+  }
+  .v1-period-btn {
+    background: none;
+    border: none;
+    color: rgba(230,242,255,.4);
+    font-size: 11.5px;
+    padding: 3px 9px;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+  .v1-period-btn.active {
+    background: rgba(30,91,255,.25);
+    color: #E6F2FF;
+    font-weight: 600;
+  }
+  .v1-sep {
+    width: 1px; height: 18px;
+    background: rgba(255,255,255,.08);
+    flex-shrink: 0;
+    margin: 0 2px;
+  }
+  .v1-filter {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 7px;
+    padding: 3px 8px 3px 9px;
+    font-size: 11.5px;
+    color: rgba(230,242,255,.5);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .v1-filter svg { opacity: .4; }
+  .v1-filter:hover { background: rgba(30,91,255,.1); border-color: rgba(30,91,255,.25); color: rgba(230,242,255,.8); }
+  .v1-filter.active { background: rgba(30,91,255,.18); border-color: rgba(30,91,255,.4); color: #E6F2FF; }
+  .v1-filter.active svg { opacity: .8; color: #00E5D4; }
+  .v1-more {
+    background: none;
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 7px;
+    color: rgba(230,242,255,.35);
+    font-size: 11px;
+    padding: 3px 9px;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+  .v1-more:hover { background: rgba(255,255,255,.05); color: rgba(230,242,255,.7); }
+  .v1-apply {
+    background: rgba(30,91,255,.2);
+    border: 1px solid rgba(30,91,255,.4);
+    border-radius: 7px;
+    color: #E6F2FF;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 11px;
+    flex-shrink: 0;
+  }
+  .v1-apply:hover { background: rgba(30,91,255,.35); }
+
+  /* ══════════════════════════════════════════════
+     ВАРИАНТ 2 — Inline compact: период слева, фильтры как теги с иконкой ×
+  ══════════════════════════════════════════════ */
+  .v2-bar {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+  .v2-segment {
+    display: flex;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .v2-seg-btn {
+    background: none;
+    border: none;
+    border-right: 1px solid rgba(255,255,255,.06);
+    color: rgba(230,242,255,.4);
+    font-size: 11.5px;
+    padding: 5px 10px;
+    white-space: nowrap;
+  }
+  .v2-seg-btn:last-child { border-right: none; }
+  .v2-seg-btn.active {
+    background: rgba(30,91,255,.22);
+    color: #E6F2FF;
+    font-weight: 600;
+  }
+  .v2-divider {
+    width: 1px; height: 20px;
+    background: rgba(255,255,255,.07);
+    flex-shrink: 0;
+    margin: 0 3px;
+  }
+  .v2-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 11.5px;
+    color: rgba(230,242,255,.5);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .v2-chip:hover { background: rgba(30,91,255,.1); border-color: rgba(30,91,255,.25); color: rgba(230,242,255,.8); }
+  .v2-chip.active {
+    background: rgba(0,229,212,.1);
+    border-color: rgba(0,229,212,.3);
+    color: #00E5D4;
+  }
+  .v2-chip-x {
+    font-size: 10px;
+    opacity: .5;
+    line-height: 1;
+  }
+  .v2-more-btn {
+    background: rgba(255,255,255,.04);
+    border: 1px dashed rgba(255,255,255,.1);
+    border-radius: 20px;
+    color: rgba(230,242,255,.3);
+    font-size: 11px;
+    padding: 4px 10px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .v2-more-btn:hover { border-color: rgba(30,91,255,.3); color: rgba(230,242,255,.6); }
+
+  /* ══════════════════════════════════════════════
+     ВАРИАНТ 3 — Collapsed: одна строка с кнопкой «Фильтры» + активные теги
+  ══════════════════════════════════════════════ */
+  .v3-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+  .v3-period-group {
+    display: flex;
+    gap: 2px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: 8px;
+    padding: 2px;
+    flex-shrink: 0;
+  }
+  .v3-period-btn {
+    background: none;
+    border: none;
+    color: rgba(230,242,255,.4);
+    font-size: 11.5px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+  .v3-period-btn.active {
+    background: rgba(30,91,255,.25);
+    color: #E6F2FF;
+    font-weight: 600;
+  }
+  .v3-sep {
+    width: 1px; height: 20px;
+    background: rgba(255,255,255,.08);
+    flex-shrink: 0;
+    margin: 0 2px;
+  }
+  .v3-filter-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 8px;
+    color: rgba(230,242,255,.5);
+    font-size: 11.5px;
+    padding: 5px 11px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .v3-filter-btn:hover { background: rgba(30,91,255,.1); border-color: rgba(30,91,255,.3); color: rgba(230,242,255,.8); }
+  .v3-filter-badge {
+    background: #1E5BFF;
+    color: #fff;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 5px;
+    line-height: 1.4;
+  }
+  .v3-active-tag {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(0,229,212,.08);
+    border: 1px solid rgba(0,229,212,.22);
+    border-radius: 20px;
+    color: #00E5D4;
+    font-size: 11px;
+    padding: 3px 9px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .v3-active-tag-x { opacity: .5; font-size: 10px; cursor: pointer; }
+  .v3-active-tag-x:hover { opacity: 1; }
+  .v3-clear {
+    background: none;
+    border: none;
+    color: rgba(230,242,255,.25);
+    font-size: 11px;
+    padding: 4px 6px;
+    margin-left: 2px;
+    flex-shrink: 0;
+  }
+  .v3-clear:hover { color: rgba(230,242,255,.6); }
+
+  /* ─── Описания ─── */
+  .desc {
+    font-size: 11.5px;
+    color: rgba(230,242,255,.3);
+    margin-top: 10px;
+    line-height: 1.6;
+  }
+  .desc b { color: rgba(230,242,255,.55); }
+  .pros { color: rgba(0,229,212,.6); }
+  .cons { color: rgba(255,160,100,.5); }
+
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .page-title { font-size: 20px; font-weight: 700; }
+  .page-actions { display: flex; gap: 6px; }
+  .btn-ghost {
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 8px;
+    color: rgba(230,242,255,.6);
+    font-size: 12px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background: #1E5BFF;
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 14px;
+    cursor: pointer;
+  }
+  .context { color: rgba(230,242,255,.2); font-size: 10.5px; margin-bottom: 4px; letter-spacing: .04em; text-transform: uppercase; }
+  hr { border: none; border-top: 1px solid rgba(255,255,255,.05); margin: 36px 0; }
+</style>
+</head>
+<body>
+
+<h1>Варианты компактного тулбара · Кандидаты</h1>
+
+<!-- Контекст страницы -->
+<div class="page-header">
+  <div>
+    <div class="context">Точечный подбор · Офис · IT</div>
+    <div class="page-title">Кандидаты</div>
+  </div>
+  <div class="page-actions">
+    <button class="btn-ghost">Добавить кандидата</button>
+    <button class="btn-ghost">Импорт</button>
+    <button class="btn-primary">+ Создать ссылку</button>
+  </div>
+</div>
+
+<hr>
+
+<!-- ВАРИАНТ 1 -->
+<div class="variant">
+  <div class="variant-label"><b>Вариант 1</b> <span>·</span> Одна строка — период + dropdown-фильтры в карточке</div>
+  <div class="v1-bar">
+    <div class="v1-period-group">
+      <button class="v1-period-btn">7д</button>
+      <button class="v1-period-btn">14д</button>
+      <button class="v1-period-btn active">30д</button>
+      <button class="v1-period-btn">90д</button>
+      <button class="v1-period-btn">Всё</button>
+    </div>
+    <div class="v1-sep"></div>
+    <button class="v1-filter">
+      Вакансия
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 4l2.5 2.5L7.5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+    </button>
+    <button class="v1-filter active">
+      Источник: HH
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 4l2.5 2.5L7.5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+    </button>
+    <button class="v1-filter">
+      Статус
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 4l2.5 2.5L7.5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+    </button>
+    <button class="v1-filter">
+      Результат
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 4l2.5 2.5L7.5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+    </button>
+    <button class="v1-filter">
+      Город
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 4l2.5 2.5L7.5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+    </button>
+    <button class="v1-more">+ ещё 4</button>
+    <button class="v1-apply">Применить</button>
+  </div>
+  <div class="desc">
+    <span class="pros">✓ Всё в одну строку, не переносится.</span>
+    Период — сегментированные кнопки, фильтры — компактные dropdown-кнопки с шевроном.
+    Редкие фильтры скрыты за «+ ещё 4». <span class="cons">Нужны dropdown-попапы при клике.</span>
+  </div>
+</div>
+
+<!-- ВАРИАНТ 2 -->
+<div class="variant">
+  <div class="variant-label"><b>Вариант 2</b> <span>·</span> Inline-чипы — активные фильтры видны сразу</div>
+  <div class="v2-bar">
+    <div class="v2-segment">
+      <button class="v2-seg-btn">7д</button>
+      <button class="v2-seg-btn">14д</button>
+      <button class="v2-seg-btn active">30д</button>
+      <button class="v2-seg-btn">90д</button>
+      <button class="v2-seg-btn">Всё</button>
+    </div>
+    <div class="v2-divider"></div>
+    <button class="v2-chip active">
+      HH.ru <span class="v2-chip-x">×</span>
+    </button>
+    <button class="v2-chip active">
+      Подходит <span class="v2-chip-x">×</span>
+    </button>
+    <button class="v2-chip">Вакансия</button>
+    <button class="v2-chip">Статус</button>
+    <button class="v2-chip">Город</button>
+    <button class="v2-more-btn">+ Фильтры</button>
+  </div>
+  <div class="desc">
+    <span class="pros">✓ Активные фильтры видны как теги — можно снять одним кликом.</span>
+    Неактивные фильтры — обычные чипы. Редкие скрыты за «+ Фильтры».
+    <span class="cons">При многих активных фильтрах строка может переполниться.</span>
+  </div>
+</div>
+
+<!-- ВАРИАНТ 3 -->
+<div class="variant">
+  <div class="variant-label"><b>Вариант 3</b> <span>·</span> Collapsed — кнопка «Фильтры» + активные теги рядом <span style="color:#00E5D4">← рекомендую</span></div>
+  <div class="v3-bar">
+    <div class="v3-period-group">
+      <button class="v3-period-btn">7д</button>
+      <button class="v3-period-btn">14д</button>
+      <button class="v3-period-btn active">30д</button>
+      <button class="v3-period-btn">90д</button>
+      <button class="v3-period-btn">Всё</button>
+    </div>
+    <div class="v3-sep"></div>
+    <button class="v3-filter-btn">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 3.5h10M3.5 6.5h6M5.5 9.5h2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      Фильтры
+      <span class="v3-filter-badge">2</span>
+    </button>
+    <div class="v3-sep"></div>
+    <span class="v3-active-tag">HH.ru <span class="v3-active-tag-x">×</span></span>
+    <span class="v3-active-tag">Подходит <span class="v3-active-tag-x">×</span></span>
+    <button class="v3-clear">Сбросить</button>
+  </div>
+  <div class="desc">
+    <span class="pros">✓ Максимально компактно: одна строка всегда.</span>
+    Период — слева, кнопка «Фильтры» с бейджем количества активных — открывает панель/дропдаун.
+    Активные фильтры показаны как теги рядом — можно снять. Если фильтров нет — теги не занимают место.
+    <span class="pros">Идеально для страниц с большим числом фильтров.</span>
+  </div>
+</div>
+
+</body>
+</html>
