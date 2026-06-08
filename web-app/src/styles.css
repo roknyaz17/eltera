@@ -4473,16 +4473,27 @@ small {
   align-items: center;
   gap: 8px;
   background: rgba(255,255,255,.05);
-  border: 1px solid rgba(255,255,255,.08);
   border-radius: 20px;
   padding: 6px 14px;
   width: 300px;
   max-width: 100%;
-  transition: border-color .2s, background .2s;
+  position: relative;
+  /* gradient border via pseudo-element */
+  border: 1px solid rgba(255,255,255,.08);
+  transition: border-color .2s, background .2s, box-shadow .2s;
 }
 .elt-search-wrap:focus-within {
-  border-color: rgba(30,91,255,.45);
+  border-color: transparent;
   background: rgba(255,255,255,.07);
+  box-shadow:
+    0 0 0 1.5px transparent,
+    inset 0 0 0 1.5px transparent;
+  /* gradient border trick: background-clip */
+  background-image: linear-gradient(rgba(17,26,51,1), rgba(17,26,51,1)),
+                    linear-gradient(90deg, #1E5BFF, #00E5D4);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  border: 1.5px solid transparent;
 }
 
 .elt-search-icon { color: rgba(230,242,255,.3); flex-shrink: 0; }
@@ -4638,8 +4649,20 @@ small {
 .lightTheme .elt-topbar { background: rgba(247,249,252,.97); border-color: rgba(0,0,0,.07); box-shadow: 0 1px 8px rgba(0,0,0,.06); }
 .lightTheme .elt-topbar-label { color: rgba(0,180,160,.6); }
 .lightTheme .elt-topbar-company { color: #0A0F1E; }
-.lightTheme .elt-search-wrap { background: rgba(0,0,0,.04); border-color: rgba(0,0,0,.09); border-radius: 20px; }
-.lightTheme .elt-search-wrap:focus-within { border-color: rgba(30,91,255,.35); background: #fff; }
+.lightTheme .elt-search-wrap {
+  background: rgba(0,0,0,.04);
+  border-color: rgba(0,0,0,.09);
+  border-radius: 20px;
+  background-image: none;
+}
+.lightTheme .elt-search-wrap:focus-within {
+  border-color: transparent;
+  background-image: linear-gradient(#ffffff, #ffffff),
+                    linear-gradient(90deg, #1E5BFF, #00E5D4);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  border: 1.5px solid transparent;
+}
 .lightTheme .elt-search { color: #0A0F1E; }
 .lightTheme .elt-search::placeholder { color: rgba(10,15,30,.35); }
 .lightTheme .elt-search-icon { color: rgba(10,15,30,.35); }
