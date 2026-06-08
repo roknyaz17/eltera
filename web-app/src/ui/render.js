@@ -275,41 +275,83 @@ export function renderConstructor(state, professions) {
     psychological: ["Стрессоустойчивость", "Обучаемость", "Саморегуляция", "Мотивация достижения", "Эмоциональная устойчивость", "Внимательность", "Достоверность", "Лояльность"],
     professional: ["Подбор персонала", "Продажи", "Работа с CRM", "Аналитика данных", "Управление командой", "Планирование", "Переговоры", "Контроль качества", "Работа с документами", "Техническая экспертиза"]
   };
+  const compTag = (name) => `<button class="elt-comp-tag">${name}</button>`;
   return `
-    <section class="pageHead"><div><span class="miniLabel">Конструктор</span><h1>Конструктор профилей и компетенций</h1><p>Опишите роль сотрудника или кандидата, а AI предложит карту компетенций: корпоративные, психологические и профессиональные блоки.</p></div><button class="blueButton">Сохранить профиль</button></section>
-    <section class="constructorWorkspace">
-      <article class="panel formPanel builderPanel">
-        <h2>Профиль роли</h2>
-        <label>Название роли<input value="Руководитель отдела продаж"></label>
-        <label>Тип оценки<select><option>Кандидат</option><option>Сотрудник</option><option>Группа</option><option>Ассессмент</option></select></label>
-        <label>Шкала ответов<select><option>3 варианта</option><option>5-балльная</option><option>Да / нет</option></select></label>
-        <label>Вес достоверности<select><option>15%</option><option>10%</option><option>20%</option></select></label>
-        <button class="button subtle">Собрать профиль</button>
-      </article>
-      <article class="panel chartPanel competencyLibrary">
-        <div class="panelHead"><h2>Библиотека компетенций</h2><span>все блоки</span></div>
-        ${competencyGroup("Корпоративные", competencies.corporate)}
-        ${competencyGroup("Психологические", competencies.psychological)}
-        ${competencyGroup("Профессиональные", competencies.professional)}
-      </article>
-      <aside class="panel aiRolePanel">
-        <div class="panelHead"><h2>AI-конструктор</h2><span>роль → компетенции</span></div>
-        <label>Чем занимается сотрудник<textarea>Руководит отделом продаж, ставит планы, контролирует CRM, проводит планерки, обучает менеджеров, отвечает за выручку и качество воронки.</textarea></label>
-        <button class="blueButton wide">Сгенерировать компетенции</button>
-        <div class="aiSuggestion"><b>AI предложит</b><span>Управление результатом</span><span>Планирование и контроль</span><span>Лидерство</span><span>Коммуникация</span><span>Аналитика CRM</span><span>Мотивация команды</span></div>
-      </aside>
-      <article class="panel competenceImport widePanel">
-        <div class="panelHead"><h2>Добавить свои компетенции через Excel</h2><span>на рассмотрение разработки</span></div>
-        <div class="importFlow">
-          <div><b>1. Скачать шаблон</b><p>PDF объясняет, какие поля нужно заполнить в Excel: название компетенции, категория, описание, индикаторы поведения, шкала и примеры вопросов.</p><button class="button subtle">Скачать PDF-шаблон</button></div>
-          <div><b>2. Заполнить Excel</b><p>Добавьте корпоративные, психологические или профессиональные компетенции по своей модели.</p><label>Excel-файл<input type="file" accept=".xlsx,.xls"></label></div>
-          <div><b>3. Отправить на рассмотрение</b><p>Заявка уйдет в отдел разработки. После проверки компетенции смогут быть добавлены в библиотеку.</p><button class="blueButton">Отправить компетенции</button></div>
+    <div class="elt-page-wrap">
+      <div class="elt-page-header">
+        <div class="elt-page-header-left">
+          <span class="elt-mini-label">Конструктор</span>
+          <h1 class="elt-page-title">Конструктор профилей и компетенций</h1>
+          <p class="elt-page-subtitle">Опишите роль, AI предложит карту компетенций: корпоративные, психологические и профессиональные блоки.</p>
         </div>
-        <div class="reviewNote">Срок рассмотрения зависит от объема: обычно от 1 до 30 рабочих дней. В MVP заявка фиксируется как mock-сценарий, backend подключается следующим этапом.</div>
-      </article>
-      <article class="panel chartPanel widePanel"><div class="panelHead"><h2>Карта компетенций профиля</h2><span>пример весов</span></div>${miniBars([["Корпоративные", 25], ["Психологические", 25], ["Профессиональные", 35], ["Достоверность", 15]])}</article>
-      <article class="panel chartPanel widePanel"><div class="panelHead"><h2>Готовые профили</h2><span>${professions.length}</span></div><div class="profileRows">${professions.slice(0, 7).map((item) => `<button class="profileRow" data-open-competency="${item.id}"><b>${item.title}</b><span>${item.category}</span></button>`).join("")}</div></article>
-    </section>
+        <div class="elt-page-actions">
+          <button class="elt-btn-primary">Сохранить профиль</button>
+        </div>
+      </div>
+      <div class="elt-constructor-grid">
+        <div class="elt-constructor-main">
+          <div class="elt-card">
+            <div class="elt-card-head"><h2>Профиль роли</h2><span class="elt-card-caption">основные параметры</span></div>
+            <div class="elt-form-grid">
+              <label class="elt-label">Название роли<input class="elt-input" value="Руководитель отдела продаж"></label>
+              <label class="elt-label">Тип оценки<select class="elt-select"><option>Кандидат</option><option>Сотрудник</option><option>Группа</option><option>Ассессмент</option></select></label>
+              <label class="elt-label">Шкала ответов<select class="elt-select"><option>3 варианта</option><option>5-балльная</option><option>Да / нет</option></select></label>
+              <label class="elt-label">Вес достоверности<select class="elt-select"><option>15%</option><option>10%</option><option>20%</option></select></label>
+            </div>
+            <button class="elt-btn-secondary">Собрать профиль</button>
+          </div>
+          <div class="elt-card">
+            <div class="elt-card-head"><h2>Библиотека компетенций</h2><span class="elt-card-caption">все блоки</span></div>
+            <div class="elt-comp-section">
+              <div class="elt-comp-section-head"><span class="elt-comp-dot" style="background:#1E5BFF"></span><b>Корпоративные</b><small>25%</small></div>
+              <div class="elt-comp-tags">${competencies.corporate.map(compTag).join('')}</div>
+            </div>
+            <div class="elt-comp-section">
+              <div class="elt-comp-section-head"><span class="elt-comp-dot" style="background:#00E5D4"></span><b>Психологические</b><small>25%</small></div>
+              <div class="elt-comp-tags">${competencies.psychological.map(compTag).join('')}</div>
+            </div>
+            <div class="elt-comp-section">
+              <div class="elt-comp-section-head"><span class="elt-comp-dot" style="background:#22C55E"></span><b>Профессиональные</b><small>35%</small></div>
+              <div class="elt-comp-tags">${competencies.professional.map(compTag).join('')}</div>
+            </div>
+          </div>
+          <div class="elt-card">
+            <div class="elt-card-head"><h2>Добавить свои компетенции через Excel</h2><span class="elt-card-caption">на рассмотрение</span></div>
+            <div class="elt-import-flow">
+              <div class="elt-import-step"><span class="elt-import-num">1</span><div><b>Скачать шаблон</b><p>PDF объясняет поля: название, категория, описание, индикаторы, шкала.</p><button class="elt-btn-ghost">Скачать PDF-шаблон</button></div></div>
+              <div class="elt-import-step"><span class="elt-import-num">2</span><div><b>Заполнить Excel</b><p>Добавьте корпоративные, психологические или профессиональные компетенции.</p><label class="elt-file-label">Excel-файл<input type="file" accept=".xlsx,.xls"></label></div></div>
+              <div class="elt-import-step"><span class="elt-import-num">3</span><div><b>Отправить на рассмотрение</b><p>Заявка уйдет в отдел разработки. Срок: 1–30 рабочих дней.</p><button class="elt-btn-primary">Отправить компетенции</button></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="elt-constructor-sidebar">
+          <div class="elt-card elt-ai-panel">
+            <div class="elt-card-head"><span class="elt-ai-badge">AI</span><h2>AI-конструктор</h2></div>
+            <label class="elt-label">Чем занимается сотрудник
+              <textarea class="elt-textarea">Руководит отделом продаж, ставит планы, контролирует CRM, проводит планерки, обучает менеджеров.</textarea>
+            </label>
+            <button class="elt-btn-primary elt-btn-wide">Сгенерировать компетенции</button>
+            <div class="elt-ai-suggest">
+              <span class="elt-ai-suggest-label">AI предложит</span>
+              <div class="elt-comp-tags">
+                <button class="elt-comp-tag elt-comp-tag-ai">Управление результатом</button>
+                <button class="elt-comp-tag elt-comp-tag-ai">Планирование и контроль</button>
+                <button class="elt-comp-tag elt-comp-tag-ai">Лидерство</button>
+                <button class="elt-comp-tag elt-comp-tag-ai">Коммуникация</button>
+                <button class="elt-comp-tag elt-comp-tag-ai">Аналитика CRM</button>
+                <button class="elt-comp-tag elt-comp-tag-ai">Мотивация команды</button>
+              </div>
+            </div>
+          </div>
+          <div class="elt-card">
+            <div class="elt-card-head"><h2>Готовые профили</h2><span class="elt-card-caption">${professions.length}</span></div>
+            <div class="elt-profile-rows">
+              ${professions.slice(0, 7).map((item) => `<button class="elt-profile-row" data-open-competency="${item.id}"><b>${item.title}</b><span>${item.category}</span></button>`).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   `;
 }
 
@@ -351,17 +393,53 @@ export function renderVacancies(state) {
 }
 
 export function renderAssessments(state, professions) {
-  const icons = { recruiter: "◌", sales_manager: "↗", call_center: "☎", coordinator: "▦", warehouse: "□" };
+  const catIcon = { recruiter: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>`, sales_manager: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>`, call_center: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.01 1.18 2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/></svg>`, coordinator: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>`, warehouse: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>` };
+  const defaultIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>`;
   return `
-    <section class="pageHead"><div><span class="miniLabel">Профили</span><h1>Профили оценки профессий</h1><p>Готовые профили ролей: компетенции, длительность, вопросы и рекомендации по интерпретации.</p></div></section>
-    <div class="filterBar compact"><button class="active">Кандидат</button><button>Сотрудник</button><button>Группа</button><button>Ассессмент · в разработке</button><button>Офисные</button><button>IT</button><button>Руководители</button><button>Линейный персонал</button></div>
-    <div class="profileGrid compactProfiles">${professions.map((profession) => `
-      <article class="panel profileCard compact">
-        <div><span>${profession.category}</span><h3>${profession.title}</h3><p>${profession.summary}</p></div>
-        <div class="profileIcon">${icons[profession.id] || "✦"}</div>
-        <div class="profileMeta"><b>12-15 мин</b><b>${profession.competencies.length + 4} вопросов</b><b>${profession.competencies.slice(0, 2).join(" · ")}</b></div>
-        <div class="cardActions"><button class="button subtle" data-action="create-link" data-profession="${profession.id}">Создать ссылку</button><button class="button subtle" data-open-competency="${profession.id}">Профиль компетенций</button></div>
-      </article>`).join("")}</div>
+    <div class="elt-page-wrap">
+      <div class="elt-page-header">
+        <div class="elt-page-header-left">
+          <span class="elt-mini-label">Профили</span>
+          <h1 class="elt-page-title">Профили оценки профессий</h1>
+          <p class="elt-page-subtitle">Готовые профили ролей: компетенции, длительность, вопросы и рекомендации по интерпретации.</p>
+        </div>
+        <div class="elt-page-actions">
+          <button class="elt-btn-primary" data-action="create-link">+ Создать ссылку</button>
+        </div>
+      </div>
+      <div class="elt-filter-bar">
+        <button class="elt-pill active">Все</button>
+        <button class="elt-pill">Кандидат</button>
+        <button class="elt-pill">Сотрудник</button>
+        <button class="elt-pill">Группа</button>
+        <button class="elt-pill elt-pill-muted">Ассессмент · в разработке</button>
+        <span class="elt-filter-sep"></span>
+        <button class="elt-pill">Офисные</button>
+        <button class="elt-pill">IT</button>
+        <button class="elt-pill">Руководители</button>
+        <button class="elt-pill">Линейный персонал</button>
+      </div>
+      <div class="elt-profiles-grid">
+        ${professions.map((profession) => `
+          <article class="elt-profile-card">
+            <div class="elt-profile-card-top">
+              <div class="elt-profile-icon-wrap">${catIcon[profession.id] || defaultIcon}</div>
+              <span class="elt-profile-category">${profession.category}</span>
+            </div>
+            <h3 class="elt-profile-title">${profession.title}</h3>
+            <p class="elt-profile-summary">${profession.summary}</p>
+            <div class="elt-profile-meta">
+              <span>12–15 мин</span>
+              <span>${profession.competencies.length + 4} вопросов</span>
+              <span>${profession.competencies.slice(0, 2).join(' · ')}</span>
+            </div>
+            <div class="elt-profile-actions">
+              <button class="elt-btn-secondary" data-action="create-link" data-profession="${profession.id}">Создать ссылку</button>
+              <button class="elt-btn-ghost" data-open-competency="${profession.id}">Компетенции</button>
+            </div>
+          </article>`).join('')}
+      </div>
+    </div>
   `;
 }
 
@@ -448,28 +526,55 @@ export function renderPerformance(state) {
 
 export function renderLinks(state, professions) {
   return `
-    <section class="pageHead"><div><span class="miniLabel">Оценки</span><h1>Оценки кандидатов и сотрудников</h1><p>Создавайте оценку, отправляйте ссылку участнику, отслеживайте статус и результат прохождения.</p></div></section>
-    <section class="panel competenceImport">
-      <div class="panelHead"><h2>Загрузка сотрудников компании через Excel</h2><span>массовое создание оценок</span></div>
-      <div class="importFlow">
-        <div><b>1. Скачать Excel-шаблон</b><p>Заполните ФИО, телефон, email, должность, отдел, руководителя, проект, тип и профиль оценки.</p><a class="button subtle" href="/assets/eltera-employees-import-template.xlsx" download>Скачать Excel-шаблон</a></div>
-        <div><b>2. Загрузить сотрудников</b><p>После загрузки сотрудники попадут в список компании и будут доступны для оценки.</p><label>Excel-файл<input type="file" accept=".xlsx,.xls"></label></div>
-        <div><b>3. Создать оценки</b><p>Выберите профиль и отправьте оценки всем сотрудникам из файла или отдельным отделам.</p><button class="blueButton">Создать оценки по списку</button></div>
+    <div class="elt-page-wrap">
+      <div class="elt-page-header">
+        <div class="elt-page-header-left">
+          <span class="elt-mini-label">Оценки</span>
+          <h1 class="elt-page-title">Оценки кандидатов и сотрудников</h1>
+          <p class="elt-page-subtitle">Создайте оценку, отправьте ссылку участнику, отслеживайте статус и результат прохождения.</p>
+        </div>
+        <div class="elt-page-actions">
+          <button class="elt-btn-ghost">Импорт Excel</button>
+          <button class="elt-btn-primary" data-action="create-link">+ Создать оценку</button>
+        </div>
       </div>
-    </section>
-    <form class="panel linkForm expanded" data-create-link-form>
-      <label>Тип получателя<select name="recipientType"><option>Кандидат</option><option>Сотрудник</option></select></label>
-      <label>Профиль оценки<select name="professionId">${professions.map((profession) => `<option value="${profession.id}">${profession.title}</option>`).join("")}</select></label>
-      <label>Фамилия<input name="lastName" placeholder="Иванов"></label><label>Имя<input name="firstName" placeholder="Иван"></label><label>Отчество<input name="patronymic" placeholder="Иванович"></label>
-      <label>Телефон<input name="phone" placeholder="+7..."></label><label>Email<input name="email" placeholder="candidate@example.com"></label><label>Должность<input name="position" placeholder="Менеджер"></label>
-      <label>Компания<input name="company" value="${state.company.name}"></label><label>Отдел<input name="department" placeholder="Отдел продаж"></label><label>Вакансия<input name="vacancy" placeholder="Менеджер по продажам"></label><label>Проект<input name="project" placeholder="Проект A"></label>
-      <div class="formWarning">Если не указан email или телефон, ссылка будет создана, но не будет автоматически отправлена.</div>
-      <button class="blueButton" type="submit">Создать ссылку</button>
-    </form>
-    <div class="panel tablePanel">
-      <table><thead><tr><th>Получатель</th><th>Профиль</th><th>Контакт</th><th>Ссылка</th><th>Статус</th><th></th></tr></thead><tbody>
-        ${state.links.map((link) => `<tr><td>${link.fullName || link.recipientType}</td><td>${link.professionTitle}</td><td>${link.email || link.phone || "<span class='warnText'>нет контакта</span>"}</td><td><code>${location.origin}${location.pathname}#/assess/${link.token}</code>${link.warning ? `<small>${link.warning}</small>` : ""}</td><td><span class="status ${link.status}">${statusText(link.status)}</span></td><td><div class="rowActions"><button class="button subtle" data-open-assess="${link.token}">Открыть</button><button class="button subtle">Скопировать</button>${canCancel(link) ? `<button class="button dangerGhost" data-cancel-link="${link.token}">Отменить</button>` : ""}</div></td></tr>`).join("")}
-      </tbody></table>
+      <div class="elt-links-grid">
+        <div class="elt-card">
+          <div class="elt-card-head"><h2>Загрузка сотрудников через Excel</h2><span class="elt-card-caption">массовое создание оценок</span></div>
+          <div class="elt-import-flow">
+            <div class="elt-import-step"><span class="elt-import-num">1</span><div><b>Скачать Excel-шаблон</b><p>ФИО, телефон, email, должность, отдел, руководитель, проект, тип и профиль оценки.</p><a class="elt-btn-ghost" href="/assets/eltera-employees-import-template.xlsx" download>Скачать шаблон</a></div></div>
+            <div class="elt-import-step"><span class="elt-import-num">2</span><div><b>Загрузить сотрудников</b><p>После загрузки сотрудники будут доступны для оценки.</p><label class="elt-file-label">Excel-файл<input type="file" accept=".xlsx,.xls"></label></div></div>
+            <div class="elt-import-step"><span class="elt-import-num">3</span><div><b>Создать оценки</b><p>Выберите профиль и отправьте оценки всем сотрудникам из файла или отдельным отделам.</p><button class="elt-btn-primary">Создать оценки по списку</button></div></div>
+          </div>
+        </div>
+        <div class="elt-card">
+          <div class="elt-card-head"><h2>Создать оценку</h2><span class="elt-card-caption">единичная оценка</span></div>
+          <form class="elt-form-grid elt-form-grid-3" data-create-link-form>
+            <label class="elt-label elt-label-full">Тип получателя<select class="elt-select" name="recipientType"><option>Кандидат</option><option>Сотрудник</option></select></label>
+            <label class="elt-label elt-label-full">Профиль оценки<select class="elt-select" name="professionId">${professions.map((profession) => `<option value="${profession.id}">${profession.title}</option>`).join('')}</select></label>
+            <label class="elt-label">Фамилия<input class="elt-input" name="lastName" placeholder="Иванов"></label>
+            <label class="elt-label">Имя<input class="elt-input" name="firstName" placeholder="Иван"></label>
+            <label class="elt-label">Отчество<input class="elt-input" name="patronymic" placeholder="Иванович"></label>
+            <label class="elt-label">Телефон<input class="elt-input" name="phone" placeholder="+7..."></label>
+            <label class="elt-label">Email<input class="elt-input" name="email" placeholder="candidate@example.com"></label>
+            <label class="elt-label">Должность<input class="elt-input" name="position" placeholder="Менеджер"></label>
+            <label class="elt-label">Компания<input class="elt-input" name="company" value="${state.company.name}"></label>
+            <label class="elt-label">Отдел<input class="elt-input" name="department" placeholder="Отдел продаж"></label>
+            <label class="elt-label">Вакансия<input class="elt-input" name="vacancy" placeholder="Менеджер по продажам"></label>
+            <label class="elt-label">Проект<input class="elt-input" name="project" placeholder="Проект A"></label>
+            <div class="elt-form-warning elt-label-full">Если не указан email или телефон, ссылка будет создана, но не будет автоматически отправлена.</div>
+            <div class="elt-label-full"><button class="elt-btn-primary" type="submit">Создать ссылку</button></div>
+          </form>
+        </div>
+        <div class="elt-table-panel">
+          <div class="elt-table-head"><h2>Оценочные ссылки</h2><span class="elt-card-caption">${state.links.length} ссылок</span></div>
+          <div class="elt-table-wrap">
+            <table class="elt-table"><thead><tr><th>Получатель</th><th>Профиль</th><th>Контакт</th><th>Ссылка</th><th>Статус</th><th></th></tr></thead><tbody>
+              ${state.links.map((link) => `<tr><td>${link.fullName || link.recipientType}</td><td>${link.professionTitle}</td><td>${link.email || link.phone || "<span class='elt-warn-text'>нет контакта</span>"}</td><td><code class="elt-code">${location.origin}${location.pathname}#/assess/${link.token}</code>${link.warning ? `<small class="elt-warn-text">${link.warning}</small>` : ''}</td><td><span class="elt-status-badge elt-status-${link.status}">${statusText(link.status)}</span></td><td><div class="elt-row-actions"><button class="elt-btn-ghost" data-open-assess="${link.token}">Открыть</button><button class="elt-btn-ghost">Скопировать</button>${canCancel(link) ? `<button class="elt-btn-danger" data-cancel-link="${link.token}">Отменить</button>` : ''}</div></td></tr>`).join('')}
+            </tbody></table>
+          </div>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -506,13 +611,49 @@ export function renderReports(state) {
 
 export function renderSupport() {
   return `
-    <section class="pageHead"><div><span class="miniLabel">Поддержка</span><h1>Помощь и заявки</h1><p>Выберите тип обращения. Срочные заявки рассматриваются быстрее, предложения по улучшению попадают в продуктовый backlog.</p></div></section>
-    <section class="supportGrid">
-      <article class="panel supportCard priority"><span>Срочная заявка</span><h2>Критичная проблема</h2><p>Если не открывается оценка, не формируется отчет, списались оценки или не работает доступ.</p><b>Срок рассмотрения: в течение суток.</b><button class="blueButton">Оставить срочную заявку</button></article>
-      <article class="panel supportCard"><span>Обычная заявка</span><h2>Вопрос по сервису</h2><p>Настройки, тарифы, ссылки, отчеты, личный кабинет, работа с кандидатами и сотрудниками.</p><b>Срок рассмотрения: в рабочем порядке.</b><button class="button subtle">Оставить заявку</button></article>
-      <article class="panel supportCard"><span>Предложение</span><h2>Улучшение сервиса</h2><p>Идеи по новым отчетам, профилям должностей, графикам, интеграциям или логике оценки.</p><b>Срок рассмотрения: от 1 до 30 рабочих дней.</b><button class="button subtle">Предложить улучшение</button></article>
-    </section>
-    <section class="panel formPanel supportForm"><h2>Форма обращения</h2><label>Тип обращения<select><option>Срочная заявка</option><option>Обычная заявка</option><option>Предложение по улучшению</option></select></label><label>Тема<input placeholder="Коротко опишите вопрос"></label><label>Описание<textarea placeholder="Что произошло, кого касается, какой ожидаемый результат"></textarea></label><button class="blueButton">Отправить обращение</button></section>
+    <div class="elt-page-wrap">
+      <div class="elt-page-header">
+        <div class="elt-page-header-left">
+          <span class="elt-mini-label">Поддержка</span>
+          <h1 class="elt-page-title">Помощь и заявки</h1>
+          <p class="elt-page-subtitle">Срочные заявки рассматриваются быстрее, предложения по улучшению попадают в продуктовый backlog.</p>
+        </div>
+      </div>
+      <div class="elt-support-grid">
+        <div class="elt-support-cards">
+          <div class="elt-card elt-support-card elt-support-urgent">
+            <div class="elt-support-badge">Срочная заявка</div>
+            <h2>Критичная проблема</h2>
+            <p>Если не открывается оценка, не формируется отчет, списались оценки или не работает доступ.</p>
+            <div class="elt-support-sla">Срок: в течение суток</div>
+            <button class="elt-btn-primary">Оставить срочную заявку</button>
+          </div>
+          <div class="elt-card elt-support-card">
+            <div class="elt-support-badge elt-support-badge-neutral">Обычная заявка</div>
+            <h2>Вопрос по сервису</h2>
+            <p>Настройки, тарифы, ссылки, отчеты, личный кабинет, работа с кандидатами и сотрудниками.</p>
+            <div class="elt-support-sla">Срок: в рабочем порядке</div>
+            <button class="elt-btn-secondary">Оставить заявку</button>
+          </div>
+          <div class="elt-card elt-support-card">
+            <div class="elt-support-badge elt-support-badge-idea">Предложение</div>
+            <h2>Улучшение сервиса</h2>
+            <p>Идеи по новым отчетам, профилям, графикам, интеграциям или логике оценки.</p>
+            <div class="elt-support-sla">Срок: 1–30 рабочих дней</div>
+            <button class="elt-btn-ghost">Предложить улучшение</button>
+          </div>
+        </div>
+        <div class="elt-card elt-support-form">
+          <div class="elt-card-head"><h2>Форма обращения</h2></div>
+          <div class="elt-form-grid">
+            <label class="elt-label">Тип обращения<select class="elt-select"><option>Срочная заявка</option><option>Обычная заявка</option><option>Предложение по улучшению</option></select></label>
+            <label class="elt-label">Тема<input class="elt-input" placeholder="Коротко опишите вопрос"></label>
+            <label class="elt-label elt-label-full">Описание<textarea class="elt-textarea" placeholder="Что произошло, кого касается, какой ожидаемый результат"></textarea></label>
+            <div><button class="elt-btn-primary">Отправить обращение</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
   `;
 }
 
@@ -548,25 +689,54 @@ export function renderGratitude() {
     ["06.06.2026", "Добавили загрузку сотрудников через Excel и шаблон для быстрого старта оценки по отделам."],
     ["05.06.2026", "Смягчили цветовую систему статусов: фокус теперь на хорошем результате и спокойной аналитике."]
   ];
+  const statusColor = { 'в работе': '#D9A441', 'внедрено': '#22C55E' };
   return `
-    <section class="pageHead"><div><span class="miniLabel">Благодарности</span><h1>Люди и компании, которые помогают развивать Эльтеру</h1><p>Здесь отображаются идеи клиентов, HR-экспертов и собственников бизнеса, которые стали частью продукта или находятся в разработке.</p></div><button class="blueButton">Предложить улучшение</button></section>
-    <section class="gratitudeHero panel">
-      <div><span class="miniLabel">Product community</span><h2>Мы дорабатываем платформу вместе с рынком</h2><p>Если клиент предлагает решение, которое делает оценку полезнее для компаний, мы фиксируем вклад, показываем статус и благодарим публично.</p></div>
-      <div class="gratitudeStats"><strong>3</strong><span>идеи в ленте MVP</span><strong>1-30</strong><span>рабочих дней на рассмотрение</span></div>
-    </section>
-    <section class="gratitudeGrid">
-      ${gratitudeItems.map((item) => `
-        <article class="panel gratitudeCard">
-          <div class="panelHead"><h2>${item.name}</h2><span>${item.status}</span></div>
-          <p><b>${item.role}, ${item.company}</b> ${item.idea}</p>
-          <div class="gratitudeResult"><span>Что улучшили</span><p>${item.result}</p></div>
-        </article>
-      `).join("")}
-    </section>
-    <section class="panel gratitudeNews">
-      <div class="panelHead"><h2>Новости продукта</h2><span>обновления MVP</span></div>
-      ${news.map(([date, text]) => `<div><time>${date}</time><p>${text}</p></div>`).join("")}
-    </section>
+    <div class="elt-page-wrap">
+      <div class="elt-page-header">
+        <div class="elt-page-header-left">
+          <span class="elt-mini-label">Благодарности</span>
+          <h1 class="elt-page-title">Люди и компании, которые помогают развивать Эльтеру</h1>
+          <p class="elt-page-subtitle">Идеи клиентов, HR-экспертов и собственников, которые стали частью продукта или находятся в разработке.</p>
+        </div>
+        <div class="elt-page-actions">
+          <button class="elt-btn-primary">Предложить улучшение</button>
+        </div>
+      </div>
+      <div class="elt-card elt-gratitude-hero">
+        <div>
+          <span class="elt-mini-label">Product community</span>
+          <h2>Мы дорабатываем платформу вместе с рынком</h2>
+          <p>Если клиент предлагает решение, которое делает оценку полезнее для компаний, мы фиксируем вклад, показываем статус и благодарим публично.</p>
+        </div>
+        <div class="elt-gratitude-stats">
+          <div><strong>3</strong><span>идеи в MVP</span></div>
+          <div><strong>1–30</strong><span>дней на рассмотрение</span></div>
+        </div>
+      </div>
+      <div class="elt-gratitude-grid">
+        ${gratitudeItems.map((item) => `
+          <div class="elt-card elt-gratitude-card">
+            <div class="elt-gratitude-card-top">
+              <div>
+                <div class="elt-gratitude-name">${item.name}</div>
+                <div class="elt-gratitude-role">${item.role} · ${item.company}</div>
+              </div>
+              <span class="elt-status-pill" style="color:${statusColor[item.status] || '#8899BB'}">${item.status}</span>
+            </div>
+            <p class="elt-gratitude-idea">${item.idea}</p>
+            <div class="elt-gratitude-result">
+              <span class="elt-gratitude-result-label">Что улучшили</span>
+              <p>${item.result}</p>
+            </div>
+          </div>`).join('')}
+      </div>
+      <div class="elt-card">
+        <div class="elt-card-head"><h2>Новости продукта</h2><span class="elt-card-caption">обновления MVP</span></div>
+        <div class="elt-news-list">
+          ${news.map(([date, text]) => `<div class="elt-news-item"><time class="elt-news-date">${date}</time><p>${text}</p></div>`).join('')}
+        </div>
+      </div>
+    </div>
   `;
 }
 
@@ -592,75 +762,185 @@ export function renderReport(state, session) {
 }
 
 export function renderTariffs(state, tariffs) {
-  return `<section class="pageHead"><div><span class="miniLabel">Тарифы</span><h1>Функции по тарифам</h1><p>Start — текущий базовый доступ за 990 ₽ / 20 оценок. Для смены доступны TalentCheck, TalentPro и TalentStudio.</p></div></section><div class="tariffGrid">${tariffs.map((tariff) => renderTariffCard(tariff, true)).join("")}</div>`;
+  return `
+    <div class="elt-page-wrap">
+      <div class="elt-page-header">
+        <div class="elt-page-header-left">
+          <span class="elt-mini-label">Тарифы</span>
+          <h1 class="elt-page-title">Функции по тарифам</h1>
+          <p class="elt-page-subtitle">Start — текущий базовый доступ за 990 ₽ / 20 оценок. Для смены доступны TalentCheck, TalentPro и TalentStudio.</p>
+        </div>
+      </div>
+      <div class="elt-tariff-grid">${tariffs.map((tariff) => renderTariffCard(tariff, true)).join('')}</div>
+    </div>
+  `;
 }
 
 export function renderReferrals(state) {
   const maxAssessments = Math.floor(state.referrals.available / state.company.assessmentPrice);
   return `
-    <section class="pageHead"><div><span class="miniLabel">Реферальная программа</span><h1>10% от каждой оплаты приглашенной компании</h1><p>1 бонус = 1 ₽. Бонусы можно потратить внутри платформы или вывести на карту через заявку.</p></div></section>
-    <div class="referralGrid"><article class="panel referralCard"><span>Моя ссылка</span><code>${location.origin}${location.pathname}#/ref/roman123</code><div class="cardActions"><button class="button subtle" data-action="copy-ref">Скопировать</button><button class="button subtle">Поделиться</button><button class="button subtle" data-action="open-bonus-modal">Потратить бонусы</button><button class="button subtle" data-action="open-withdraw-modal">Вывести на карту</button></div></article>${kpi("Доступно бонусов", `${state.referrals.available.toLocaleString("ru-RU")} ₽`, `${maxAssessments} оценок`)}${kpi("Начислено всего", `${state.referrals.accrued.toLocaleString("ru-RU")} ₽`, "10% от оплат")}${kpi("Потрачено", `${state.referrals.spent.toLocaleString("ru-RU")} ₽`, "на оценки")}${kpi("Выведено", `${state.referrals.withdrawn.toLocaleString("ru-RU")} ₽`, "на карту")}${kpi("Приглашено", state.referrals.invited, "компании")}${kpi("Оплачивают", state.referrals.paid, "компании")}</div>
-    <section class="dashboardGrid"><div class="panel tablePanel"><div class="panelHead"><h2>Приглашенные компании</h2><span>начисление с каждой оплаты</span></div><table><thead><tr><th>Компания</th><th>Дата</th><th>Сумма оплат</th><th>Бонусы</th><th>Статус</th></tr></thead><tbody>${[["Север IT","02.06.2026","89 700 ₽","8 970 ₽","платит"],["HR Project","30.05.2026","38 700 ₽","3 870 ₽","платит"],["Альфа Ритейл","28.05.2026","12 900 ₽","1 290 ₽","новая"]].map((row) => `<tr>${row.map((cell, index) => `<td>${index === 4 ? `<span class="status completed">${cell}</span>` : cell}</td>`).join("")}</tr>`).join("")}</tbody></table></div><div class="panel tablePanel"><div class="panelHead"><h2>История операций</h2><span>бонусы</span></div><table><thead><tr><th>Дата</th><th>Операция</th><th>Основание</th><th>Сумма</th><th>Статус</th></tr></thead><tbody>${state.referrals.operations.map((row, index) => `<tr><td>${new Date(Date.now() - index * 86400000).toLocaleDateString("ru-RU")}</td>${row.map((cell) => `<td>${cell}</td>`).join("")}</tr>`).join("")}</tbody></table></div><div class="panel tablePanel"><div class="panelHead"><h2>Заявки на вывод</h2><span>резерв бонусов</span></div><table><thead><tr><th>Сумма</th><th>Карта</th><th>Получатель</th><th>Статус</th></tr></thead><tbody>${state.referrals.withdrawals.map((item) => `<tr><td>${item.amount.toLocaleString("ru-RU")} ₽</td><td>${item.card}</td><td>${item.name}</td><td><span class="status pending">${item.status}</span></td></tr>`).join("") || `<tr><td colspan="4">Заявок пока нет.</td></tr>`}</tbody></table></div></section>
+    <div class="elt-page-wrap">
+      <div class="elt-page-header">
+        <div class="elt-page-header-left">
+          <span class="elt-mini-label">Реферальная программа</span>
+          <h1 class="elt-page-title">10% от каждой оплаты приглашенной компании</h1>
+          <p class="elt-page-subtitle">1 бонус = 1 ₽. Бонусы можно потратить внутри платформы или вывести на карту через заявку.</p>
+        </div>
+      </div>
+      <div class="elt-referral-top">
+        <div class="elt-card elt-referral-link-card">
+          <div class="elt-card-head"><h2>Моя реферальная ссылка</h2></div>
+          <code class="elt-code elt-code-block">${location.origin}${location.pathname}#/ref/roman123</code>
+          <div class="elt-row-actions">
+            <button class="elt-btn-secondary" data-action="copy-ref">Скопировать</button>
+            <button class="elt-btn-ghost">Поделиться</button>
+            <button class="elt-btn-ghost" data-action="open-bonus-modal">Потратить бонусы</button>
+            <button class="elt-btn-ghost" data-action="open-withdraw-modal">Вывести на карту</button>
+          </div>
+        </div>
+        <div class="elt-kpi-row">
+          <div class="elt-kpi"><div class="elt-kpi-val">${state.referrals.available.toLocaleString('ru-RU')} ₽</div><div class="elt-kpi-label">Доступно бонусов</div><div class="elt-kpi-caption">${maxAssessments} оценок</div></div>
+          <div class="elt-kpi"><div class="elt-kpi-val">${state.referrals.accrued.toLocaleString('ru-RU')} ₽</div><div class="elt-kpi-label">Начислено всего</div><div class="elt-kpi-caption">10% от оплат</div></div>
+          <div class="elt-kpi"><div class="elt-kpi-val">${state.referrals.spent.toLocaleString('ru-RU')} ₽</div><div class="elt-kpi-label">Потрачено</div><div class="elt-kpi-caption">на оценки</div></div>
+          <div class="elt-kpi"><div class="elt-kpi-val">${state.referrals.withdrawn.toLocaleString('ru-RU')} ₽</div><div class="elt-kpi-label">Выведено</div><div class="elt-kpi-caption">на карту</div></div>
+          <div class="elt-kpi"><div class="elt-kpi-val">${state.referrals.invited}</div><div class="elt-kpi-label">Приглашено</div><div class="elt-kpi-caption">компании</div></div>
+          <div class="elt-kpi"><div class="elt-kpi-val">${state.referrals.paid}</div><div class="elt-kpi-label">Оплачивают</div><div class="elt-kpi-caption">компании</div></div>
+        </div>
+      </div>
+      <div class="elt-referral-tables">
+        <div class="elt-table-panel">
+          <div class="elt-table-head"><h2>Приглашенные компании</h2><span class="elt-card-caption">начисление с каждой оплаты</span></div>
+          <div class="elt-table-wrap"><table class="elt-table"><thead><tr><th>Компания</th><th>Дата</th><th>Сумма оплат</th><th>Бонусы</th><th>Статус</th></tr></thead><tbody>${[['Север IT','02.06.2026','89 700 ₽','8 970 ₽','платит'],['ХР Project','30.05.2026','38 700 ₽','3 870 ₽','платит'],['Альфа Ритейл','28.05.2026','12 900 ₽','1 290 ₽','новая']].map((row) => `<tr>${row.map((cell, i) => `<td>${i === 4 ? `<span class="elt-status-badge elt-status-completed">${cell}</span>` : cell}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+        </div>
+        <div class="elt-table-panel">
+          <div class="elt-table-head"><h2>История операций</h2><span class="elt-card-caption">бонусы</span></div>
+          <div class="elt-table-wrap"><table class="elt-table"><thead><tr><th>Дата</th><th>Операция</th><th>Основание</th><th>Сумма</th><th>Статус</th></tr></thead><tbody>${state.referrals.operations.map((row, index) => `<tr><td>${new Date(Date.now() - index * 86400000).toLocaleDateString('ru-RU')}</td>${row.map((cell) => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+        </div>
+        <div class="elt-table-panel">
+          <div class="elt-table-head"><h2>Заявки на вывод</h2><span class="elt-card-caption">резерв бонусов</span></div>
+          <div class="elt-table-wrap"><table class="elt-table"><thead><tr><th>Сумма</th><th>Карта</th><th>Получатель</th><th>Статус</th></tr></thead><tbody>${state.referrals.withdrawals.map((item) => `<tr><td>${item.amount.toLocaleString('ru-RU')} ₽</td><td>${item.card}</td><td>${item.name}</td><td><span class="elt-status-badge elt-status-pending">${item.status}</span></td></tr>`).join('') || `<tr><td colspan="4" style="color:#8899BB">Заявок пока нет.</td></tr>`}</tbody></table></div>
+        </div>
+      </div>
+    </div>
   `;
 }
 
 export function renderApiKeys(state) {
-  const apiKeyId = `elt_live_${state.company.inn || "demo"}_01`;
+  const apiKeyId = `elt_live_${state.company.inn || 'demo'}_01`;
   return `
-    <section class="pageHead"><div><span class="miniLabel">Интеграции</span><h1>API-ключи, webhooks и JSON-файлы</h1><p>Раздел для подключения сайта, личного кабинета, CRM, ATS, HRM и внешних форм оценки. В MVP показана структура, которую backend будет использовать для реальных ключей.</p></div><button class="blueButton">Создать API-ключ</button></section>
-    <section class="apiGrid">
-      <article class="panel apiCard primary">
-        <span>ID ключа</span>
-        <h2>${apiKeyId}</h2>
-        <p>Используется для запросов к API компании ${state.company.name}.</p>
-        <div class="apiSecret"><code>sk_live_••••••••••••••••••••••••</code><button class="button subtle">Показать</button></div>
-      </article>
-      <article class="panel apiCard">
-        <span>Base API</span>
-        <h2>/api/v1</h2>
-        <p>Создание оценок, загрузка сотрудников, получение отчетов, статусов и PDF.</p>
-        <code>https://api.eltera.ai/api/v1</code>
-      </article>
-      <article class="panel apiCard">
-        <span>Входящий webhook</span>
-        <h2>incoming</h2>
-        <p>Принимает сотрудников, кандидатов, вакансии и команды из внешних систем.</p>
-        <code>POST /webhooks/incoming/${apiKeyId}</code>
-      </article>
-      <article class="panel apiCard">
-        <span>Исходящий webhook</span>
-        <h2>outgoing</h2>
-        <p>Отправляет события: оценка создана, пройдена, отчет готов, PDF сформирован.</p>
-        <code>POST https://your-company.ru/eltera/webhook</code>
-      </article>
-    </section>
-    <section class="panel apiDocs">
-      <div class="panelHead"><h2>JSON-файлы и примеры</h2><span>для разработчика</span></div>
-      <div class="apiDocList">
-        <a class="button subtle" href="/assets/eltera-api-create-assessment-example.json" download>Скачать JSON создания оценки</a>
-        <a class="button subtle" href="/assets/eltera-incoming-webhook-example.json" download>Скачать JSON входящего webhook</a>
-        <a class="button subtle" href="/assets/eltera-outgoing-webhook-example.json" download>Скачать JSON исходящего webhook</a>
+    <div class="elt-page-wrap">
+      <div class="elt-page-header">
+        <div class="elt-page-header-left">
+          <span class="elt-mini-label">Интеграции</span>
+          <h1 class="elt-page-title">API-ключи, webhooks и JSON-файлы</h1>
+          <p class="elt-page-subtitle">Подключение сайта, CRM, ATS, HRM и внешних форм оценки. В MVP показана структура для backend-интеграции.</p>
+        </div>
+        <div class="elt-page-actions">
+          <button class="elt-btn-primary">Создать API-ключ</button>
+        </div>
       </div>
-      <pre><code>{
+      <div class="elt-api-grid">
+        <div class="elt-card elt-api-card elt-api-primary">
+          <span class="elt-api-label">ID ключа</span>
+          <h2 class="elt-api-key-id">${apiKeyId}</h2>
+          <p>Используется для запросов к API компании ${state.company.name}.</p>
+          <div class="elt-api-secret"><code class="elt-code">sk_live_••••••••••••••••••••••••</code><button class="elt-btn-ghost">Показать</button></div>
+        </div>
+        <div class="elt-card elt-api-card">
+          <span class="elt-api-label">Base API</span>
+          <h2>/api/v1</h2>
+          <p>Создание оценок, загрузка сотрудников, получение отчетов, статусов и PDF.</p>
+          <code class="elt-code">https://api.eltera.ai/api/v1</code>
+        </div>
+        <div class="elt-card elt-api-card">
+          <span class="elt-api-label">Входящий webhook</span>
+          <h2>incoming</h2>
+          <p>Принимает сотрудников, кандидатов, вакансии и команды из внешних систем.</p>
+          <code class="elt-code">POST /webhooks/incoming/${apiKeyId}</code>
+        </div>
+        <div class="elt-card elt-api-card">
+          <span class="elt-api-label">Исходящий webhook</span>
+          <h2>outgoing</h2>
+          <p>Отправляет события: оценка создана, пройдена, отчет готов, PDF сформирован.</p>
+          <code class="elt-code">POST https://your-company.ru/eltera/webhook</code>
+        </div>
+      </div>
+      <div class="elt-card">
+        <div class="elt-card-head"><h2>JSON-файлы и примеры</h2><span class="elt-card-caption">для разработчика</span></div>
+        <div class="elt-api-doc-actions">
+          <a class="elt-btn-ghost" href="/assets/eltera-api-create-assessment-example.json" download>Скачать JSON создания оценки</a>
+          <a class="elt-btn-ghost" href="/assets/eltera-incoming-webhook-example.json" download>Скачать JSON входящего webhook</a>
+          <a class="elt-btn-ghost" href="/assets/eltera-outgoing-webhook-example.json" download>Скачать JSON исходящего webhook</a>
+        </div>
+        <pre class="elt-pre"><code>{
   "api_key_id": "${apiKeyId}",
   "event": "assessment.completed",
   "person_type": "employee",
   "report_url": "https://app.eltera.ai/reports/report_653757",
   "pdf_url": "https://app.eltera.ai/reports/report_653757.pdf"
 }</code></pre>
-    </section>
+      </div>
+    </div>
   `;
 }
 
 export function renderSettings(state) {
-  const studioLocked = state.company.tariff !== "TalentStudio";
+  const studioLocked = state.company.tariff !== 'TalentStudio';
+  const lockAttr = studioLocked ? `data-open-locked="Настройки интерфейса и уведомлений доступны на тарифе TalentStudio."` : '';
   return `
-    <section class="pageHead"><div><span class="miniLabel">Настройки</span><h1>Продуктовые настройки компании</h1><p>Поля подготовлены для backend: юридические данные, уведомления, логотип, язык и часовой пояс.</p></div></section>
-    <div class="settingsGrid">
-      <div class="panel formPanel"><h2>Компания</h2><label>Название<input value="${state.company.name}"></label><label>ИНН<input value="${state.company.inn}"></label><label>КПП<input value="${state.company.kpp}"></label><label>Официальный сайт<input value="${state.company.site}"></label><label>Email для отчетов<input value="${state.company.reportEmail}"></label><label>Телефон компании<input value="${state.company.phone}"></label><label>Юридический адрес<input value="${state.company.legalAddress}"></label><label>Фактический адрес<input value="${state.company.actualAddress}"></label><button class="blueButton">Сохранить</button></div>
-      <div class="panel formPanel"><h2>Контактное лицо</h2><label>Фамилия<input value="${state.company.contactLastName}"></label><label>Имя<input value="${state.company.contactFirstName}"></label><label>Отчество<input value="${state.company.contactPatronymic}"></label><label>Телефон<input value="${state.company.contactPhone}"></label><label>Email<input value="${state.company.contactEmail}"></label><button class="blueButton">Сохранить</button></div>
-      <div class="panel formPanel lockedSettings ${studioLocked ? "isLocked" : ""}" ${studioLocked ? `data-open-locked="Настройки интерфейса и уведомлений доступны на тарифе TalentStudio."` : ""}><h2>Интерфейс</h2><label>Логотип компании<input type="file"></label><label>Часовой пояс<select><option>Europe/Moscow</option></select></label><label>Язык интерфейса<select><option>Русский</option></select></label><button class="button subtle">Загрузить логотип</button>${studioLocked ? "<div class='lockBadge'>🔒 TalentStudio</div>" : ""}</div>
-      <div class="panel formPanel lockedSettings ${studioLocked ? "isLocked" : ""}" ${studioLocked ? `data-open-locked="Настройки интерфейса и уведомлений доступны на тарифе TalentStudio."` : ""}><h2>Уведомления</h2><label>Email-уведомления<select><option>Включены</option></select></label><label>Telegram<select><option>Отправлять отчет после заполнения</option></select></label><label>Webhook<select><option>Позже</option></select></label><button class="blueButton">Сохранить</button>${studioLocked ? "<div class='lockBadge'>🔒 TalentStudio</div>" : ""}</div>
+    <div class="elt-page-wrap">
+      <div class="elt-page-header">
+        <div class="elt-page-header-left">
+          <span class="elt-mini-label">Настройки</span>
+          <h1 class="elt-page-title">Настройки компании</h1>
+          <p class="elt-page-subtitle">Юридические данные, контактное лицо, логотип, уведомления и часовой пояс. Подготовлено для backend-интеграции.</p>
+        </div>
+      </div>
+      <div class="elt-settings-grid">
+        <div class="elt-card">
+          <div class="elt-card-head"><h2>Компания</h2></div>
+          <div class="elt-form-grid">
+            <label class="elt-label">Название<input class="elt-input" value="${state.company.name}"></label>
+            <label class="elt-label">ИНН<input class="elt-input" value="${state.company.inn}"></label>
+            <label class="elt-label">КПП<input class="elt-input" value="${state.company.kpp}"></label>
+            <label class="elt-label">Официальный сайт<input class="elt-input" value="${state.company.site}"></label>
+            <label class="elt-label">Email для отчетов<input class="elt-input" value="${state.company.reportEmail}"></label>
+            <label class="elt-label">Телефон<input class="elt-input" value="${state.company.phone}"></label>
+            <label class="elt-label elt-label-full">Юридический адрес<input class="elt-input" value="${state.company.legalAddress}"></label>
+            <label class="elt-label elt-label-full">Фактический адрес<input class="elt-input" value="${state.company.actualAddress}"></label>
+            <div><button class="elt-btn-primary">Сохранить</button></div>
+          </div>
+        </div>
+        <div class="elt-card">
+          <div class="elt-card-head"><h2>Контактное лицо</h2></div>
+          <div class="elt-form-grid">
+            <label class="elt-label">Фамилия<input class="elt-input" value="${state.company.contactLastName}"></label>
+            <label class="elt-label">Имя<input class="elt-input" value="${state.company.contactFirstName}"></label>
+            <label class="elt-label">Отчество<input class="elt-input" value="${state.company.contactPatronymic}"></label>
+            <label class="elt-label">Телефон<input class="elt-input" value="${state.company.contactPhone}"></label>
+            <label class="elt-label">Email<input class="elt-input" value="${state.company.contactEmail}"></label>
+            <div><button class="elt-btn-primary">Сохранить</button></div>
+          </div>
+        </div>
+        <div class="elt-card ${studioLocked ? 'elt-card-locked' : ''}" ${lockAttr}>
+          <div class="elt-card-head"><h2>Интерфейс</h2>${studioLocked ? '<span class="elt-lock-badge">TalentStudio</span>' : ''}</div>
+          <div class="elt-form-grid">
+            <label class="elt-label">Логотип компании<input class="elt-input" type="file"></label>
+            <label class="elt-label">Часовой пояс<select class="elt-select"><option>Europe/Moscow</option></select></label>
+            <label class="elt-label">Язык интерфейса<select class="elt-select"><option>Русский</option></select></label>
+            <div><button class="elt-btn-ghost">Загрузить логотип</button></div>
+          </div>
+        </div>
+        <div class="elt-card ${studioLocked ? 'elt-card-locked' : ''}" ${lockAttr}>
+          <div class="elt-card-head"><h2>Уведомления</h2>${studioLocked ? '<span class="elt-lock-badge">TalentStudio</span>' : ''}</div>
+          <div class="elt-form-grid">
+            <label class="elt-label">Email-уведомления<select class="elt-select"><option>Включены</option></select></label>
+            <label class="elt-label">Telegram<select class="elt-select"><option>Отправлять отчет после заполнения</option></select></label>
+            <label class="elt-label">Webhook<select class="elt-select"><option>Позже</option></select></label>
+            <div><button class="elt-btn-primary">Сохранить</button></div>
+          </div>
+        </div>
+      </div>
     </div>
   `;
 }
