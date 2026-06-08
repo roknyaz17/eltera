@@ -73,18 +73,234 @@ export function buildNavGroups(state, counts) {
   return groups.map((g) => ({ ...g, items: items.filter((i) => i.group === g.key) }));
 }
 
+// ─── Premium subcomponents (used by DashboardPageLayout for all sections) ─────
+
+function pStatusClass(status) {
+  return ({ good: "status-good", medium: "status-medium", bad: "status-bad", neutral: "status-neutral", noData: "status-neutral" })[status] || "status-neutral";
+}
+
+function PremiumHeader({ title, subtitle, actions = [], meta = [] }) {
+  return `
+    <header class="elt-dash-header">
+      <div class="elt-dash-header-left">
+        ${meta.length ? `<span class="elt-mini-label">${meta.join(" · ")}</span>` : ""}
+        <h1 class="elt-dash-title">${title}</h1>
+        ${subtitle ? `<p class="elt-dash-subtitle">${subtitle}</p>` : ""}
+      </div>
+      ${actions.length ? `<div class="elt-dash-header-actions">${actions.map((a) => `<button class="${a.primary ? "elt-btn-primary" : "elt-btn-ghost"}" ${a.attrs || ""}>${a.label}</button>`).join("")}</div>` : ""}
+    </header>
+  `;
+}
+
+function PremiumFilterBar(filters, activePeriod = "30 дней") {
+  if (!filters || !filters.length) return "";
+  const periods = ["Сегодня", "7 дней", "14 дней", "30 дней", "90 дней", "Весь период", "Произвольный период"];
+  const activeFilters = filters.filter((f) => !periods.includes(f));
+  return `
+    <section class="elt-filter-bar">
+      ${periods.filter((p) => filters.includes(p) || ["7 дней","14 дней","30 дней","90 дней","Весь период"].includes(p)).map((p) => `<button class="elt-pill ${p === activePeriod ? "active" : ""}" data-period="${p}">${p}</button>`).join("")}
+      ${activeFilters.length ? `<span class="elt-filter-sep"></span>${activeFilters.map((f) => `<button class="elt-pill">${f}</button>`).join("")}<button class="elt-pill elt-pill-apply">Применить</button><button class="elt-pill elt-pill-reset">Сбросить</button>` : ""}
+    </section>
+  `;
+}
+
+function PremiumKpiCard(card) {
+  const sc = pStatusClass(card.status || "neutral");
+  const iconSvg = card.iconName ? `<div class="elt-kpi-icon">${kpiIcon(card.iconName)}</div>` : "";
+  return `
+    <article class="elt-kpi ${sc} ${card.target ? "clickable" : ""}" ${card.target ? `data-open-list="${card.target}"` : ""}>
+      <div class="elt-kpi-top">
+        ${iconSvg}
+        <i class="elt-kpi-dot"></i>
+      </div>
+      <strong class="elt-kpi-value">${card.value}</strong>
+      <div class="elt-kpi-footer">
+        <span class="elt-kpi-label">${card.label}</span>
+        ${card.trend ? `<span class="elt-kpi-trend">${card.trend}</span>` : ""}
+      </div>
+      <p class="elt-kpi-caption">${card.caption || ""}</p>
+    </article>
+  `;
+}
+
+function premiumBarChart(items) {
+  const max = Math.max(...items.map((item) => Number(item.value ?? item[1]) || 1), 1);
+  return `
+    <div class="elt-bar-chart">
+      ${items.map((item) => {
+        const label = item.label ?? item[0];
+        const value = item.value ?? item[1];
+        const w = Math.max(6, Math.round((Number(value) / max) * 100));
+        const status = item.status || "neutral";
+        return `
+          <div class="elt-bar-row ${pStatusClass(status)}">
+            <span class="elt-bar-label">${label}</span>
+            <div class="elt-bar-track">
+              <div class="elt-bar-fill" style="width:${w}%"></div>
+            </div>
+            <strong class="elt-bar-value">${value}</strong>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function premiumFunnel(items) {
+  const first = Number(items[0]?.value ?? items[0]?.[1] ?? 1) || 1;
+  return `
+    <div class="elt-funnel">
+      ${items.map((item, idx) => {
+        const label = item.label ?? item[0];
+        const value = item.value ?? item[1];
+        const num = Number(value) || 0;
+        const pctVal = Math.max(6, Math.min(100, Math.round((num / first) * 100)));
+        const status = item.status || getConversionStatus(pctVal);
+        const isLast = idx === items.length - 1;
+        const prev = idx > 0 ? Number(items[idx-1]?.value ?? items[idx-1]?.[1] ?? 1) || 1 : first;
+        const stepPct = idx > 0 ? Math.min(100, Math.round((num / prev) * 100)) : 100;
+        const convLabel = idx > 0 ? (num <= prev ? `↓${stepPct}%` : `↑${stepPct}%`) : "";
+        return `
+          <button class="elt-funnel-step ${pStatusClass(status)} ${isLast ? "elt-funnel-last" : ""}" data-open-list="${item.target || `Кандидаты:${label}`}">
+            <div class="elt-funnel-row">
+              <span class="elt-funnel-label">${label}</span>
+              <b class="elt-funnel-count">${value}</b>
+              ${convLabel ? `<em class="elt-funnel-conv">${convLabel}</em>` : ""}
+            </div>
+            <div class="elt-funnel-bar">
+              <div class="elt-funnel-fill" style="width:${pctVal}%"></div>
+            </div>
+          </button>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function premiumTopFit(items) {
+  return `<div class="elt-top-fit-list">${items.map(([name, score]) => {
+    const initials = name.split(" ").slice(0,2).map((w) => w[0]).join("");
+    const status = getFitStatus(Number(score));
+    return `<div class="elt-top-fit-card">
+      <div class="elt-top-fit-avatar ${pStatusClass(status)}">${initials}</div>
+      <div class="elt-top-fit-info"><b>${name}</b><span class="elt-status-badge ${pStatusClass(status)}">${score}%</span></div>
+      <button class="elt-action-pill">Карточка</button>
+    </div>`;
+  }).join("")}</div>`;
+}
+
+function PremiumChartCard(chart) {
+  const isTopFit = chart.caption === "top fit";
+  const isFunnel = chart.type === "funnel";
+  const body = isTopFit ? premiumTopFit(chart.items || []) : isFunnel ? premiumFunnel(chart.items || []) : premiumBarChart(chart.items || []);
+  return `
+    <article class="elt-panel elt-chart-panel ${chart.wide ? "elt-wide" : ""}">
+      <div class="elt-panel-head">
+        <div class="elt-panel-head-left">
+          <h2>${chart.title}</h2>
+        </div>
+        <span class="elt-panel-caption">${chart.caption || ""}</span>
+      </div>
+      ${body}
+      ${chart.note ? `<div class="elt-ai-note"><span class="elt-ai-badge">AI</span><p>${chart.note}</p></div>` : ""}
+    </article>
+  `;
+}
+
+function PremiumHeatmap(map) {
+  return `
+    <article class="elt-panel elt-chart-panel elt-wide">
+      <div class="elt-panel-head">
+        <div class="elt-panel-head-left">
+          <h2>${map.title}</h2>
+        </div>
+        <span class="elt-panel-caption">${map.caption || "тепловая карта"}</span>
+      </div>
+      <div class="elt-heatmap-wrap">
+        <div class="elt-heatmap" style="--heat-cols:${map.columns.length}">
+          <div class="elt-heatmap-head">
+            <span></span>
+            ${map.columns.map((col) => `<b>${col}</b>`).join("")}
+          </div>
+          ${map.rows.map((row) => `
+            <div class="elt-heatmap-row">
+              <b class="elt-heatmap-row-label">${row.label}</b>
+              ${row.cells.map((cell) => `
+                <button class="elt-heat-cell ${pStatusClass(cell.status)}" data-open-list="${cell.target || map.target || "Кандидаты:тепловая карта"}"><strong>${cell.value}</strong><span>${cell.caption}</span></button>
+              `).join("")}
+            </div>
+          `).join("")}
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function PremiumAttentionPanel(items) {
+  if (!items.length) return "";
+  return `
+    <article class="elt-panel elt-attention">
+      <div class="elt-panel-head">
+        <div class="elt-panel-head-left">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.5L14.5 13H1.5L8 1.5z" stroke="#D9A441" stroke-width="1.4" stroke-linejoin="round"/><line x1="8" y1="6" x2="8" y2="9.5" stroke="#D9A441" stroke-width="1.4" stroke-linecap="round"/><circle cx="8" cy="11.5" r=".8" fill="#D9A441"/></svg>
+          <h2>Требует внимания</h2>
+        </div>
+        <span class="elt-panel-badge">${items.length} сигналов</span>
+      </div>
+      <div class="elt-attention-list">
+        ${items.map((item) => `
+          <button class="elt-attention-item ${pStatusClass(item.status)}" data-open-list="${item.target}">
+            <div class="elt-attention-icon">
+              ${item.status === "bad" ? `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.3"/><line x1="7" y1="4.5" x2="7" y2="7.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="7" cy="9.5" r=".7" fill="currentColor"/></svg>` : `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5L13 12H1L7 1.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><line x1="7" y1="5.5" x2="7" y2="8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>`}
+            </div>
+            <div class="elt-attention-text">
+              <b>${item.title}</b>
+              <span>${item.text}</span>
+            </div>
+            <svg class="elt-attention-arrow" width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 3l4 4-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        `).join("")}
+      </div>
+    </article>
+  `;
+}
+
+function PremiumDataTable(table) {
+  if (!table) return "";
+  return `
+    <article class="elt-panel elt-table-panel">
+      <div class="elt-panel-head">
+        <div class="elt-panel-head-left">
+          <h2>${table.title}</h2>
+        </div>
+        <span class="elt-panel-caption">${table.caption || ""}</span>
+      </div>
+      <div class="elt-table-wrap">
+        <table class="elt-table">
+          <thead><tr>${table.columns.map((col) => `<th>${col}</th>`).join("")}</tr></thead>
+          <tbody>
+            ${table.rows.map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${table.columns.length}" class="elt-table-empty">Нет данных</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </article>
+  `;
+}
+
 export function DashboardPageLayout(config) {
   return `
-    <section class="dashboardPage">
-      ${DashboardHeader(config)}
-      ${FilterBar(config.filters || [], config.period)}
-      ${KpiGrid(config.kpiCards || [])}
-      <section class="analyticsGrid">
-        ${(config.charts || []).map(ChartCard).join("")}
-        ${config.heatmap ? Heatmap(config.heatmap) : ""}
+    <section class="elt-dashboard">
+      ${PremiumHeader(config)}
+      ${PremiumFilterBar(config.filters || [], config.period)}
+      <section class="elt-kpi-grid">
+        ${(config.kpiCards || []).map(PremiumKpiCard).join("")}
       </section>
-      ${AttentionPanel(config.attentionItems || [])}
-      ${config.table ? DataTable(config.table) : EmptyState("Нет данных", "Для выбранного периода пока нет записей.")}
+      <section class="elt-analytics-grid">
+        ${(config.charts || []).map(PremiumChartCard).join("")}
+        ${config.heatmap ? PremiumHeatmap(config.heatmap) : ""}
+      </section>
+      ${PremiumAttentionPanel(config.attentionItems || [])}
+      ${config.table ? PremiumDataTable(config.table) : ""}
     </section>
   `;
 }
