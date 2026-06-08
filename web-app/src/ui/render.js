@@ -646,13 +646,12 @@ export function renderAssessments(state, professions) {
         </div>
       </div>
       <div class="elt-filter-bar">
-        <button class="elt-pill${!state.profileTypeFilter || state.profileTypeFilter === 'all' ? ' active' : ''}" data-profile-filter="all">Все</button>
-        <button class="elt-pill${state.profileTypeFilter === 'candidate' ? ' active' : ''}" data-profile-filter="candidate">Кандидат</button>
+        <button class="elt-pill${!state.profileTypeFilter || state.profileTypeFilter === 'candidate' ? ' active' : ''}" data-profile-filter="candidate">Кандидат</button>
         <button class="elt-pill${state.profileTypeFilter === 'employee' ? ' active' : ''}" data-profile-filter="employee">Сотрудник</button>
         <button class="elt-pill${state.profileTypeFilter === 'group' ? ' active' : ''}" data-profile-filter="group">Группа</button>
       </div>
       <div class="elt-profiles-grid">
-        ${professions.filter(p => !state.profileTypeFilter || state.profileTypeFilter === 'all' || p.type === state.profileTypeFilter).map((profession) => `
+        ${professions.filter(p => !state.profileTypeFilter || state.profileTypeFilter === 'candidate' ? p.type === 'candidate' : p.type === state.profileTypeFilter).map((profession) => `
           <article class="elt-profile-card">
             <div class="elt-profile-card-top">
               <div class="elt-profile-icon-wrap">${catIcon[profession.id] || defaultIcon}</div>
