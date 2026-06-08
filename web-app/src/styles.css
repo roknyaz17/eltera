@@ -4648,6 +4648,7 @@ small {
 .lightTheme .elt-heatmap-row-label { color: rgba(10,15,30,.7); }
 .lightTheme .elt-heat-cell strong { color: #0A0F1E; }
 .lightTheme .appContent { background: #F0F4FF; }
+.lightTheme.appShell { background: #F0F4FF; }
 .lightTheme .elt-9box-cell-count { color: #0A0F1E; }
 .lightTheme .elt-dash-title { color: #0A0F1E; }
 .lightTheme .elt-dash-subtitle { color: rgba(10,15,30,.5); }
@@ -5670,8 +5671,9 @@ small {
 /* ---- TARIFF GRID ---- */
 .elt-tariff-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(3, minmax(260px, 340px));
+  gap: 20px;
+  justify-content: center;
 }
 
 /* ---- REFERRAL ---- */
