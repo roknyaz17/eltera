@@ -450,7 +450,30 @@ function render() {
   if (state.view === "gratitude") content = renderGratitude(state);
   if (state.view === "settings") content = renderSettings(state);
 
-  app.innerHTML = renderAppShell(state, content || renderDashboard(state, dashboardFilters));
+  const newHTML = renderAppShell(state, content || renderDashboard(state, dashboardFilters));
+
+  // View Transitions API — плавная смена страниц
+  if (document.startViewTransition && state._prevView !== state.view) {
+    state._prevView = state.view;
+    document.startViewTransition(() => {
+      if (typeof morphdom !== 'undefined') {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = newHTML;
+        morphdom(app, tmp.firstChild || app, { childrenOnly: true });
+      } else {
+        app.innerHTML = newHTML;
+      }
+    });
+  } else {
+    state._prevView = state.view;
+    if (typeof morphdom !== 'undefined') {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = newHTML;
+      morphdom(app, tmp.firstChild || app, { childrenOnly: true });
+    } else {
+      app.innerHTML = newHTML;
+    }
+  }
 }
 
 function createLinkFromForm(form) {
