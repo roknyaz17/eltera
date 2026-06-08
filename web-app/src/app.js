@@ -1,7 +1,7 @@
 import { runPageAnimations } from "./ui/animations.js";
 import { initWizardController } from "./controllers/wizard.js";
 import { initFiltersController } from "./controllers/filters.js";
-import { initAuthController } from "./controllers/auth.js";
+import { initAuthController, getDevLibrary } from "./controllers/auth.js";
 import { initAiController } from "./controllers/ai.js";
 import {
   commonCompetencies,
@@ -705,6 +705,13 @@ document.addEventListener("click", (event) => {
   const openCompetency = event.target.closest("[data-open-competency]")?.dataset.openCompetency;
   if (openCompetency) {
     state.modal = { type: "competency", id: openCompetency };
+    render();
+  }
+
+  // Фильтр профилей по типу (Кандидат / Сотрудник / Группа)
+  const profileFilter = event.target.closest("[data-profile-filter]")?.dataset.profileFilter;
+  if (profileFilter) {
+    state.profileTypeFilter = profileFilter === 'all' ? null : profileFilter;
     render();
   }
 

@@ -646,19 +646,13 @@ export function renderAssessments(state, professions) {
         </div>
       </div>
       <div class="elt-filter-bar">
-        <button class="elt-pill active">Все</button>
-        <button class="elt-pill">Кандидат</button>
-        <button class="elt-pill">Сотрудник</button>
-        <button class="elt-pill">Группа</button>
-        <button class="elt-pill elt-pill-muted">Ассессмент · в разработке</button>
-        <span class="elt-filter-sep"></span>
-        <button class="elt-pill">Офисные</button>
-        <button class="elt-pill">IT</button>
-        <button class="elt-pill">Руководители</button>
-        <button class="elt-pill">Линейный персонал</button>
+        <button class="elt-pill${!state.profileTypeFilter || state.profileTypeFilter === 'all' ? ' active' : ''}" data-profile-filter="all">Все</button>
+        <button class="elt-pill${state.profileTypeFilter === 'candidate' ? ' active' : ''}" data-profile-filter="candidate">Кандидат</button>
+        <button class="elt-pill${state.profileTypeFilter === 'employee' ? ' active' : ''}" data-profile-filter="employee">Сотрудник</button>
+        <button class="elt-pill${state.profileTypeFilter === 'group' ? ' active' : ''}" data-profile-filter="group">Группа</button>
       </div>
       <div class="elt-profiles-grid">
-        ${professions.map((profession) => `
+        ${professions.filter(p => !state.profileTypeFilter || state.profileTypeFilter === 'all' || p.type === state.profileTypeFilter).map((profession) => `
           <article class="elt-profile-card">
             <div class="elt-profile-card-top">
               <div class="elt-profile-icon-wrap">${catIcon[profession.id] || defaultIcon}</div>

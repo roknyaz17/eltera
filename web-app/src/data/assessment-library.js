@@ -26,6 +26,7 @@ export const professions = [
     id: "recruiter",
     title: "Менеджер по подбору персонала",
     category: "HR",
+    type: "candidate",
     summary: "Массовый и точечный подбор, продажа вакансий, контроль выхода.",
     competencies: ["mass_recruiting", "target_search", "vacancy_sales", "exit_control"]
   },
@@ -33,6 +34,7 @@ export const professions = [
     id: "sales_manager",
     title: "Менеджер по продажам",
     category: "Коммерция",
+    type: "candidate",
     summary: "Выявление потребности, презентация, возражения, CRM и следующий шаг.",
     competencies: ["needs_discovery", "presentation", "objections", "crm"]
   },
@@ -40,6 +42,7 @@ export const professions = [
     id: "call_center",
     title: "Оператор call-центра",
     category: "Сервис",
+    type: "candidate",
     summary: "Речь, скрипт, скорость реакции, корректная фиксация данных.",
     competencies: ["speech", "script", "attention", "stress"]
   },
@@ -47,6 +50,7 @@ export const professions = [
     id: "coordinator",
     title: "Администратор / координатор",
     category: "Операции",
+    type: "employee",
     summary: "Расписание, документы, заявки, коммуникация между участниками.",
     competencies: ["process", "details", "prioritization", "reporting"]
   },
@@ -54,8 +58,25 @@ export const professions = [
     id: "warehouse",
     title: "Складской сотрудник",
     category: "Линейный персонал",
+    type: "employee",
     summary: "График, физическая готовность, безопасность, внимательность.",
     competencies: ["readiness", "safety", "quality", "pace"]
+  },
+  {
+    id: "team_assessment",
+    title: "Оценка команды / отдела",
+    category: "Групповая",
+    type: "group",
+    summary: "Командная динамика, распределение ролей, коммуникация и синергия внутри группы.",
+    competencies: ["responsibility", "communication", "discipline", "honesty"]
+  },
+  {
+    id: "onboarding_group",
+    title: "Групповая адаптация",
+    category: "Групповая",
+    type: "group",
+    summary: "Оценка новых сотрудников в первые 30–90 дней: вовлечённость, риски, потенциал.",
+    competencies: ["responsibility", "discipline", "communication", "honesty"]
   }
 ];
 
