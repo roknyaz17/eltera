@@ -96,7 +96,7 @@ export function renderAppShell(state, content) {
           `).join("")}
         </nav>
         <div class="elt-sidebar-footer">
-          <button class="elt-nav-item elt-tariff-nav" data-route="/app/tariffs">
+          <button class="elt-nav-item elt-tariff-nav" data-open-tariff-picker>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style="opacity:.5"><rect x="1" y="1" width="14" height="14" rx="3" stroke="currentColor" stroke-width="1.5"/><path d="M5 8h6M5 5h6M5 11h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
             <span class="elt-tariff-nav-label">Тариф</span>
             <span class="elt-tariff-nav-name">${state.company.tariff}</span>
