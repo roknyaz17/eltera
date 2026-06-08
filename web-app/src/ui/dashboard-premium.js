@@ -107,7 +107,7 @@ function barChart(items) {
 // ─── Radar Chart ─────────────────────────────────────────────────────────────
 
 function radarChart(competencies) {
-  const cx = 110, cy = 110, r = 80;
+  const cx = 90, cy = 90, r = 64;
   const n = competencies.length;
   const values = competencies.map((c) => c.value);
 
@@ -119,7 +119,7 @@ function radarChart(competencies) {
     }).join(" ");
   }
 
-  const rings = [20, 40, 60, 80, 100].map((p) => {
+  const rings = [25, 50, 75, 100].map((p) => {
     const rpts = Array.from({ length: n }, (_, i) => {
       const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
       const rv = r * (p / 100);
@@ -135,8 +135,8 @@ function radarChart(competencies) {
 
   const labels = competencies.map((c, i) => {
     const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
-    const lx = cx + (r + 22) * Math.cos(angle);
-    const ly = cy + (r + 22) * Math.sin(angle);
+    const lx = cx + (r + 18) * Math.cos(angle);
+    const ly = cy + (r + 18) * Math.sin(angle);
     const anchor = lx < cx - 5 ? "end" : lx > cx + 5 ? "start" : "middle";
     return `<text x="${lx}" y="${ly}" text-anchor="${anchor}" dominant-baseline="middle" class="elt-radar-label">${c.label}</text>`;
   }).join("");
@@ -144,15 +144,15 @@ function radarChart(competencies) {
   const dots = competencies.map((c, i) => {
     const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
     const rv = r * (c.value / 100);
-    return `<circle cx="${cx + rv * Math.cos(angle)}" cy="${cy + rv * Math.sin(angle)}" r="4" class="elt-radar-dot"/>`;
+    return `<circle cx="${cx + rv * Math.cos(angle)}" cy="${cy + rv * Math.sin(angle)}" r="3" class="elt-radar-dot"/>`;
   }).join("");
 
   return `
-    <svg viewBox="0 0 220 220" class="elt-radar-svg" aria-label="Radar компетенций">
+    <svg viewBox="0 0 180 180" class="elt-radar-svg" aria-label="Radar компетенций">
       <defs>
         <linearGradient id="radarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#1E5BFF" stop-opacity="0.35"/>
-          <stop offset="100%" stop-color="#00E5D4" stop-opacity="0.15"/>
+          <stop offset="0%" stop-color="#1E5BFF" stop-opacity="0.3"/>
+          <stop offset="100%" stop-color="#00E5D4" stop-opacity="0.12"/>
         </linearGradient>
       </defs>
       ${rings}
