@@ -5861,13 +5861,47 @@ small {
 .lightTheme .elt-comp-section-head b { color: #0A0F1E; }
 .lightTheme .elt-comp-section-head small { color: rgba(10,15,30,.45); }
 
-/* AI panel */
+/* AI panel — light theme */
+.lightTheme .elt-ai-panel-wrap {
+  background: linear-gradient(135deg, rgba(30,91,255,.3), rgba(0,229,212,.3), rgba(30,91,255,.3));
+  background-size: 300% 300%;
+}
+.lightTheme .elt-ai-panel {
+  background: #FFFFFF;
+}
+.lightTheme .elt-ai-title { color: #0A0F1E; }
 .lightTheme .elt-ai-badge {
   color: #0A7A6E;
   background: rgba(0,229,212,.09);
   border-color: rgba(0,229,212,.22);
 }
+.lightTheme .elt-ai-badge-soon {
+  color: #6B7A99;
+  background: rgba(107,122,153,.08);
+  border-color: rgba(107,122,153,.18);
+}
+.lightTheme .elt-ai-msg-bubble { color: #1A2540; }
+.lightTheme .elt-ai-msg-bot .elt-ai-msg-bubble {
+  background: rgba(30,91,255,.06);
+  border-color: rgba(30,91,255,.14);
+}
+.lightTheme .elt-ai-msg-user .elt-ai-msg-bubble {
+  background: rgba(0,229,212,.07);
+  border-color: rgba(0,229,212,.18);
+  color: #0A2040;
+}
+.lightTheme .elt-ai-input {
+  background: #F4F7FF;
+  border-color: rgba(30,91,255,.2);
+  color: #0A0F1E;
+}
+.lightTheme .elt-ai-input::placeholder { color: #8899BB; }
+.lightTheme .elt-ai-input:focus {
+  border-color: #1E5BFF;
+  box-shadow: 0 0 0 3px rgba(30,91,255,.08);
+}
 .lightTheme .elt-ai-suggest-label { color: rgba(10,15,30,.45); }
+.lightTheme .elt-ai-messages::-webkit-scrollbar-thumb { background: rgba(30,91,255,.2); }
 
 /* Import steps */
 .lightTheme .elt-import-num {
