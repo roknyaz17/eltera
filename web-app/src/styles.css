@@ -864,9 +864,10 @@ textarea:focus {
 }
 
 .appShell {
-  min-height: 100vh;
+  height: 100vh;
   display: grid;
   grid-template-columns: 200px minmax(0, 1fr);
+  overflow: hidden;
 }
 
 .sidebar {
@@ -981,6 +982,8 @@ textarea:focus {
 
 .appMain {
   min-width: 0;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .appTopbar {
