@@ -4100,21 +4100,24 @@ small {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(30,91,255,.1);
-  border: 1px solid rgba(30,91,255,.2);
+  background: rgba(0,229,212,.08);
+  border: 1px solid rgba(0,229,212,.25);
   border-radius: 8px;
   padding: 6px 10px;
 }
 
 .elt-tariff-label {
-  font-size: 9.5px;
-  color: rgba(230,242,255,.45);
+  font-size: 9px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: rgba(0,229,212,.5);
 }
 
 .elt-tariff-name {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  color: #1E5BFF;
+  color: #00E5D4;
+  text-shadow: 0 0 10px rgba(0,229,212,.35);
 }
 
 /* ── Topbar ──────────────────────────────────────────────────────────────── */
@@ -4320,9 +4323,9 @@ small {
 .lightTheme .elt-radar-label { fill: rgba(10,15,30,.55); }
 .lightTheme .elt-radar-ring { stroke: rgba(0,0,0,.07); }
 .lightTheme .elt-radar-axis { stroke: rgba(0,0,0,.08); }
-.lightTheme .elt-tariff-badge { background: rgba(30,91,255,.07); }
-.lightTheme .elt-tariff-name { color: #1E5BFF; }
-.lightTheme .elt-tariff-label { color: rgba(10,15,30,.4); }
+.lightTheme .elt-tariff-badge { background: rgba(0,229,212,.06); border-color: rgba(0,229,212,.2); }
+.lightTheme .elt-tariff-name { color: #00B8AA; text-shadow: none; }
+.lightTheme .elt-tariff-label { color: rgba(0,150,130,.5); }
 .lightTheme .elt-balance-pill { background: rgba(0,229,212,.06); border-color: rgba(0,229,212,.2); }
 .lightTheme .elt-btn-topbar { background: rgba(0,0,0,.04); border-color: rgba(0,0,0,.08); color: rgba(10,15,30,.7); }
 .lightTheme .elt-icon-btn { background: rgba(0,0,0,.04); border-color: rgba(0,0,0,.07); color: rgba(10,15,30,.5); }
