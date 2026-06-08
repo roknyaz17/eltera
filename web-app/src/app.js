@@ -1341,13 +1341,24 @@ document.addEventListener("click", (event) => {
   // Select scope (one/group/dept)
   const awScope = event.target.closest("[data-aw-scope]")?.dataset.awScope;
   if (awScope) {
-    state.modal = { ...state.modal, scope: awScope, selected: [], dept: null };
+    // Сбрасываем assessType при смене объекта оценки
+    state.modal = { ...state.modal, scope: awScope, selected: [], dept: null, assessType: null };
     render();
+    return;
+  }
+  // Coming-soon type — показываем toast, не переходим
+  const awTypeSoon = event.target.closest("[data-aw-type-soon]");
+  if (awTypeSoon) {
+    const t = document.createElement('div');
+    t.className = 'elt-toast elt-toast-info';
+    t.textContent = 'Этот тип оценки появится в следующем обновлении';
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
     return;
   }
   // Select assessment type
   const awType = event.target.closest("[data-aw-type]");
-  if (awType && !awType.hasAttribute("data-aw-locked")) {
+  if (awType && !awType.hasAttribute("data-aw-locked") && !awType.hasAttribute("data-aw-type-soon")) {
     state.modal = { ...state.modal, assessType: awType.dataset.awType };
     render();
     return;

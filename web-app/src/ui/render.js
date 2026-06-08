@@ -303,7 +303,7 @@ export function renderEmployees(state) {
     subtitle: "Что происходит с действующими сотрудниками и кто требует внимания.",
     meta: ["оценка", "риски", "развитие"],
     period: state.period,
-    actions: [{ label: "Оценить сотрудника", primary: true, attrs: "data-action=\"open-assess-wizard\"" }],
+    actions: [{ label: "Создать оценку", primary: true, attrs: "data-action=\"open-assess-wizard\"" }],
     filters: pageFilterConfig.employees,
     activeFiltersMap: (state.activeFilters && state.activeFilters.employees) || {},
     kpiCards: [
@@ -2087,13 +2087,13 @@ function renderAssessmentWizard(state) {
       }).join('<div class="aw-step-line"></div>')}
     </div>`;
 
-  // ── Step 1: Масштаб ─────────────────────────────────────────────────────────
+  // ── Step 1: Объект оценки ───────────────────────────────────────────────────
   let bodyHtml = "";
   if (step === 1) {
     const opts = [
-      { id: "one", icon: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M3 17c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`, title: "Один сотрудник", desc: "Выбрать конкретного человека из базы" },
-      { id: "group", icon: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="7" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><circle cx="14" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M1 17c0-2.761 2.686-5 6-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M19 17c0-2.761-2.686-5-6-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M7 12c0-2.761 2.686-5 6-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`, title: "Группа сотрудников", desc: "Выбрать несколько человек вручную" },
-      { id: "dept", icon: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="11" width="4" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="8" y="7" width="4" height="11" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="3" width="4" height="15" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>`, title: "Весь отдел", desc: "Оценить всех сотрудников отдела сразу" }
+      { id: "one", icon: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M3 17c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`, title: "Сотрудник", desc: "Индивидуальная оценка одного сотрудника. Подходит для Performance Review, 360, оценки компетенций и потенциала." },
+      { id: "group", icon: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="7" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><circle cx="14" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M1 17c0-2.761 2.686-5 6-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M19 17c0-2.761-2.686-5-6-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M7 12c0-2.761 2.686-5 6-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`, title: "Группа сотрудников", desc: "Ручной выбор нескольких сотрудников для сравнения, ассессмента, 9-Box или массового запуска индивидуальных оценок." },
+      { id: "dept", icon: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="11" width="4" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="8" y="7" width="4" height="11" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="3" width="4" height="15" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>`, title: "Отдел", desc: "Оценка всех сотрудников отдела из оргструктуры. Состав отдела определяется автоматически." }
     ];
     bodyHtml = `
       <div class="aw-scope-grid">
@@ -2114,45 +2114,61 @@ function renderAssessmentWizard(state) {
       </div>`;
   }
 
-  // ── Step 2: Тип оценки ──────────────────────────────────────────────────────
+  // ── Step 2: Тип оценки (динамически по объекту) ──────────────────────────────
   if (step === 2) {
-    const types = [
-      {
-        id: "standard",
-        icon: `<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="3" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.5"/><path d="M7 11h8M7 7.5h8M7 14.5h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`,
-        title: "Стандартная оценка",
-        desc: "Профиль компетенций, психологические и профессиональные блоки. Ссылка отправляется сотруднику.",
-        locked: false,
-        badge: null
-      },
-      {
-        id: "360",
-        icon: `<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.5"/><circle cx="11" cy="11" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M11 3v2M11 17v2M3 11h2M17 11h2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`,
-        title: "Оценка 360°",
-        desc: "Самооценка + руководитель + коллеги + подчинённые. Разные роли, разные веса.",
-        locked: false
-      },
-      {
-        id: "review",
-        icon: `<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M4 18V8l7-5 7 5v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="8" y="13" width="6" height="5" rx="1" stroke="currentColor" stroke-width="1.4"/><path d="M11 10v1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`,
-        title: "Performance Review",
-        desc: "Оценка результативности и потенциала. Формирует 9-box и кадровый резерв.",
-        locked: false
-      },
-    ];
+    // SVG иконки
+    const svgCompetency = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="3" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.5"/><path d="M7 11h8M7 7.5h8M7 14.5h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`;
+    const svg360 = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.5"/><circle cx="11" cy="11" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M11 3v2M11 17v2M3 11h2M17 11h2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`;
+    const svgReview = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M4 18V8l7-5 7 5v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="8" y="13" width="6" height="5" rx="1" stroke="currentColor" stroke-width="1.4"/><path d="M11 10v1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`;
+    const svgPotential = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 3l2 5h5l-4 3 1.5 5L11 13l-4.5 3L8 11 4 8h5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>`;
+    const svgNineBox = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="3" width="4.5" height="4.5" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="8.8" y="3" width="4.5" height="4.5" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="14.5" y="3" width="4.5" height="4.5" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="3" y="8.8" width="4.5" height="4.5" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="8.8" y="8.8" width="4.5" height="4.5" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="14.5" y="8.8" width="4.5" height="4.5" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="3" y="14.5" width="4.5" height="4.5" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="8.8" y="14.5" width="4.5" height="4.5" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="14.5" y="14.5" width="4.5" height="4.5" rx="1" stroke="currentColor" stroke-width="1.4"/></svg>`;
+    const svgRisk = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 3L20 19H2L11 3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M11 9v4M11 15.5v.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`;
+    const svgGroup = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="8" cy="8" r="3" stroke="currentColor" stroke-width="1.4"/><circle cx="15" cy="8" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M2 19c0-3.314 2.686-6 6-6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M20 19c0-3.314-2.686-6-6-6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`;
+    const svgRating = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M4 17V13M8 17V9M12 17V11M16 17V7M20 17V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+    const svgClimate = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="10" r="4" stroke="currentColor" stroke-width="1.4"/><path d="M11 3v1M11 16v1M4 10H3M19 10h-1M6.2 5.2l-.7-.7M16.5 15.5l-.7-.7M6.2 14.8l-.7.7M16.5 4.5l-.7.7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M5 19c0-1.5 2.7-3 6-3s6 1.5 6 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`;
+    const svgEngage = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 4C7.13 4 4 7.13 4 11s3.13 7 7 7 7-3.13 7-7-3.13-7-7-7z" stroke="currentColor" stroke-width="1.4"/><path d="M8 11.5c.5 1.5 5 1.5 6 0" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="8.5" cy="9" r=".8" fill="currentColor"/><circle cx="13.5" cy="9" r=".8" fill="currentColor"/></svg>`;
+
+    // Типы по объекту
+    const typesByScope = {
+      one: [
+        { id: "review",    icon: svgReview,     title: "Performance Review",   desc: "Оценка результативности и потенциала. Формирует 9-box и кадровый резерв.",  soon: false },
+        { id: "360",       icon: svg360,        title: "Оценка 360°",          desc: "Самооценка + руководитель + коллеги + подчинённые. Разные роли, разные веса.", soon: false },
+        { id: "standard",  icon: svgCompetency, title: "Оценка компетенций",   desc: "Профиль компетенций, психологические и профессиональные блоки.",            soon: false },
+        { id: "potential", icon: svgPotential,  title: "Оценка потенциала",    desc: "Анализ потенциала роста и карьерных перспектив сотрудника.",                 soon: true  },
+        { id: "ipr",       icon: svgCompetency, title: "ИПР / план развития",  desc: "Индивидуальный план развития на основе результатов оценки.",                 soon: true  },
+        { id: "risk",      icon: svgRisk,       title: "Оценка рисков",        desc: "Выявление рисков удержания, выгорания и снижения эффективности.",            soon: true  },
+      ],
+      group: [
+        { id: "review",    icon: svgReview,     title: "Групповой Performance Review", desc: "Оценка результативности группы. Отчёты по каждому + сравнение.",  soon: false },
+        { id: "standard",  icon: svgCompetency, title: "Оценка компетенций группы",    desc: "Массовый запуск оценки компетенций для выбранных сотрудников.",   soon: false },
+        { id: "360",       icon: svg360,        title: "Массовый запуск 360°",         desc: "Индивидуальные 360 для каждого. Отчёты формируются отдельно.",     soon: false },
+        { id: "ninebox",   icon: svgNineBox,    title: "9-Box группы",                 desc: "Расстановка группы по матрице Performance × Potential.",           soon: true  },
+        { id: "assessment",icon: svgGroup,      title: "Ассессмент группы",            desc: "Структурированная оценка для кадрового резерва.",                  soon: true  },
+        { id: "rating",    icon: svgRating,     title: "Сравнительный рейтинг",        desc: "Ранжирование сотрудников по компетенциям и результатам.",           soon: true  },
+      ],
+      dept: [
+        { id: "review",    icon: svgReview,     title: "Performance Review отдела",       desc: "Оценка результативности всех сотрудников отдела.",                    soon: false },
+        { id: "standard",  icon: svgCompetency, title: "Оценка эффективности отдела",     desc: "Массовый запуск оценки компетенций по всему отделу.",                 soon: false },
+        { id: "360",       icon: svg360,        title: "Массовый запуск 360° по отделу",  desc: "Индивидуальные 360 для каждого сотрудника отдела.",                   soon: false },
+        { id: "climate",   icon: svgClimate,    title: "Оценка климата",                  desc: "Анонимный опрос удовлетворённости и психологического климата.",        soon: true  },
+        { id: "engagement",icon: svgEngage,     title: "Оценка вовлечённости",            desc: "Измерение вовлечённости и мотивации сотрудников отдела.",              soon: true  },
+        { id: "ninebox",   icon: svgNineBox,    title: "9-Box отдела",                    desc: "Матрица Performance × Potential для всего отдела.",                   soon: true  },
+        { id: "risks",     icon: svgRisk,       title: "Риски отдела",                    desc: "Анализ рисков удержания, выгорания и текучести по отделу.",            soon: true  },
+      ]
+    };
+    const types = typesByScope[scope] || typesByScope.one;
     bodyHtml = `
       <div class="aw-type-grid">
         ${types.map(t => `
-          <button class="aw-type-card ${assessType === t.id ? "selected" : ""} ${t.locked ? "locked" : ""}" data-aw-type="${t.id}" ${t.locked ? "data-aw-locked" : ""}>
+          <button class="aw-type-card ${assessType === t.id ? "selected" : ""} ${t.soon ? "soon" : ""}" data-aw-type="${t.id}" ${t.soon ? "data-aw-type-soon" : ""}>
             <div class="aw-type-icon">${t.icon}</div>
             <div class="aw-type-text">
               <div class="aw-type-title-row">
                 <strong>${t.title}</strong>
-                ${t.badge ? `<span class="aw-badge-lock">${t.badge}</span>` : ""}
+                ${t.soon ? `<span class="aw-badge-soon">Скоро</span>` : ""}
               </div>
               <span>${t.desc}</span>
             </div>
-            ${t.locked ? `<div class="aw-lock-overlay"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="7" width="10" height="8" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span>Нужен тариф TalentStudio</span></div>` : ""}
             <div class="aw-scope-check"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7l4 4 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
           </button>
         `).join("")}
@@ -2326,7 +2342,7 @@ function renderAssessmentWizard(state) {
           <button class="elt-btn-ghost" data-aw-back="2">← Назад</button>
           <button class="blueButton" data-aw-send-360 ${!canSend?'disabled':''}>
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 6.5L11.5 1.5l-5 10-1-4.5-4.5-0.5z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Запустить 360°${selected.length>0?` (${selected.length})`:''}
+            ${scope==='dept'?'Запустить 360° по отделу':scope==='group'?'Запустить массовый 360°':'Запустить 360°'}${selected.length>0?` (${selected.length})`:''}
           </button>
         </div>`;
 
@@ -2355,7 +2371,7 @@ function renderAssessmentWizard(state) {
           <button class="elt-btn-ghost" data-aw-back="2">← Назад</button>
           <button class="blueButton" data-aw-send ${!canSend?'disabled':''}>
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 6.5L11.5 1.5l-5 10-1-4.5-4.5-0.5z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Отправить оценку${sendCount>1?` (${sendCount})`:''}
+            ${assessType==='review'?(scope==='one'?'Запустить ревью':(scope==='group'?'Запустить групповой ревью':'Запустить ревью отдела')):'Отправить оценку'}${sendCount>1?` (${sendCount})`:''}
           </button>
         </div>`;
     }
@@ -2367,7 +2383,7 @@ function renderAssessmentWizard(state) {
         <div class="modal-head">
           <div class="modal-head-left">
             <span class="modal-head-icon">📋</span>
-            <h2 class="modal-head-title">Создать оценку сотрудника</h2>
+            <h2 class="modal-head-title">${scope === 'group' ? 'Групповая оценка' : scope === 'dept' ? 'Оценка отдела' : scope === 'one' ? 'Оценка сотрудника' : 'Создать оценку'}</h2>
           </div>
           <button class="modal-close-btn" data-action="close-modal">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>

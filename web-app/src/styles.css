@@ -7105,3 +7105,43 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 }
 .aw-send-preview strong { color: #E6F2FF; }
 .aw-send-preview svg { color: #1E5BFF; flex-shrink: 0; }
+
+/* ── Wizard: плашка «Скоро» и soon-карточка ─────────────────────────────── */
+.aw-badge-soon {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(255, 185, 50, 0.12);
+  color: #FFB932;
+  border: 1px solid rgba(255, 185, 50, 0.25);
+  flex-shrink: 0;
+  margin-left: 6px;
+}
+.aw-type-card.soon {
+  opacity: 0.52;
+  cursor: default;
+}
+.aw-type-card.soon:hover {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+.aw-type-card.soon .aw-scope-check { display: none; }
+
+/* ── Toast: info ─────────────────────────────────────────────────────────── */
+.elt-toast-info {
+  background: #1E2A45;
+  color: #E6F2FF;
+  border: 1px solid rgba(30, 91, 255, 0.3);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
