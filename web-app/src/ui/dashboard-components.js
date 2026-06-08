@@ -75,8 +75,11 @@ export function DashboardPageLayout(config) {
 export function DashboardHeader({ title, subtitle, actions = [], meta = [] }) {
   return `
     <section class="pageHead dashboardHeader">
-      <div><span class="miniLabel">${meta.join(" · ") || "Analytics"}</span><h1>${title}</h1><p>${subtitle}</p></div>
-      <div class="headerActions">${actions.map((action) => `<button class="${action.primary ? "blueButton" : "button subtle"}" ${action.attrs || ""}>${action.label}</button>`).join("")}</div>
+      <div class="header-left">
+        ${meta.length ? `<span class="miniLabel">${meta.join(" · ")}</span>` : ""}
+        <h1>${title}</h1>
+      </div>
+      ${actions.length ? `<div class="headerActions">${actions.map((action) => `<button class="${action.primary ? "blueButton" : "button subtle"}" ${action.attrs || ""}>${action.label}</button>`).join("")}</div>` : ""}
     </section>
   `;
 }
@@ -87,10 +90,11 @@ export function PeriodFilter(activePeriod = "30 дней") {
 
 export function FilterBar(filters, activePeriod = "30 дней") {
   if (!filters.length) return "";
+  const activeFilters = filters.filter((f) => f !== "Период");
   return `
-    <section class="filterPanel">
+    <section class="filterPanel filterPanelRow">
       ${PeriodFilter(activePeriod)}
-      <div class="filterBar compact">${filters.filter((filter) => filter !== "Период").map((filter) => `<button>${filter}</button>`).join("")}<button>Применить</button><button>Сбросить фильтры</button></div>
+      ${activeFilters.length ? `<div class="filterDivider"></div><div class="filterBar compact">${activeFilters.map((f) => `<button>${f}</button>`).join("")}<button class="filter-apply">Применить</button><button class="filter-reset">Сбросить</button></div>` : ""}
     </section>
   `;
 }
@@ -106,13 +110,27 @@ export function KpiCard(card) {
 }
 
 export function ChartCard(chart) {
+  const isTopFit = chart.caption === "top fit";
+  const body = isTopFit ? topFitCards(chart.items || []) : chart.type === "funnel" ? funnel(chart.items || []) : barChart(chart.items || []);
   return `
     <article class="panel chartPanel ${chart.wide ? "widePanel" : ""}">
       <div class="panelHead"><h2>${chart.title}</h2><span>${chart.caption || ""}</span></div>
-      ${chart.type === "funnel" ? funnel(chart.items || []) : barChart(chart.items || [])}
+      ${body}
       ${chart.note ? `<p class="aiNoteInline">${chart.note}</p>` : ""}
     </article>
   `;
+}
+
+function topFitCards(items) {
+  return `<div class="top-fit-list">${items.map(([name, score]) => {
+    const initials = name.split(" ").slice(0,2).map((w) => w[0]).join("");
+    const status = getFitStatus(Number(score));
+    return `<div class="top-fit-card">
+      <div class="top-fit-avatar status-${status}">${initials}</div>
+      <div class="top-fit-info"><b>${name}</b><span class="statusBadge status-${status}">${score}%</span></div>
+      <button class="action-pill">Карточка</button>
+    </div>`;
+  }).join("")}</div>`;
 }
 
 export function Heatmap(map) {
@@ -163,7 +181,7 @@ export function TariffGuard(currentTariff, allowedTariffs, content, message) {
 }
 
 export function ActionButtonGroup(actions) {
-  return `<div class="rowActions">${actions.map((action) => `<button class="button subtle" ${action.attrs || ""}>${action.label}</button>`).join("")}</div>`;
+  return `<div class="rowActions row-actions-inline">${actions.map((action) => `<button class="action-pill" ${action.attrs || ""}>${action.label}</button>`).join("")}</div>`;
 }
 
 export function CandidatePreview(candidate) {
@@ -180,20 +198,31 @@ export function VacancyPreview(vacancy) {
 
 function barChart(items) {
   const max = Math.max(...items.map((item) => Number(item.value ?? item[1]) || 1), 1);
+  const total = items.reduce((sum, item) => sum + (Number(item.value ?? item[1]) || 0), 0);
   return `<div class="miniChart">${items.map((item) => {
     const label = item.label ?? item[0];
     const value = item.value ?? item[1];
-    const status = item.status || "neutral";
-    return `<div class="status-${status}"><span>${label}</span><i><b style="width:${Math.max(8, (Number(value) || 1) / max * 100)}%"></b></i><strong>${value}</strong></div>`;
+    const num = Number(value) || 1;
+    const pct = total > 0 ? Math.round(num / total * 100) : 0;
+    const status = item.status || getFitStatus(pct);
+    return `<div class="mini-bar-row status-${status}"><span class="mini-bar-label">${label}</span><i class="mini-bar-track"><b class="mini-bar-fill" style="width:${Math.max(6, num / max * 100)}%"></b></i><strong class="mini-bar-value">${value}</strong><em class="mini-bar-pct">${pct}%</em></div>`;
   }).join("")}</div>`;
 }
 
 function funnel(items) {
   const first = Number(items[0]?.value ?? items[0]?.[1] ?? 1) || 1;
-  return `<div class="funnelSteps">${items.map((item) => {
+  return `<div class="funnelSteps">${items.map((item, i) => {
     const label = item.label ?? item[0];
     const value = item.value ?? item[1];
-    const status = item.status || getConversionStatus((Number(value) / first) * 100);
-    return `<button class="funnelStep status-${status}" data-open-list="${item.target || `Кандидаты:${label}`}"><div><span>${label}</span><b>${value}</b></div><i><em style="width:${Math.max(8, Math.min(100, (Number(value) / first) * 100))}%"></em></i></button>`;
+    const num = Number(value) || 0;
+    const prev = i > 0 ? Number(items[i-1]?.value ?? items[i-1]?.[1] ?? 1) || 1 : first;
+    const convPct = Math.round((num / first) * 100);
+    const stepPct = i > 0 ? Math.min(100, Math.round((num / prev) * 100)) : 100;
+    const status = item.status || getConversionStatus(convPct);
+    const convLabel = i > 0 ? (num <= prev ? `↓${stepPct}%` : `↑${stepPct}%`) : "";
+    return `<button class="funnelStep status-${status}" data-open-list="${item.target || `Кандидаты:${label}`}">
+      <div class="funnel-row"><span class="funnel-label">${label}</span><b class="funnel-val">${value}</b>${i > 0 ? `<em class="funnel-conv">${convLabel}</em>` : ""}</div>
+      <i class="funnel-bar"><em style="width:${Math.max(6, Math.min(100, convPct))}%"></em></i>
+    </button>`;
   }).join("")}</div>`;
 }

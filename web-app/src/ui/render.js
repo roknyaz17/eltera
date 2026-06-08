@@ -190,7 +190,7 @@ export function renderCandidates(state) {
   const risky = candidates.filter((item) => item.result.percent < 55);
   return DashboardPageLayout({
     title: "Кандидаты",
-    subtitle: "Аналитика по кандидатам, вакансиям, источникам и этапам подбора.",
+    subtitle: "",
     meta: ["точечный подбор", "офис", "IT"],
     period: state.period,
     actions: [
