@@ -3942,16 +3942,19 @@ small {
 .elt-sidebar::-webkit-scrollbar { display: none; }
 
 .elt-sidebar-logo {
-  padding: 16px 16px 14px;
+  padding: 20px 12px 16px;
   border-bottom: 1px solid rgba(30,91,255,.15);
   flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .elt-logo-img {
-  height: 28px;
+  height: 44px;
   width: auto;
   display: block;
-  max-width: 140px;
+  max-width: 160px;
 }
 
 .elt-sidenav {
