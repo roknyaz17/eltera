@@ -4489,11 +4489,11 @@ small {
 .elt-search-wrap:focus-within {
   width: 340px;
   border-color: transparent;
-  background-image: linear-gradient(rgba(17,26,51,1), rgba(17,26,51,1)),
-                    linear-gradient(90deg, #1E5BFF, #00E5D4);
-  background-origin: border-box;
-  background-clip: padding-box, border-box;
-  border: 1.5px solid transparent;
+  background-image: none;
+  background-origin: initial;
+  background-clip: initial;
+  border: 1.5px solid #1E5BFF;
+  box-shadow: 0 0 0 1px #00E5D4, 0 0 12px rgba(30,91,255,0.18);
 }
 
 .elt-search-icon { color: rgba(230,242,255,.3); flex-shrink: 0; }
