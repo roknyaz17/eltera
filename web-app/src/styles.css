@@ -4493,7 +4493,7 @@ small {
   background-origin: initial;
   background-clip: initial;
   border: 1.5px solid #1E5BFF;
-  box-shadow: 0 0 0 1px #00E5D4, 0 0 12px rgba(30,91,255,0.18);
+  box-shadow: 0 0 14px rgba(30,91,255,0.22);
 }
 
 .elt-search-icon { color: rgba(230,242,255,.3); flex-shrink: 0; }
@@ -4656,13 +4656,12 @@ small {
   background-image: none;
 }
 .lightTheme .elt-search-wrap:focus-within {
-  border-color: transparent;
-  background-image: linear-gradient(#ffffff, #ffffff),
-                    linear-gradient(90deg, #1E5BFF, #00E5D4);
-  background-origin: border-box;
-  background-clip: padding-box, border-box;
-  border: 1.5px solid transparent;
+  border: 1.5px solid #1E5BFF;
+  background-image: none;
+  background-clip: initial;
+  background-origin: initial;
   background-color: #fff;
+  box-shadow: 0 0 14px rgba(30,91,255,0.18);
 }
 .lightTheme .elt-search { color: #0A0F1E; }
 .lightTheme .elt-search::placeholder { color: rgba(10,15,30,.35); }
