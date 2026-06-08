@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>ELTERA Logo Comparison</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #0A0F1E; color: #E6F2FF; }
+  .section { padding: 40px 48px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .label { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.3); margin-bottom: 24px; }
+  .row { display: flex; align-items: center; gap: 56px; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; gap: 8px; }
+  .col-label { font-size: 11px; color: rgba(255,255,255,0.3); }
+  .divider { width: 1px; height: 60px; background: rgba(255,255,255,0.1); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .badge-old { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.4); }
+  .badge-new { background: rgba(0,229,212,0.1); color: #00E5D4; }
+  .light { background: #F0F4FA; }
+  .light .label { color: rgba(11,23,48,0.4); }
+  .light .col-label { color: rgba(11,23,48,0.4); }
+  .light .divider { background: rgba(11,23,48,0.1); }
+  .specs {
+    margin-top: 32px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px;
+    padding: 20px 24px;
+    max-width: 560px;
+    font-size: 12px;
+  }
+  .specs-title { color: #00E5D4; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 14px; }
+  .spec-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.04); color: rgba(255,255,255,0.55); }
+  .spec-row:last-child { border-bottom: none; }
+  .spec-val { color: #E6F2FF; font-weight: 600; }
+  .spec-formula { color: #1E5BFF; font-size: 10px; margin-left: 6px; }
+</style>
+</head>
+<body>
+
+<!-- ТЁМНЫЙ ФОН: сравнение -->
+<div class="section">
+  <div class="label">Тёмный фон — сравнение</div>
+  <div class="row">
+    <div class="col">
+      <span class="badge badge-old">Текущий</span>
+      <img src="/eltera-dark.svg" width="220" height="58" style="display:block"/>
+    </div>
+    <div class="divider"></div>
+    <div class="col">
+      <span class="badge badge-new">Золотое сечение φ = 1.618</span>
+      <img src="/eltera-golden-dark-bg.svg" width="220" height="58" style="display:block; border-radius:6px"/>
+    </div>
+  </div>
+
+  <div class="specs">
+    <div class="specs-title">Пропорции знака по φ</div>
+    <div class="spec-row">
+      <span>Центральная полоса (m)</span>
+      <span class="spec-val">16.7 px <span class="spec-formula">= базовый модуль</span></span>
+    </div>
+    <div class="spec-row">
+      <span>Крайние полосы</span>
+      <span class="spec-val">10.3 px <span class="spec-formula">= m ÷ φ</span></span>
+    </div>
+    <div class="spec-row">
+      <span>Отступы между полосами</span>
+      <span class="spec-val">6.4 px <span class="spec-formula">= m ÷ φ²</span></span>
+    </div>
+    <div class="spec-row">
+      <span>Ширина полос</span>
+      <span class="spec-val">80.9 px <span class="spec-formula">= высота × φ</span></span>
+    </div>
+    <div class="spec-row">
+      <span>Отступ знак → текст</span>
+      <span class="spec-val">30.9 px <span class="spec-formula">= ширина ÷ φ²</span></span>
+    </div>
+    <div class="spec-row">
+      <span>Соотношение центр / край</span>
+      <span class="spec-val">1.618 : 1 <span class="spec-formula">= φ</span></span>
+    </div>
+  </div>
+</div>
+
+<!-- СВЕТЛЫЙ ФОН: сравнение -->
+<div class="section light">
+  <div class="label">Светлый фон — сравнение</div>
+  <div class="row">
+    <div class="col">
+      <span class="badge badge-old">Текущий</span>
+      <img src="/eltera-light.svg" width="220" height="58" style="display:block"/>
+    </div>
+    <div class="divider"></div>
+    <div class="col">
+      <span class="badge badge-new">Золотое сечение φ = 1.618</span>
+      <img src="/eltera-golden-light.svg" width="220" height="58" style="display:block"/>
+    </div>
+  </div>
+</div>
+
+<!-- МАСШТАБЫ -->
+<div class="section">
+  <div class="label">Масштабы — Golden Ratio версия</div>
+  <div class="row" style="align-items:flex-end; gap:32px">
+    <div class="col">
+      <img src="/eltera-golden-dark-bg.svg" width="280" height="75" style="display:block; border-radius:6px"/>
+      <div class="col-label">280 × 75</div>
+    </div>
+    <div class="col">
+      <img src="/eltera-golden-dark-bg.svg" width="200" height="54" style="display:block; border-radius:6px"/>
+      <div class="col-label">200 × 54</div>
+    </div>
+    <div class="col">
+      <img src="/eltera-golden-dark-bg.svg" width="140" height="37" style="display:block; border-radius:6px"/>
+      <div class="col-label">140 × 37</div>
+    </div>
+    <div class="col">
+      <img src="/eltera-golden-dark-bg.svg" width="100" height="27" style="display:block; border-radius:6px"/>
+      <div class="col-label">100 × 27</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

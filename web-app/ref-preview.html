@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>ELTERA Logo — Reference Style Preview</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #fff; color: #0D1B3E; }
+
+  .section { padding: 48px 56px; border-bottom: 1px solid #eee; }
+  .label { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #aaa; margin-bottom: 32px; }
+  .row { display: flex; align-items: center; gap: 64px; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; gap: 10px; }
+  .col-label { font-size: 11px; color: #bbb; }
+  .divider { width: 1px; height: 80px; background: #eee; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+  .badge-ref { background: #f0f4fa; color: #6688aa; }
+  .badge-new { background: #e6f9f7; color: #00897B; }
+
+  .dark-bg { background: #0A0F1E; }
+  .dark-bg .label { color: rgba(255,255,255,0.3); }
+  .dark-bg .col-label { color: rgba(255,255,255,0.3); }
+  .dark-bg .divider { background: rgba(255,255,255,0.1); }
+
+  .sizes { display: flex; align-items: flex-end; gap: 32px; flex-wrap: wrap; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<!-- СВЕТЛЫЙ ФОН -->
+<div class="section">
+  <div class="label">Светлый фон</div>
+  <div class="row">
+    <div class="col">
+      <span class="badge badge-ref">Референс</span>
+      <img src="/upload/image.png" width="260" height="87" style="object-fit:contain; object-position:left center; display:block"/>
+    </div>
+    <div class="divider"></div>
+    <div class="col">
+      <span class="badge badge-new">SVG версия</span>
+      <img src="/eltera-ref-light.svg" width="260" height="87" style="display:block"/>
+    </div>
+  </div>
+</div>
+
+<!-- ТЁМНЫЙ ФОН -->
+<div class="section dark-bg">
+  <div class="label">Тёмный фон</div>
+  <div class="row">
+    <div class="col">
+      <span class="badge badge-new">SVG тёмная версия</span>
+      <img src="/eltera-ref-dark.svg" width="260" height="87" style="display:block"/>
+    </div>
+  </div>
+</div>
+
+<!-- МАСШТАБЫ -->
+<div class="section">
+  <div class="label">Масштабы — светлая версия</div>
+  <div class="sizes">
+    <div class="col">
+      <img src="/eltera-ref-light.svg" width="300" height="100" style="display:block"/>
+      <div class="col-label">300 × 100</div>
+    </div>
+    <div class="col">
+      <img src="/eltera-ref-light.svg" width="220" height="73" style="display:block"/>
+      <div class="col-label">220 × 73</div>
+    </div>
+    <div class="col">
+      <img src="/eltera-ref-light.svg" width="160" height="53" style="display:block"/>
+      <div class="col-label">160 × 53</div>
+    </div>
+    <div class="col">
+      <img src="/eltera-ref-light.svg" width="110" height="37" style="display:block"/>
+      <div class="col-label">110 × 37</div>
+    </div>
+  </div>
+</div>
+
+<!-- МАСШТАБЫ ТЁМНЫЕ -->
+<div class="section dark-bg">
+  <div class="label">Масштабы — тёмная версия</div>
+  <div class="sizes">
+    <div class="col">
+      <img src="/eltera-ref-dark.svg" width="300" height="100" style="display:block"/>
+      <div class="col-label" style="color:rgba(255,255,255,0.3)">300 × 100</div>
+    </div>
+    <div class="col">
+      <img src="/eltera-ref-dark.svg" width="220" height="73" style="display:block"/>
+      <div class="col-label" style="color:rgba(255,255,255,0.3)">220 × 73</div>
+    </div>
+    <div class="col">
+      <img src="/eltera-ref-dark.svg" width="160" height="53" style="display:block"/>
+      <div class="col-label" style="color:rgba(255,255,255,0.3)">160 × 53</div>
+    </div>
+    <div class="col">
+      <img src="/eltera-ref-dark.svg" width="110" height="37" style="display:block"/>
+      <div class="col-label" style="color:rgba(255,255,255,0.3)">110 × 37</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

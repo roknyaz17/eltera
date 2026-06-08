@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Logo Alignment Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600&display=swap" rel="stylesheet">
+<style>
+  body { background: #0A0F1E; font-family: Manrope, sans-serif; color: #E6F2FF; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 48px; }
+  .row { display: flex; gap: 60px; align-items: flex-start; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .label { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(230,242,255,0.4); }
+  .badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; }
+  .badge.before { background: rgba(255,100,100,0.15); color: #ff8080; border: 1px solid rgba(255,100,100,0.2); }
+  .badge.after { background: rgba(0,229,212,0.12); color: #00E5D4; border: 1px solid rgba(0,229,212,0.2); }
+  .logo-box { background: #111A33; border-radius: 12px; padding: 24px 32px; border: 1px solid rgba(255,255,255,0.06); }
+  img { display: block; height: 40px; width: auto; }
+  .divider { width: 1px; height: 120px; background: rgba(255,255,255,0.08); align-self: center; }
+  h2 { font-size: 14px; font-weight: 700; color: rgba(230,242,255,0.5); margin: 0; }
+</style>
+</head>
+<body>
+  <h2>Сравнение выравнивания логотипа</h2>
+  <div class="row">
+    <div class="col">
+      <span class="label">До</span>
+      <div class="logo-box">
+        <img src="/assets/eltera_logo_horizontal_on_dark.svg?v=4" alt="before">
+      </div>
+      <span class="badge before">Буквы смещены вниз</span>
+    </div>
+    <div class="divider"></div>
+    <div class="col">
+      <span class="label">После</span>
+      <div class="logo-box">
+        <img src="/eltera-aligned-dark.svg" alt="after">
+      </div>
+      <span class="badge after">Центр букв = центр знака</span>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col">
+      <span class="label">До (светлый)</span>
+      <div class="logo-box" style="background:#fff;">
+        <img src="/assets/eltera_logo_horizontal_on_light.svg?v=4" alt="before light">
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="col">
+      <span class="label">После (светлый)</span>
+      <div class="logo-box" style="background:#fff;">
+        <img src="/eltera-aligned-light.svg" alt="after light">
+      </div>
+    </div>
+  </div>
+</body>
+</html>

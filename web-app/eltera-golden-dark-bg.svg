@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 374 100" fill="none">
+  <defs>
+    <linearGradient id="dbgtF" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C8E8FF" stop-opacity="0.38"/>
+      <stop offset="100%" stop-color="#5BBFFF" stop-opacity="0.30"/>
+    </linearGradient>
+    <linearGradient id="dbgtS" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.68"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.00"/>
+    </linearGradient>
+    <linearGradient id="dbgtB" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.52"/>
+      <stop offset="100%" stop-color="#60AAEE" stop-opacity="0.22"/>
+    </linearGradient>
+    <linearGradient id="dbgmF" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1F7BFF"/>
+      <stop offset="45%" stop-color="#22D4FF"/>
+      <stop offset="100%" stop-color="#63F3DA"/>
+    </linearGradient>
+    <linearGradient id="dbgmS" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.52"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.00"/>
+    </linearGradient>
+    <linearGradient id="dbgmB" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.65"/>
+      <stop offset="100%" stop-color="#1F7BFF" stop-opacity="0.30"/>
+    </linearGradient>
+    <linearGradient id="dbgbF" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7ECFFF" stop-opacity="0.26"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.12"/>
+    </linearGradient>
+    <linearGradient id="dbgbS" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.42"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.00"/>
+    </linearGradient>
+    <clipPath id="dbgcT"><rect x="9.0" y="25.0" width="80.9" height="10.3" rx="5.2"/></clipPath>
+    <clipPath id="dbgcM"><rect x="9.0" y="41.7" width="80.9" height="16.7" rx="8.3"/></clipPath>
+    <clipPath id="dbgcB"><rect x="9.0" y="64.7" width="80.9" height="10.3" rx="5.2"/></clipPath>
+  </defs>
+  <rect width="374" height="100" fill="#0A0F1E"/>
+  <!-- Верхняя полоса h=10.3px = m÷φ -->
+  <rect x="9.0" y="25.0" width="80.9" height="10.3" rx="5.2" fill="url(#dbgtF)"/>
+  <rect x="9.0" y="25.0" width="80.9" height="10.3" rx="5.2" fill="none" stroke="url(#dbgtB)" stroke-width="0.7"/>
+  <rect x="11.0" y="26.0" width="76.9" height="5.2" rx="2.6" fill="url(#dbgtS)" clip-path="url(#dbgcT)"/>
+  <!-- Центральная полоса h=16.7px = m (базовый модуль) -->
+  <rect x="9.0" y="41.7" width="80.9" height="16.7" rx="8.3" fill="url(#dbgmF)"/>
+  <rect x="9.0" y="41.7" width="80.9" height="16.7" rx="8.3" fill="none" stroke="url(#dbgmB)" stroke-width="0.7"/>
+  <rect x="11.0" y="42.7" width="76.9" height="7.5" rx="3.8" fill="url(#dbgmS)" clip-path="url(#dbgcM)"/>
+  <!-- Нижняя полоса h=10.3px = m÷φ -->
+  <rect x="9.0" y="64.7" width="80.9" height="10.3" rx="5.2" fill="url(#dbgbF)"/>
+  <rect x="9.0" y="64.7" width="80.9" height="10.3" rx="5.2" fill="none" stroke="url(#dbgtB)" stroke-width="0.7"/>
+  <rect x="11.0" y="65.7" width="76.9" height="5.2" rx="2.6" fill="url(#dbgbS)" clip-path="url(#dbgcB)"/>
+  <!-- Буквы Manrope SemiBold -->
+  <path d="M125.6645099861006 75.0V25.0H156.22006554165614V27.916666666666664H128.58117665276725V48.541666666666664H152.05339887498948V51.45833333333333H128.58117665276725V72.08333333333333H156.22006554165614V75.0Z M166.11589887498945 75.0V25.0H169.03256554165614V72.08333333333333H193.89367665276725V75.0Z M214.83117665276725 75.0V27.916666666666664H196.49784331943394V25.0H236.08117665276725V27.916666666666664H217.74784331943394V75.0Z M242.5047877638784 75.0V25.0H273.06034331943397V27.916666666666664H245.42145443054505V48.541666666666664H268.8936766527673V51.45833333333333H245.42145443054505V72.08333333333333H273.06034331943397V75.0Z M282.26173220832277 75.0V25.0H300.6645099861006Q301.3936766527672 25.0 302.15756554165614 25.052083333333332Q302.921454430545 25.104166666666664 303.858954430545 25.27777777777778Q307.47006554165614 25.83333333333333 310.12631554165614 27.899305555555554Q312.78256554165614 29.96527777777778 314.22353776387837 33.107638888888886Q315.6645099861006 36.25 315.6645099861006 40.0Q315.6645099861006 45.34722222222222 312.7478433194339 49.375Q309.8311766527672 53.40277777777778 304.8311766527672 54.513888888888886L304.2756210972117 55.0H285.17839887498945V75.0ZM313.5811766527672 75.0 303.72006554165614 54.65277777777778 306.22006554165614 52.77777777777778 317.05339887498945 75.0ZM285.17839887498945 52.08333333333333H300.6645099861006Q301.25478776387837 52.08333333333333 302.0707599861006 52.013888888888886Q302.88673220832277 51.94444444444444 303.72006554165614 51.80555555555556Q306.6020099861006 51.25 308.56381554165614 49.513888888888886Q310.5256210972117 47.77777777777777 311.53256554165614 45.295138888888886Q312.5395099861006 42.8125 312.5395099861006 40.0Q312.5395099861006 37.1875 311.53256554165614 34.704861111111114Q310.5256210972117 32.22222222222222 308.56381554165614 30.48611111111111Q306.6020099861006 28.75 303.72006554165614 28.194444444444443Q302.88673220832277 28.02083333333333 302.0707599861006 27.968749999999996Q301.25478776387837 27.916666666666664 300.6645099861006 27.916666666666664H285.17839887498945Z M322.08812109721174 75.0 340.28256554165614 25.0H343.40756554165614L361.6020099861006 75.0H358.4770099861006L340.7686766527673 26.319444444444443H342.8520099861006L325.21312109721174 75.0 Z" fill="#FFFFFF" fill-rule="nonzero"/>
+</svg>

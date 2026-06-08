@@ -336,6 +336,65 @@ function deptRow(dept) {
   `;
 }
 
+// ─── AI Assistant Panel ──────────────────────────────────────────────────────
+
+function aiAssistantPanel(state) {
+  const messages = (state.aiChat || []);
+  const riskEmps = state.employees.filter(e => e.fit < 70 || e.turnoverRisk !== "низкий");
+  const candidates = state.sessions.filter(s => s.person.assessmentType === "Кандидат");
+  const fitCands = candidates.filter(s => s.result.percent >= 68);
+
+  // Welcome message if empty
+  const welcomeMsg = messages.length === 0 ? `
+    <div class="elt-ai-msg elt-ai-msg-bot">
+      <div class="elt-ai-msg-avatar">✦</div>
+      <div class="elt-ai-msg-bubble">
+        Привет! Я AI-ассистент Eltera. Вижу данные вашей компании: <b>${state.employees.length} сотрудников</b>, <b>${candidates.length} кандидатов</b>, <b>${riskEmps.length} в зоне риска</b>.<br><br>
+        Задайте любой вопрос по HR-аналитике — дам рекомендации на основе ваших данных.
+      </div>
+    </div>
+  ` : messages.map(m => `
+    <div class="elt-ai-msg ${m.role === 'user' ? 'elt-ai-msg-user' : 'elt-ai-msg-bot'}">
+      <div class="elt-ai-msg-avatar">${m.role === 'user' ? 'Вы' : '✦'}</div>
+      <div class="elt-ai-msg-bubble">${m.text}</div>
+    </div>
+  `).join("");
+
+  const quickQuestions = [
+    "Кто в зоне риска?",
+    "Топ кандидаты",
+    "Риски адаптации",
+    "Рекомендации по найму"
+  ];
+
+  return `
+    <div class="elt-ai-panel-wrap" id="elt-ai-panel-wrap">
+      <div class="elt-ai-panel">
+        <div class="elt-ai-header">
+          <div class="elt-ai-header-left">
+            <div class="elt-ai-icon">✦</div>
+            <span class="elt-ai-title">AI-ассистент</span>
+          </div>
+          <span class="elt-ai-badge-soon">DeepSeek · скоро</span>
+        </div>
+        <div class="elt-ai-divider"></div>
+        <div class="elt-ai-messages" id="elt-ai-messages">
+          ${welcomeMsg}
+        </div>
+        <div class="elt-ai-quick">
+          ${quickQuestions.map(q => `<button class="elt-ai-quick-btn" data-ai-quick="${q}">${q}</button>`).join("")}
+        </div>
+        <div class="elt-ai-input-row">
+          <textarea class="elt-ai-input" id="elt-ai-input" placeholder="Задайте вопрос по HR-аналитике..." rows="1"></textarea>
+          <button class="elt-ai-send-btn" id="elt-ai-send" aria-label="Отправить">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 9l14-7-5 7 5 7-14-7z" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 // ─── Main Dashboard Renderer ──────────────────────────────────────────────────
 
 export function renderPremiumDashboard(state, dashboardData, candidateHeatmapFn, attentionItemsFn, peopleTableConfigFn, aiAccessFn, statusForLabelFn, pageFilterConfig) {
@@ -538,6 +597,13 @@ export function renderPremiumDashboard(state, dashboardData, candidateHeatmapFn,
             <span class="elt-panel-caption">сотрудники</span>
           </div>
           ${nineBoxMatrix(employees)}
+        </article>
+
+        <!-- AI-ассистент под 9-Box -->
+        <article class="elt-panel elt-chart-panel">
+          <div style="padding: 0;">
+            ${aiAssistantPanel(state)}
+          </div>
         </article>
 
         <!-- Вакансии: fit по профилю -->

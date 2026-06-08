@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 383 120" fill="none">
+  <defs>
+
+    <!-- ═══ ВЕРХНЯЯ ПОЛОСА: стеклянно-голубая ═══ -->
+    <linearGradient id="ltop-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#B8DCFF" stop-opacity="0.55"/>
+      <stop offset="40%"  stop-color="#7EC8FF" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#4AAEFF" stop-opacity="0.35"/>
+    </linearGradient>
+    <linearGradient id="ltop-shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#FFFFFF" stop-opacity="0.90"/>
+      <stop offset="60%"  stop-color="#FFFFFF" stop-opacity="0.30"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.00"/>
+    </linearGradient>
+    <linearGradient id="ltop-border" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#FFFFFF" stop-opacity="0.80"/>
+      <stop offset="100%" stop-color="#5AAEFF" stop-opacity="0.30"/>
+    </linearGradient>
+    <!-- Внутренняя тень снизу -->
+    <linearGradient id="ltop-inner" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#FFFFFF" stop-opacity="0.00"/>
+      <stop offset="100%" stop-color="#1A5FBF" stop-opacity="0.20"/>
+    </linearGradient>
+
+    <!-- ═══ ЦЕНТРАЛЬНАЯ ПОЛОСА: ярко-голубая акцентная ═══ -->
+    <linearGradient id="lmid-body" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#1060E8"/>
+      <stop offset="30%"  stop-color="#1E8FFF"/>
+      <stop offset="65%"  stop-color="#00D4FF"/>
+      <stop offset="100%" stop-color="#00F0E0"/>
+    </linearGradient>
+    <linearGradient id="lmid-shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#FFFFFF" stop-opacity="0.75"/>
+      <stop offset="45%"  stop-color="#FFFFFF" stop-opacity="0.20"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.00"/>
+    </linearGradient>
+    <linearGradient id="lmid-border" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#FFFFFF" stop-opacity="0.90"/>
+      <stop offset="100%" stop-color="#0050CC" stop-opacity="0.40"/>
+    </linearGradient>
+    <!-- Синий блик слева (как в референсе) -->
+    <radialGradient id="lmid-left-glow" cx="0.12" cy="0.5" r="0.35">
+      <stop offset="0%"   stop-color="#FFFFFF" stop-opacity="0.60"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.00"/>
+    </radialGradient>
+    <!-- Внутренняя тень снизу -->
+    <linearGradient id="lmid-inner" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#FFFFFF" stop-opacity="0.00"/>
+      <stop offset="100%" stop-color="#003399" stop-opacity="0.25"/>
+    </linearGradient>
+
+    <!-- ═══ НИЖНЯЯ ПОЛОСА: стеклянно-голубая (темнее верхней) ═══ -->
+    <linearGradient id="lbot-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#A0CCFF" stop-opacity="0.50"/>
+      <stop offset="50%"  stop-color="#6ABAFF" stop-opacity="0.40"/>
+      <stop offset="100%" stop-color="#3A9AEE" stop-opacity="0.32"/>
+    </linearGradient>
+    <linearGradient id="lbot-shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#FFFFFF" stop-opacity="0.80"/>
+      <stop offset="55%"  stop-color="#FFFFFF" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.00"/>
+    </linearGradient>
+    <linearGradient id="lbot-border" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#FFFFFF" stop-opacity="0.70"/>
+      <stop offset="100%" stop-color="#4488CC" stop-opacity="0.25"/>
+    </linearGradient>
+    <linearGradient id="lbot-inner" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#FFFFFF" stop-opacity="0.00"/>
+      <stop offset="100%" stop-color="#1A4A99" stop-opacity="0.18"/>
+    </linearGradient>
+
+    <!-- Clip paths -->
+    <clipPath id="lclip-top"><rect x="8.0" y="26.00" width="90.0" height="18.0" rx="9.0"/></clipPath>
+    <clipPath id="lclip-mid"><rect x="8.0" y="51.00" width="90.0" height="18.0" rx="9.0"/></clipPath>
+    <clipPath id="lclip-bot"><rect x="8.0" y="76.00" width="90.0" height="18.0" rx="9.0"/></clipPath>
+  </defs>
+
+  <!-- ═══ ВЕРХНЯЯ ПОЛОСА ═══ -->
+  <!-- Основное тело -->
+  <rect x="8.0" y="26.00" width="90.0" height="18.0" rx="9.0" fill="url(#ltop-body)"/>
+  <!-- Внутренняя тень снизу -->
+  <rect x="8.0" y="26.00" width="90.0" height="18.0" rx="9.0" fill="url(#ltop-inner)" clip-path="url(#lclip-top)"/>
+  <!-- Обводка -->
+  <rect x="8.0" y="26.00" width="90.0" height="18.0" rx="9.0" fill="none" stroke="url(#ltop-border)" stroke-width="0.8"/>
+  <!-- Блик сверху (верхняя половина) -->
+  <rect x="9.50" y="27.50" width="87.00" height="7.56" rx="3.78" fill="url(#ltop-shine)" clip-path="url(#lclip-top)"/>
+
+  <!-- ═══ ЦЕНТРАЛЬНАЯ ПОЛОСА ═══ -->
+  <rect x="8.0" y="51.00" width="90.0" height="18.0" rx="9.0" fill="url(#lmid-body)"/>
+  <!-- Внутренняя тень снизу -->
+  <rect x="8.0" y="51.00" width="90.0" height="18.0" rx="9.0" fill="url(#lmid-inner)" clip-path="url(#lclip-mid)"/>
+  <!-- Обводка -->
+  <rect x="8.0" y="51.00" width="90.0" height="18.0" rx="9.0" fill="none" stroke="url(#lmid-border)" stroke-width="0.8"/>
+  <!-- Блик сверху -->
+  <rect x="9.50" y="52.50" width="87.00" height="7.56" rx="3.78" fill="url(#lmid-shine)" clip-path="url(#lclip-mid)"/>
+  <!-- Синий блик слева -->
+  <rect x="8.0" y="51.00" width="90.0" height="18.0" rx="9.0" fill="url(#lmid-left-glow)" clip-path="url(#lclip-mid)"/>
+
+  <!-- ═══ НИЖНЯЯ ПОЛОСА ═══ -->
+  <rect x="8.0" y="76.00" width="90.0" height="18.0" rx="9.0" fill="url(#lbot-body)"/>
+  <rect x="8.0" y="76.00" width="90.0" height="18.0" rx="9.0" fill="url(#lbot-inner)" clip-path="url(#lclip-bot)"/>
+  <rect x="8.0" y="76.00" width="90.0" height="18.0" rx="9.0" fill="none" stroke="url(#lbot-border)" stroke-width="0.8"/>
+  <rect x="9.50" y="77.50" width="87.00" height="7.56" rx="3.78" fill="url(#lbot-shine)" clip-path="url(#lclip-bot)"/>
+
+  <!-- ═══ БУКВЫ ELTERA (Manrope SemiBold path) ═══ -->
+  <path d="M125.02444444444444 94.0V42.32H156.60666666666665V45.33466666666667H128.0391111111111V66.65266666666668H152.3V69.66733333333333H128.0391111111111V90.98533333333333H156.60666666666665V94.0Z M166.65555555555554 94.0V42.32H169.6702222222222V90.98533333333333H195.36666666666667V94.0Z M216.82822222222222 94.0V45.33466666666667H197.87888888888887V42.32H238.79222222222222V45.33466666666667H219.84288888888887V94.0Z M245.2522222222222 94.0V42.32H276.83444444444444V45.33466666666667H248.26688888888887V66.65266666666668H272.52777777777777V69.66733333333333H248.26688888888887V90.98533333333333H276.83444444444444V94.0Z M286.16555555555556 94.0V42.32H305.18666666666667Q305.94033333333334 42.32 306.7298888888889 42.37383333333334Q307.51944444444445 42.42766666666667 308.48844444444444 42.60711111111112Q312.2208888888889 43.181333333333335 314.9663888888889 45.316722222222225Q317.7118888888889 47.452111111111115 319.2012777777778 50.70005555555556Q320.6906666666667 53.948 320.6906666666667 57.824000000000005Q320.6906666666667 63.35088888888889 317.67600000000004 67.51400000000001Q314.66133333333335 71.67711111111112 309.49333333333334 72.82555555555555L308.91911111111114 73.328H289.18022222222226V94.0ZM318.5373333333333 94.0 308.3448888888889 72.96911111111112 310.9288888888889 71.03111111111112 322.1262222222222 94.0ZM289.18022222222226 70.31333333333333H305.18666666666667Q305.7967777777778 70.31333333333333 306.6401666666667 70.24155555555555Q307.48355555555554 70.16977777777778 308.3448888888889 70.02622222222223Q311.32366666666667 69.452 313.3513888888889 67.65755555555555Q315.3791111111111 65.86311111111111 316.41988888888886 63.29705555555556Q317.46066666666667 60.731 317.46066666666667 57.824000000000005Q317.46066666666667 54.917 316.41988888888886 52.35094444444445Q315.3791111111111 49.784888888888894 313.3513888888889 47.99044444444445Q311.32366666666667 46.196000000000005 308.3448888888889 45.62177777777778Q307.48355555555554 45.44233333333334 306.6401666666667 45.38850000000001Q305.7967777777778 45.33466666666667 305.18666666666667 45.33466666666667H289.18022222222226Z M327.15066666666667 94.0 345.95644444444446 42.32H349.1864444444445L367.99222222222227 94.0H364.76222222222225L346.4588888888889 43.68377777777778H348.6122222222222L330.3806666666667 94.0 Z" fill="#0D1B3E" fill-rule="nonzero"/>
+
+</svg>
