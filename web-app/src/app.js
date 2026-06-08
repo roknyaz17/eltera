@@ -1294,7 +1294,7 @@ document.addEventListener("input", (event) => {
 document.addEventListener("click", (event) => {
   // Open filters modal
   if (event.target.closest("[data-action='open-filters']")) {
-    const page = state.page || "candidates";
+    const page = state.view || "candidates";
     const pageFilterMap = {
       candidates: ["Вакансия","Источник","Статус","Результат оценки","Тип подбора","Ответственный","Город","Соответствие","Риск"],
       employees: ["Отдел","Должность","Руководитель","Проект","Тип сотрудника","Риск","Адаптация","Performance Review","360"],
@@ -1313,7 +1313,7 @@ document.addEventListener("click", (event) => {
 
   // Apply filters
   if (event.target.closest("[data-action='apply-filters-modal']")) {
-    const page = state.page || "candidates";
+    const page = state.view || "candidates";
     if (!state.activeFilters) state.activeFilters = {};
     state.activeFilters[page] = state.modal?.active || {};
     state.modal = null;
@@ -1332,10 +1332,17 @@ document.addEventListener("click", (event) => {
   }
 
   // Toggle filter option in modal
-  const fpKey = event.target.closest("[data-fp-key]")?.dataset.fpKey;
-  const fpVal = event.target.closest("[data-fp-val]") !== null ? event.target.closest("[data-fp-key]")?.dataset.fpVal : null;
-  if (fpKey !== undefined && fpVal !== undefined && state.modal?.type === "filters") {
-    state.modal = { ...state.modal, active: { ...state.modal.active, [fpKey]: fpVal } };
+  const fpBtn = event.target.closest("[data-fp-key]");
+  if (fpBtn && state.modal?.type === "filters") {
+    const fpKey = fpBtn.dataset.fpKey;
+    const fpVal = fpBtn.dataset.fpVal ?? "";
+    const newActive = { ...state.modal.active };
+    if (fpVal === "") {
+      delete newActive[fpKey];
+    } else {
+      newActive[fpKey] = fpVal;
+    }
+    state.modal = { ...state.modal, active: newActive };
     render();
     return;
   }
@@ -1343,7 +1350,7 @@ document.addEventListener("click", (event) => {
   // Remove active filter tag (×) from toolbar
   const removeFilter = event.target.closest("[data-remove-filter]")?.dataset.removeFilter;
   if (removeFilter) {
-    const page = state.page || "candidates";
+    const page = state.view || "candidates";
     if (state.activeFilters?.[page]) {
       delete state.activeFilters[page][removeFilter];
       saveState();
@@ -1354,7 +1361,7 @@ document.addEventListener("click", (event) => {
 
   // Clear all filters from toolbar
   if (event.target.closest("[data-action='clear-filters']")) {
-    const page = state.page || "candidates";
+    const page = state.view || "candidates";
     if (state.activeFilters) state.activeFilters[page] = {};
     saveState();
     render();
