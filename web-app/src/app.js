@@ -715,12 +715,68 @@ document.addEventListener("click", (event) => {
     render();
   }
 
-  const selectedTariff = event.target.closest("[data-select-tariff]")?.dataset.selectTariff;
-  if (selectedTariff) {
-    state.company.tariff = selectedTariff;
-    state.modal = null;
-    saveState();
+  // Открыть модальное окно СБП для тарифа
+  const openSbpTariff = event.target.closest("[data-open-sbp]")?.dataset.openSbp;
+  if (openSbpTariff) {
+    const TARIFF_PRICES = { TalentCheck: 4900, TalentPro: 12900, TalentStudio: 29900 };
+    const price = TARIFF_PRICES[openSbpTariff] || 990;
+    state.modal = { type: "sbp-payment", tariffId: openSbpTariff, tariffName: openSbpTariff, price };
     render();
+  }
+
+  // Открыть модальное окно СБП для пополнения оценок
+  const topupSbp = event.target.closest("[data-topup-sbp]")?.dataset.topupSbp;
+  if (topupSbp) {
+    const TOPUP_PRICES = { '20': 990, '100': 3900, '500': 14900 };
+    const count = parseInt(topupSbp);
+    const price = TOPUP_PRICES[topupSbp] || count * 49.5;
+    state.modal = { type: "sbp-payment", assessments: count, price };
+    render();
+  }
+
+  // Мок-подтверждение оплаты СБП
+  const sbpAction = event.target.closest("[data-action]")?.dataset.action;
+  if (sbpAction === "sbp-confirm") {
+    const btn = event.target.closest("[data-action='sbp-confirm']");
+    const tariffId = btn?.dataset.tariffId;
+    const assessments = parseInt(btn?.dataset.assessments || 0);
+    const statusEl = document.querySelector("[data-sbp-status]");
+    if (statusEl) statusEl.textContent = "⏳ Обработка платежа...";
+    setTimeout(() => {
+      if (tariffId) {
+        state.company.tariff = tariffId;
+        const TARIFF_LIMITS = { TalentCheck: 100, TalentPro: 500, TalentStudio: 2000 };
+        state.company.planLimit = TARIFF_LIMITS[tariffId] || 20;
+      }
+      if (assessments > 0) {
+        state.company.assessmentsLeft = (state.company.assessmentsLeft || 0) + assessments;
+      }
+      state.modal = null;
+      saveState();
+      render();
+      // Показываем toast-уведомление
+      const toast = document.createElement("div");
+      toast.className = "sbp-toast";
+      toast.textContent = tariffId ? `✓ Тариф ${tariffId} активирован` : `✓ +${assessments} оценок добавлено`;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3500);
+    }, 1800);
+  }
+
+  if (sbpAction === "apply-sbp-promo") {
+    const input = document.querySelector("[data-sbp-promo-input]");
+    const code = input?.value.trim().toUpperCase();
+    if (code === "ELTERA10" || code === "DEMO") {
+      state.modal = { ...state.modal, promoApplied: true };
+      render();
+    } else if (input) {
+      input.style.borderColor = "#FF6B6B";
+      input.placeholder = "Неверный промокод";
+    }
+  }
+
+  if (sbpAction === "sbp-deeplink") {
+    window.open("https://qr.nspk.ru/", "_blank");
   }
 
   const vacancyFit = event.target.closest("[data-open-vacancy-fit]")?.dataset.openVacancyFit;

@@ -1246,6 +1246,39 @@ function renderModal(state) {
     </form></div>`;
   }
 
+  if (state.modal?.type === "sbp-payment") {
+    const { tariffId, tariffName, price, assessments, promoApplied } = state.modal;
+    const isTopup = !!assessments;
+    const title = isTopup ? `Пополнение оценок · +${assessments} оценок` : `Подключение ${tariffName}`;
+    const amount = promoApplied ? Math.round(price * 0.9) : price;
+    const qrSvg = `<svg width="140" height="140" viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="140" height="140" rx="8" fill="#fff"/><rect x="10" y="10" width="40" height="40" rx="3" fill="#0A0F1E"/><rect x="16" y="16" width="28" height="28" rx="1" fill="#fff"/><rect x="20" y="20" width="20" height="20" rx="1" fill="#0A0F1E"/><rect x="90" y="10" width="40" height="40" rx="3" fill="#0A0F1E"/><rect x="96" y="16" width="28" height="28" rx="1" fill="#fff"/><rect x="100" y="20" width="20" height="20" rx="1" fill="#0A0F1E"/><rect x="10" y="90" width="40" height="40" rx="3" fill="#0A0F1E"/><rect x="16" y="96" width="28" height="28" rx="1" fill="#fff"/><rect x="20" y="100" width="20" height="20" rx="1" fill="#0A0F1E"/><rect x="56" y="10" width="8" height="8" fill="#0A0F1E"/><rect x="68" y="10" width="8" height="8" fill="#0A0F1E"/><rect x="56" y="22" width="8" height="8" fill="#0A0F1E"/><rect x="68" y="22" width="8" height="8" fill="#0A0F1E"/><rect x="56" y="34" width="8" height="8" fill="#0A0F1E"/><rect x="56" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="68" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="80" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="56" y="68" width="8" height="8" fill="#0A0F1E"/><rect x="80" y="68" width="8" height="8" fill="#0A0F1E"/><rect x="56" y="80" width="8" height="8" fill="#0A0F1E"/><rect x="68" y="80" width="8" height="8" fill="#0A0F1E"/><rect x="80" y="80" width="8" height="8" fill="#0A0F1E"/><rect x="56" y="92" width="8" height="8" fill="#0A0F1E"/><rect x="80" y="92" width="8" height="8" fill="#0A0F1E"/><rect x="56" y="104" width="8" height="8" fill="#0A0F1E"/><rect x="68" y="104" width="8" height="8" fill="#0A0F1E"/><rect x="80" y="104" width="8" height="8" fill="#0A0F1E"/><rect x="56" y="116" width="8" height="8" fill="#0A0F1E"/><rect x="80" y="116" width="8" height="8" fill="#0A0F1E"/><rect x="92" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="104" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="116" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="92" y="68" width="8" height="8" fill="#0A0F1E"/><rect x="116" y="68" width="8" height="8" fill="#0A0F1E"/><rect x="92" y="80" width="8" height="8" fill="#0A0F1E"/><rect x="104" y="80" width="8" height="8" fill="#0A0F1E"/><rect x="116" y="80" width="8" height="8" fill="#0A0F1E"/><rect x="92" y="92" width="8" height="8" fill="#0A0F1E"/><rect x="116" y="92" width="8" height="8" fill="#0A0F1E"/><rect x="92" y="104" width="8" height="8" fill="#0A0F1E"/><rect x="104" y="104" width="8" height="8" fill="#0A0F1E"/><rect x="116" y="104" width="8" height="8" fill="#0A0F1E"/><rect x="92" y="116" width="8" height="8" fill="#0A0F1E"/><rect x="104" y="116" width="8" height="8" fill="#0A0F1E"/><rect x="116" y="116" width="8" height="8" fill="#0A0F1E"/><rect x="10" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="22" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="34" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="10" y="68" width="8" height="8" fill="#0A0F1E"/><rect x="34" y="68" width="8" height="8" fill="#0A0F1E"/><rect x="10" y="80" width="8" height="8" fill="#0A0F1E"/><rect x="22" y="80" width="8" height="8" fill="#0A0F1E"/><rect x="34" y="80" width="8" height="8" fill="#0A0F1E"/></svg>`;
+    const promoHtml = promoApplied
+      ? `<div class="sbp-promo-applied">✓ Промокод применён — скидка 10%</div>`
+      : `<div class="sbp-promo-row"><input class="elt-input sbp-promo-input" placeholder="Промокод" data-sbp-promo-input><button class="elt-btn-ghost" data-action="apply-sbp-promo">Применить</button></div>`;
+    return `<div class="modalBackdrop"><div class="modal sbp-modal">
+      ${mHead(title, '💳')}
+      <div class="modal-inner sbp-modal-inner">
+        <div class="sbp-qr-block">
+          <div class="sbp-qr-wrap">${qrSvg}</div>
+          <div class="sbp-qr-hint">Отсканируйте QR-код в приложении банка</div>
+          <button class="sbp-deeplink-btn" data-action="sbp-deeplink">Открыть СБП в приложении</button>
+        </div>
+        <div class="sbp-details">
+          <div class="sbp-detail-row"><span>Сумма</span><strong>${amount.toLocaleString('ru-RU')} ₽</strong></div>
+          <div class="sbp-detail-row"><span>Получатель</span><span>ООО «Элтера»</span></div>
+          <div class="sbp-detail-row"><span>Назначение</span><span>${isTopup ? `Пополнение +${assessments} оценок` : `${tariffName}, 1 мес.`}</span></div>
+          <div class="sbp-detail-row sbp-detail-status"><span>Статус</span><span class="sbp-status-waiting" data-sbp-status>⏱ Ожидание оплаты...</span></div>
+          <div class="sbp-promo-section">${promoHtml}</div>
+          <div class="sbp-actions">
+            <button class="elt-btn-ghost" data-action="close-modal">Отмена</button>
+            <button class="elt-btn-primary" data-action="sbp-confirm" data-tariff-id="${tariffId || ''}" data-assessments="${assessments || 0}">Подтвердить оплату</button>
+          </div>
+          <div class="sbp-footer">Платёж защищён СБП · ЦБ РФ · ЮKassa</div>
+        </div>
+      </div>
+    </div></div>`;
+  }
+
   if (state.modal === "spendBonuses") {
     const max = Math.floor(state.referrals.available / state.company.assessmentPrice);
     return `<div class="modalBackdrop"><div class="modal">${mHead('Потратить бонусы', '🎁')}<div class="modal-inner"><p class="modal-subtitle">Доступно: ${state.referrals.available.toLocaleString('ru-RU')} бонусов. 1 оценка = ${state.company.assessmentPrice} ₽.</p><div class="bonusOptions"><button class="blueButton" data-buy-bonus-assessments="${max}">Докупить ${max} оценок</button><button class="button subtle">Компенсировать часть тарифа</button><button class="button subtle">Оплатить тариф бонусами</button></div></div></div></div>`;
@@ -1329,7 +1362,7 @@ function renderTariffCard(tariff, inApp = false) {
       <p class="elt-tariff-desc">${tariff.description}</p>
       <ul class="elt-tariff-features">${tariff.features.map((f) => `<li>${f}</li>`).join('')}</ul>
       ${tariff.locked?.length ? `<div class="elt-tariff-locked"><span>Не входит:</span><div class="elt-tariff-locked-tags">${tariff.locked.map((item) => `<em>${item}</em>`).join('')}</div></div>` : ''}
-      <button class="elt-btn-primary elt-btn-wide" ${inApp ? `data-select-tariff="${tariff.name}"` : `data-route="login"`}>${tariff.cta}</button>
+      <button class="elt-btn-primary elt-btn-wide" ${inApp ? `data-open-sbp="${tariff.name}"` : `data-route="login"`}>${tariff.cta}</button>
     </div>
   `;
 }
@@ -1723,7 +1756,7 @@ function renderTariffUpgradeModal(state) {
       <div class="elt-upgrade-name">${t.name}</div>
       <div class="elt-upgrade-price"><strong>${t.price}</strong> / месяц</div>
       <ul class="elt-upgrade-features">${t.features.map((f) => `<li>${f}</li>`).join('')}</ul>
-      <button class="elt-upgrade-btn${isTop ? ' elt-upgrade-btn-teal' : ' elt-upgrade-btn-blue'}" data-select-tariff="${t.id}">Перейти на ${t.name}</button>
+      <button class="elt-upgrade-btn${isTop ? ' elt-upgrade-btn-teal' : ' elt-upgrade-btn-blue'}" data-open-sbp="${t.id}">Перейти на ${t.name}</button>
     </div>`;
   }).join('');
 
