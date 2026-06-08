@@ -1,50 +1,60 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="160" height="72" viewBox="0 0 160 72" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="52" viewBox="0 0 200 52" fill="none">
   <defs>
-    <linearGradient id="barTop" x1="0" y1="0" x2="1" y2="0">
+    <linearGradient id="barTop" x1="0" y1="8" x2="52" y2="8" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#EAF7FF" stop-opacity="0.70"/>
-      <stop offset="0.18" stop-color="#A8C2D5" stop-opacity="0.55"/>
-      <stop offset="0.52" stop-color="#7BB8D8" stop-opacity="0.80"/>
-      <stop offset="0.82" stop-color="#B4D4EA" stop-opacity="0.65"/>
+      <stop offset="0.18" stop-color="#A8C2D5" stop-opacity="0.42"/>
+      <stop offset="0.52" stop-color="#122434" stop-opacity="0.70"/>
+      <stop offset="0.82" stop-color="#B4D4EA" stop-opacity="0.55"/>
       <stop offset="1" stop-color="#F7FCFF" stop-opacity="0.75"/>
     </linearGradient>
-    <linearGradient id="barMid" x1="0" y1="0" x2="1" y2="0">
+    <linearGradient id="barMid" x1="0" y1="26" x2="52" y2="26" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#1769FF"/>
       <stop offset="0.44" stop-color="#28A9FF"/>
       <stop offset="0.73" stop-color="#47F1E3"/>
       <stop offset="1" stop-color="#9FFFF8"/>
     </linearGradient>
-    <linearGradient id="barBottom" x1="0" y1="0" x2="1" y2="0">
+    <linearGradient id="barBottom" x1="0" y1="44" x2="52" y2="44" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#F1FBFF" stop-opacity="0.68"/>
-      <stop offset="0.2" stop-color="#A2BCD0" stop-opacity="0.55"/>
-      <stop offset="0.5" stop-color="#7BAFC8" stop-opacity="0.80"/>
-      <stop offset="0.82" stop-color="#B9D6EA" stop-opacity="0.62"/>
+      <stop offset="0.2" stop-color="#A2BCD0" stop-opacity="0.40"/>
+      <stop offset="0.5" stop-color="#102231" stop-opacity="0.76"/>
+      <stop offset="0.82" stop-color="#B9D6EA" stop-opacity="0.52"/>
       <stop offset="1" stop-color="#F8FCFF" stop-opacity="0.72"/>
     </linearGradient>
-    <linearGradient id="glassStroke" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="glassStroke" x1="0" y1="0" x2="52" y2="52" gradientUnits="userSpaceOnUse">
       <stop stop-color="#FFFFFF" stop-opacity="0.82"/>
       <stop offset="0.52" stop-color="#57F7F1" stop-opacity="0.48"/>
       <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.72"/>
     </linearGradient>
-    <linearGradient id="textGrad" x1="0" y1="0" x2="1" y2="0">
+    <linearGradient id="textGrad" x1="62" y1="26" x2="200" y2="26" gradientUnits="userSpaceOnUse">
       <stop stop-color="#F8FBFF"/>
       <stop offset="0.52" stop-color="#E6EBF0"/>
       <stop offset="1" stop-color="#FFFFFF"/>
     </linearGradient>
     <filter id="barGlow" x="-20%" y="-40%" width="140%" height="180%" color-interpolation-filters="sRGB">
       <feGaussianBlur stdDeviation="1.5" result="blur"/>
-      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.12  0 0 0 0 0.86  0 0 0 0 1  0 0 0 0.45 0" result="glow"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.12  0 0 0 0 0.86  0 0 0 0 1  0 0 0 0.55 0" result="glow"/>
       <feMerge>
         <feMergeNode in="glow"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
   </defs>
-  <!-- Three pill bars -->
+
+  <!-- Three pill bars (proportional to original 238×39, rx=19.5) -->
   <g filter="url(#barGlow)">
-    <rect x="0" y="6" width="52" height="14" rx="7" fill="url(#barTop)" stroke="url(#glassStroke)" stroke-width="0.8"/>
-    <rect x="0" y="26" width="52" height="14" rx="7" fill="url(#barMid)" stroke="#A8FFFA" stroke-opacity="0.72" stroke-width="0.8"/>
-    <rect x="0" y="46" width="52" height="14" rx="7" fill="url(#barBottom)" stroke="url(#glassStroke)" stroke-width="0.8"/>
+    <!-- Top bar -->
+    <rect x="0" y="0" width="52" height="10" rx="5" fill="url(#barTop)" stroke="url(#glassStroke)" stroke-width="0.5"/>
+    <rect x="3" y="1.5" width="44" height="2" rx="1" fill="#FFFFFF" opacity="0.22"/>
+
+    <!-- Mid bar (bright blue-teal) -->
+    <rect x="0" y="21" width="52" height="10" rx="5" fill="url(#barMid)" stroke="#A8FFFA" stroke-opacity="0.72" stroke-width="0.5"/>
+    <rect x="3" y="22.5" width="44" height="2" rx="1" fill="#FFFFFF" opacity="0.24"/>
+
+    <!-- Bottom bar -->
+    <rect x="0" y="42" width="52" height="10" rx="5" fill="url(#barBottom)" stroke="url(#glassStroke)" stroke-width="0.5"/>
+    <rect x="3" y="43.5" width="44" height="2" rx="1" fill="#FFFFFF" opacity="0.20"/>
   </g>
+
   <!-- ELTERΛ text -->
-  <text x="62" y="36" fill="url(#textGrad)" font-family="Avenir Next, Montserrat, Helvetica Neue, Arial, sans-serif" font-size="22" font-weight="600" letter-spacing="4" dominant-baseline="middle">ELTERΛ</text>
+  <text x="62" y="26" fill="url(#textGrad)" font-family="Avenir Next, Montserrat, Helvetica Neue, Arial, sans-serif" font-size="18" font-weight="600" letter-spacing="4" dominant-baseline="middle">ELTERΛ</text>
 </svg>
