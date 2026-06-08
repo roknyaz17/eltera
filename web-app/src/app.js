@@ -145,7 +145,8 @@ function defaultState() {
     candidate: {
       token: "",
       answers: {}
-    }
+    },
+    employeePhotos: {}
   };
 }
 
@@ -334,7 +335,8 @@ function mergeState(base, saved) {
     ...base,
     ...saved,
     company: { ...base.company, ...saved.company },
-    referrals: { ...base.referrals, ...saved.referrals }
+    referrals: { ...base.referrals, ...saved.referrals },
+    employeePhotos: { ...(base.employeePhotos || {}), ...(saved.employeePhotos || {}) }
   };
 }
 
@@ -647,6 +649,23 @@ document.addEventListener("click", (event) => {
     state.modal = { type: "add-employee" };
     render();
   }
+
+  // Click on avatar circle — trigger hidden file input
+  const avatarNodeId = event.target.closest("[data-oc-avatar]")?.dataset.ocAvatar;
+  if (avatarNodeId) {
+    // Find or create hidden input for this node
+    let inp = document.querySelector(`[data-avatar-upload="${avatarNodeId}"]`);
+    if (!inp) {
+      inp = document.createElement("input");
+      inp.type = "file";
+      inp.accept = "image/jpeg,image/png,image/webp";
+      inp.style.display = "none";
+      inp.dataset.avatarUpload = avatarNodeId;
+      document.body.appendChild(inp);
+      inp.addEventListener("change", handleAvatarUpload);
+    }
+    inp.click();
+  }
   if (action === "copy-ref") navigator.clipboard?.writeText(`${location.origin}${location.pathname}#/ref/roman123`);
   if (action === "open-bonus-modal") {
     state.modal = "spendBonuses";
@@ -828,7 +847,65 @@ document.addEventListener("submit", (event) => {
   }
 });
 
+// ─── Avatar Upload Handler ───────────────────────────────────────────────────
+function handleAvatarUpload(event) {
+  const nodeId = event.target.dataset.avatarUpload;
+  if (!nodeId) return;
+  const file = event.target.files[0];
+  if (!file) return;
+
+  // Show error helper
+  const showError = (msg) => {
+    const errEl = document.getElementById("ocAvatarError");
+    if (errEl) { errEl.textContent = msg; errEl.style.display = "block"; }
+  };
+  const clearError = () => {
+    const errEl = document.getElementById("ocAvatarError");
+    if (errEl) errEl.style.display = "none";
+  };
+
+  // Validate type
+  const allowed = ["image/jpeg", "image/png", "image/webp"];
+  if (!allowed.includes(file.type)) {
+    showError("Ошибка: недопустимый формат. Используйте JPG, PNG или WebP.");
+    event.target.value = "";
+    return;
+  }
+  // Validate size (2 MB)
+  if (file.size > 2 * 1024 * 1024) {
+    showError("Ошибка: файл слишком большой. Максимальный размер — 2 МБ.");
+    event.target.value = "";
+    return;
+  }
+
+  clearError();
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const base64 = e.target.result;
+    // Check image dimensions
+    const img = new Image();
+    img.onload = () => {
+      if (!state.employeePhotos) state.employeePhotos = {};
+      state.employeePhotos[nodeId] = base64;
+      saveState();
+      render();
+    };
+    img.onerror = () => {
+      showError("Ошибка: не удалось загрузить изображение. Попробуйте другой файл.");
+    };
+    img.src = base64;
+  };
+  reader.onerror = () => {
+    showError("Ошибка чтения файла. Попробуйте ещё раз.");
+  };
+  reader.readAsDataURL(file);
+}
+
 document.addEventListener("change", (event) => {
+  if (event.target.matches("[data-avatar-upload]")) {
+    handleAvatarUpload(event);
+    return;
+  }
   if (event.target.matches(".answer input")) {
     state.candidate.answers[event.target.name] = Number(event.target.value);
     const link = state.links.find((item) => item.token === state.candidate.token);

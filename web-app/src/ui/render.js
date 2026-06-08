@@ -199,7 +199,9 @@ export function renderAppShell(state, content) {
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5a4 4 0 0 1 4 4v2.5l1 1.5H2l1-1.5V5.5a4 4 0 0 1 4-4z" stroke="currentColor" stroke-width="1.3" fill="none" opacity=".85"/><path d="M5.5 11.5a1.5 1.5 0 0 0 3 0" stroke="currentColor" stroke-width="1.3" fill="none" opacity=".7"/></svg>
               <span class="elt-notif-dot"></span>
             </button>
-            <button class="elt-avatar-btn" title="Профиль">РК</button>
+            <button class="elt-avatar-btn" title="Профиль" data-oc-avatar="ceo" style="padding:0;overflow:hidden">
+              ${(state.employeePhotos || {})['ceo'] ? `<img class="oc-avatar-img" src="${(state.employeePhotos || {})['ceo']}" alt="Профиль" style="width:100%;height:100%;object-fit:cover;border-radius:50%">` : 'РК'}
+            </button>
           </div>
         </header>
         <main class="appContent">${content}${renderModal(state)}</main>
@@ -373,6 +375,21 @@ export function renderStructure(state) {
   }
   function deptColor(dept) { return deptColors[dept] || "#1E5BFF"; }
 
+  // Get photo from state.employeePhotos map
+  function empPhoto(nodeId) {
+    return (state.employeePhotos || {})[nodeId] || null;
+  }
+
+  // Render avatar: photo if exists, else initials
+  function renderAvatar(node, cls) {
+    const photo = empPhoto(node.id);
+    const bg = avatarColor(node.role);
+    if (photo) {
+      return `<div class="${cls}" style="background:${bg}" data-oc-avatar="${node.id}"><img class="oc-avatar-img" src="${photo}" alt="${node.fullName}"><div class="oc-avatar-upload-hint">📷</div></div>`;
+    }
+    return `<div class="${cls}" style="background:${bg}" data-oc-avatar="${node.id}">${initials(node.fullName)}<div class="oc-avatar-upload-hint">📷</div></div>`;
+  }
+
   // Hierarchical list
   function renderListNode(node, depth) {
     const children = allNodes.filter(n => n.managerId === node.id);
@@ -382,7 +399,7 @@ export function renderStructure(state) {
     return `
       <div class="oc-list-node" style="padding-left:${indent}px" data-oc-select="${node.id}">
         ${depth > 0 ? `<span class="oc-list-connector">└</span>` : ""}
-        <div class="oc-list-avatar" style="background:${avatarColor(node.role)}">${initials(node.fullName)}</div>
+        ${renderAvatar(node, "oc-list-avatar")}
         <div class="oc-list-info">
           <span class="oc-list-name">${node.fullName}</span>
           <span class="oc-list-pos">${node.position}</span>
@@ -399,7 +416,7 @@ export function renderStructure(state) {
     const deptLabel = deptShort[node.department] || node.department;
     return `
       <div class="oc-card" data-oc-select="${node.id}">
-        <div class="oc-card-avatar" style="background:${avatarColor(node.role)}">${initials(node.fullName)}</div>
+        ${renderAvatar(node, "oc-card-avatar")}
         <div class="oc-card-name">${node.fullName}</div>
         <div class="oc-card-pos">${node.position}</div>
         <div class="oc-card-dept" style="background:${color}22;color:${color}">${deptLabel}</div>
@@ -441,8 +458,21 @@ export function renderStructure(state) {
             ${renderListNode(ceo, 0)}
           </div>
           <div class="oc-selected-card" id="ocSelectedCard">
-            <div class="oc-sel-name">Алексей Козлов — выбран</div>
-            <div class="oc-sel-row"><span>Должность</span><b>Генеральный директор</b></div>
+            <!-- Avatar upload area -->
+            <div class="oc-sel-avatar-wrap">
+              <div class="oc-sel-avatar" id="ocSelAvatar" data-oc-avatar="ceo">
+                ${empPhoto('ceo') ? `<img class="oc-avatar-img" src="${empPhoto('ceo')}" alt="Алексей Козлов">` : 'АК'}
+                <div class="oc-avatar-upload-hint">📷</div>
+              </div>
+              <div class="oc-sel-avatar-info">
+                <div class="oc-sel-name">Алексей Козлов</div>
+                <div class="oc-sel-pos">Генеральный директор</div>
+                <label class="oc-upload-label" for="ocAvatarInput">Загрузить фото</label>
+                <div class="oc-upload-hint">JPG, PNG, WebP · до 2 МБ · 400×400 px</div>
+              </div>
+            </div>
+            <input type="file" id="ocAvatarInput" accept="image/jpeg,image/png,image/webp" style="display:none" data-avatar-upload="ceo">
+            <div class="oc-upload-error" id="ocAvatarError" style="display:none"></div>
             <div class="oc-sel-row"><span>Отдел</span><b>Управление</b></div>
             <div class="oc-sel-row"><span>Подчинённых</span><b>${heads.length} руководителя</b></div>
             <div class="oc-sel-row"><span>Всего в команде</span><b>${totalEmps + heads.length + 1} чел.</b></div>

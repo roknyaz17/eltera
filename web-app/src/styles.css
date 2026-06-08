@@ -6202,7 +6202,7 @@ small {
 .oc-list-node:hover { background: rgba(30,91,255,.07); }
 .oc-list-node.selected { background: rgba(30,91,255,.13); }
 .oc-list-connector { font-size: 13px; color: var(--text-muted); opacity: .5; flex-shrink: 0; margin-right: -4px; }
-.oc-list-avatar { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.oc-list-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; overflow: hidden; }
 .oc-list-info { flex: 1; min-width: 0; }
 .oc-list-name { display: block; font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .oc-list-pos { display: block; font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -6211,6 +6211,16 @@ small {
 .oc-role-head { background: rgba(0,229,212,.15); color: #00E5D4; }
 .oc-role-emp { background: rgba(255,255,255,.07); color: var(--text-muted); }
 .oc-selected-card { padding: 14px 16px; border-top: 1px solid var(--border); }
+.oc-sel-avatar-wrap { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.oc-sel-avatar { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg,#1E5BFF,#00E5D4); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; color: #fff; flex-shrink: 0; overflow: hidden; position: relative; cursor: pointer; transition: box-shadow .15s; }
+.oc-sel-avatar:hover { box-shadow: 0 0 0 2px #1E5BFF; }
+.oc-sel-avatar:hover .oc-avatar-upload-hint { opacity: 1; }
+.oc-sel-avatar-info { flex: 1; min-width: 0; }
+.oc-sel-pos { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; }
+.oc-upload-label { display: inline-block; font-size: 11px; font-weight: 600; color: #1E5BFF; cursor: pointer; padding: 3px 8px; border: 1px solid rgba(30,91,255,.3); border-radius: 6px; transition: background .15s; }
+.oc-upload-label:hover { background: rgba(30,91,255,.08); }
+.oc-upload-hint { font-size: 10px; color: var(--text-muted); margin-top: 4px; opacity: .7; }
+.oc-upload-error { font-size: 11px; color: #F87171; background: rgba(248,113,113,.08); border: 1px solid rgba(248,113,113,.2); border-radius: 6px; padding: 6px 10px; margin-bottom: 8px; }
 .oc-sel-name { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
 .oc-sel-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--border); }
 .oc-sel-row span { color: var(--text-muted); }
@@ -6222,7 +6232,14 @@ small {
 .oc-chart-connector-h { height: 2px; background: var(--border); margin: 0 auto; max-width: 100%; }
 .oc-card { background: rgba(255,255,255,.04); border: 1px solid var(--border); border-radius: 12px; padding: 14px 12px; width: 140px; text-align: center; cursor: pointer; transition: border-color .15s, transform .15s; flex-shrink: 0; }
 .oc-card:hover { border-color: #1E5BFF; transform: translateY(-2px); }
-.oc-card-avatar { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #fff; margin: 0 auto 8px; }
+.oc-card-avatar { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: #fff; margin: 0 auto 8px; overflow: hidden; position: relative; cursor: pointer; transition: box-shadow .15s; }
+.oc-card-avatar:hover { box-shadow: 0 0 0 2px #1E5BFF; }
+.oc-avatar-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+.oc-avatar-upload-hint { position: absolute; inset: 0; background: rgba(0,0,0,.45); border-radius: 50%; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .15s; font-size: 14px; color: #fff; pointer-events: none; }
+.oc-card-avatar:hover .oc-avatar-upload-hint,
+.oc-list-avatar:hover .oc-avatar-upload-hint,
+.oc-sel-avatar:hover .oc-avatar-upload-hint { opacity: 1; }
+.oc-list-avatar { position: relative; }
 .oc-card-name { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 3px; line-height: 1.3; }
 .oc-card-pos { font-size: 10px; color: var(--text-muted); margin-bottom: 6px; line-height: 1.3; }
 .oc-card-dept { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; display: inline-block; }
