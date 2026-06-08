@@ -1,5 +1,22 @@
 import { metricThresholds, navConfig, periodOptions } from "../config/dashboard-config.js";
 
+function kpiIcon(name) {
+  const icons = {
+    candidates: `<svg width="16" height="16" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="6" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M3 15c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`,
+    employees:  `<svg width="16" height="16" viewBox="0 0 18 18" fill="none"><circle cx="6.5" cy="6" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M1.5 14c0-2.76 2.24-5 5-5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="12.5" cy="6" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M11.5 9c2.76 0 5 2.24 5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>`,
+    vacancies:  `<svg width="16" height="16" viewBox="0 0 18 18" fill="none"><rect x="2.5" y="4.5" width="13" height="10" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M6 4.5V3.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1" stroke="currentColor" stroke-width="1.3"/><line x1="6" y1="9" x2="12" y2="9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>`,
+    fit:        `<svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M3 9l4 4 8-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    risk:       `<svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M9 2L16.5 15H1.5L9 2z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><line x1="9" y1="7" x2="9" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="9" cy="13" r=".8" fill="currentColor"/></svg>`,
+    completed:  `<svg width="16" height="16" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="1.4"/><path d="M6 9l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    link:       `<svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M7.5 10.5a3.5 3.5 0 0 0 5 0l2-2a3.5 3.5 0 0 0-5-5L8.5 4.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M10.5 7.5a3.5 3.5 0 0 0-5 0l-2 2a3.5 3.5 0 0 0 5 5l1-1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`,
+    interview:  `<svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M3 4h12a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H6l-3 2V5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.4"/></svg>`,
+    balance:    `<svg width="16" height="16" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7.5" stroke="currentColor" stroke-width="1.4" opacity=".6"/><path d="M9 5v4l2.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+    chart:      `<svg width="16" height="16" viewBox="0 0 18 18" fill="none"><rect x="2" y="10" width="3" height="6" rx="1" fill="currentColor" opacity=".5"/><rect x="7.5" y="6" width="3" height="10" rx="1" fill="currentColor" opacity=".7"/><rect x="13" y="2" width="3" height="14" rx="1" fill="currentColor"/></svg>`,
+    active:     `<svg width="16" height="16" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="3" fill="currentColor"/><circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="1.3" opacity=".4"/></svg>`
+  };
+  return name ? (icons[name] || icons.balance) : "";
+}
+
 export function getMetricStatus(value, thresholds = metricThresholds.fit) {
   const numeric = Number(String(value).replace(/[^\d.-]/g, ""));
   if (Number.isNaN(numeric)) return "noData";
@@ -14,7 +31,7 @@ export function getMetricStatus(value, thresholds = metricThresholds.fit) {
 }
 
 export function getStatusColor(status) {
-  return ({ good: "#22C55E", medium: "#D97706", bad: "#94A3B8", neutral: "#1E5BFF", noData: "#94A3B8" })[status] || "#1E5BFF";
+  return ({ good: "#22C55E", medium: "#D9A441", bad: "#F87171", neutral: "#1E5BFF", noData: "#6E7C97" })[status] || "#1E5BFF";
 }
 
 export function getConversionStatus(value) {
@@ -106,7 +123,13 @@ export function KpiGrid(cards) {
 
 export function KpiCard(card) {
   const status = card.status || "neutral";
-  return `<article class="panel kpi status-${status} ${card.target ? "clickable" : ""}" ${card.target ? `data-open-list="${card.target}"` : ""}><span>${card.label}</span><strong>${card.value}</strong><p>${card.caption || ""}</p><i class="statusDot"></i></article>`;
+  const iconSvg = card.iconName ? `<div class="kpi-icon-wrap">${kpiIcon(card.iconName)}</div>` : "";
+  return `<article class="panel kpi status-${status} ${card.target ? "clickable" : ""}" ${card.target ? `data-open-list="${card.target}"` : ""}>
+    <div class="kpi-top-row">${iconSvg}<i class="statusDot"></i></div>
+    <strong>${card.value}</strong>
+    <span class="kpi-label">${card.label}</span>
+    <p>${card.caption || ""}</p>
+  </article>`;
 }
 
 export function ChartCard(chart) {

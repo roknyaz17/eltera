@@ -85,7 +85,7 @@ export function renderAppShell(state, content) {
     <div class="appShell ${isDark ? "darkTheme" : "lightTheme"}">
       <aside class="elt-sidebar">
         <div class="elt-sidebar-logo">
-          <img src="${isDark ? "/assets/eltera_logo_horizontal_on_dark.svg?v=3" : "/assets/eltera_logo_horizontal_on_dark.svg?v=3"}" alt="Eltera" class="elt-logo-img">
+          <img src="${isDark ? "/assets/eltera_logo_horizontal_on_dark.svg?v=3" : "/assets/eltera_logo_horizontal_on_light.svg?v=2"}" alt="Eltera" class="elt-logo-img">
         </div>
         <nav class="elt-sidenav">
           ${navGroups.map((group) => `
@@ -200,15 +200,15 @@ export function renderCandidates(state) {
     ],
     filters: pageFilterConfig.candidates,
     kpiCards: [
-      { label: "Всего кандидатов", value: candidates.length + 128, caption: "+24 за период", status: "neutral", target: "Кандидаты:Кандидатов всего" },
-      { label: "Оценка отправлена", value: state.links.filter((x) => x.recipientType === "Кандидат").length, caption: "активные ссылки", status: "medium", target: "Кандидаты:Оценка отправлена" },
-      { label: "Оценку прошли", value: candidates.length, caption: "готовы отчеты", status: getConversionStatus(72), target: "Кандидаты:Оценка пройдена" },
-      { label: "Подходят", value: fit.length + 24, caption: "под профиль", status: "good", target: "Кандидаты:Подходят" },
-      { label: "Условно подходят", value: 11, caption: "нужна проверка", status: "medium", target: "Кандидаты:Условно подходят" },
-      { label: "Не подходят", value: risky.length + 9, caption: "низкий балл", status: "bad", target: "Кандидаты:Не подходит" },
-      { label: "На интервью", value: 21, caption: "следующий этап", status: "good", target: "Кандидаты:Интервью" },
-      { label: "Приняты", value: 4, caption: "выход", status: "neutral", target: "Кандидаты:Принят" },
-      { label: "Зависли", value: 12, caption: "нет движения", status: "bad", target: "Кандидаты:Зависли" }
+      { label: "Всего кандидатов", value: candidates.length + 128, caption: "+24 за период", status: "neutral", target: "Кандидаты:Кандидатов всего", iconName: "candidates" },
+      { label: "Оценка отправлена", value: state.links.filter((x) => x.recipientType === "Кандидат").length, caption: "активные ссылки", status: "medium", target: "Кандидаты:Оценка отправлена", iconName: "link" },
+      { label: "Оценку прошли", value: candidates.length, caption: "готовы отчеты", status: getConversionStatus(72), target: "Кандидаты:Оценка пройдена", iconName: "completed" },
+      { label: "Подходят", value: fit.length + 24, caption: "под профиль", status: "good", target: "Кандидаты:Подходят", iconName: "fit" },
+      { label: "Условно подходят", value: 11, caption: "нужна проверка", status: "medium", target: "Кандидаты:Условно подходят", iconName: "balance" },
+      { label: "Не подходят", value: risky.length + 9, caption: "низкий балл", status: "bad", target: "Кандидаты:Не подходит", iconName: "risk" },
+      { label: "На интервью", value: 21, caption: "следующий этап", status: "good", target: "Кандидаты:Интервью", iconName: "interview" },
+      { label: "Приняты", value: 4, caption: "выход", status: "neutral", target: "Кандидаты:Принят", iconName: "completed" },
+      { label: "Зависли", value: 12, caption: "нет движения", status: "bad", target: "Кандидаты:Зависли", iconName: "active" }
     ],
     charts: [
       { title: "Воронка кандидатов", caption: "конверсия этапов", type: "funnel", items: dashboardData(state, "Кандидаты").funnel.map(([label, value]) => ({ label, value, target: `Кандидаты:${label}` })) },
@@ -236,14 +236,14 @@ export function renderEmployees(state) {
     actions: [{ label: "Оценить сотрудника", primary: true, attrs: "data-action=\"create-link\"" }],
     filters: pageFilterConfig.employees,
     kpiCards: [
-      { label: "Всего сотрудников", value: 70, caption: "в базе", status: "neutral", target: "Сотрудники:Сотрудников всего" },
-      { label: "В оценке", value: 16, caption: "активные", status: "neutral", target: "Сотрудники:В оценке" },
-      { label: "Высокий результат", value: 28, caption: "выше 80%", status: "good", target: "Сотрудники:Высокий результат" },
-      { label: "Средний результат", value: 34, caption: "60-79%", status: "medium", target: "Сотрудники:Средний результат" },
-      { label: "Низкий результат", value: 8, caption: "ниже 60%", status: "bad", target: "Сотрудники:Низкий результат" },
-      { label: "В зоне риска", value: risky.length + 4, caption: "требуют внимания", status: "bad", target: "Сотрудники:В зоне риска" },
-      { label: "Выгорание", value: 5, caption: "признаки", status: "medium", target: "Сотрудники:Выгорание" },
-      { label: "Удовлетворенность", value: "74%", caption: "средняя", status: "medium", target: "Сотрудники:Удовлетворенность" }
+      { label: "Всего сотрудников", value: 70, caption: "в базе", status: "neutral", target: "Сотрудники:Сотрудников всего", iconName: "employees" },
+      { label: "В оценке", value: 16, caption: "активные", status: "neutral", target: "Сотрудники:В оценке", iconName: "active" },
+      { label: "Высокий результат", value: 28, caption: "выше 80%", status: "good", target: "Сотрудники:Высокий результат", iconName: "fit" },
+      { label: "Средний результат", value: 34, caption: "60-79%", status: "medium", target: "Сотрудники:Средний результат", iconName: "chart" },
+      { label: "Низкий результат", value: 8, caption: "ниже 60%", status: "bad", target: "Сотрудники:Низкий результат", iconName: "risk" },
+      { label: "В зоне риска", value: risky.length + 4, caption: "требуют внимания", status: "bad", target: "Сотрудники:В зоне риска", iconName: "risk" },
+      { label: "Выгорание", value: 5, caption: "признаки", status: "medium", target: "Сотрудники:Выгорание", iconName: "balance" },
+      { label: "Удовлетворенность", value: "74%", caption: "средняя", status: "medium", target: "Сотрудники:Удовлетворенность", iconName: "completed" }
     ],
     charts: [
       { title: "Распределение по отделам", caption: "срез базы", items: state.departments.map((item) => [item.name, item.employees]) },
@@ -328,14 +328,14 @@ export function renderVacancies(state) {
     ],
     filters: pageFilterConfig.vacancies,
     kpiCards: [
-      { label: "Активные вакансии", value: state.vacancies.filter((x) => x.status === "Активна").length, caption: "в работе", status: "neutral", target: "Вакансии:Активные" },
-      { label: "Без откликов", value: 1, caption: "больше 7 дней", status: "bad", target: "Вакансии:Без откликов" },
-      { label: "Низкая конверсия", value: low.length, caption: "нужна правка", status: "bad", target: "Вакансии:Низкая конверсия" },
-      { label: "Хорошая конверсия", value: 2, caption: "работают", status: "good", target: "Вакансии:Хорошая конверсия" },
-      { label: "Всего откликов", value: state.vacancies.reduce((sum, item) => sum + item.responses, 0), caption: "по вакансиям", status: "neutral", target: "Вакансии:Отклики" },
-      { label: "Всего оценок", value: state.vacancies.reduce((sum, item) => sum + item.assessments, 0), caption: "отправлено", status: "neutral", target: "Вакансии:Оценки" },
-      { label: "Подходят", value: state.vacancies.reduce((sum, item) => sum + item.fit, 0), caption: "под профиль", status: "good", target: "Кандидаты:Подходят" },
-      { label: "Закрытые", value: 4, caption: "за период", status: "neutral", target: "Вакансии:Закрытые" }
+      { label: "Активные вакансии", value: state.vacancies.filter((x) => x.status === "Активна").length, caption: "в работе", status: "neutral", target: "Вакансии:Активные", iconName: "vacancies" },
+      { label: "Без откликов", value: 1, caption: "больше 7 дней", status: "bad", target: "Вакансии:Без откликов", iconName: "risk" },
+      { label: "Низкая конверсия", value: low.length, caption: "нужна правка", status: "bad", target: "Вакансии:Низкая конверсия", iconName: "chart" },
+      { label: "Хорошая конверсия", value: 2, caption: "работают", status: "good", target: "Вакансии:Хорошая конверсия", iconName: "fit" },
+      { label: "Всего откликов", value: state.vacancies.reduce((sum, item) => sum + item.responses, 0), caption: "по вакансиям", status: "neutral", target: "Вакансии:Отклики", iconName: "candidates" },
+      { label: "Всего оценок", value: state.vacancies.reduce((sum, item) => sum + item.assessments, 0), caption: "отправлено", status: "neutral", target: "Вакансии:Оценки", iconName: "link" },
+      { label: "Подходят", value: state.vacancies.reduce((sum, item) => sum + item.fit, 0), caption: "под профиль", status: "good", target: "Кандидаты:Подходят", iconName: "fit" },
+      { label: "Закрытые", value: 4, caption: "за период", status: "neutral", target: "Вакансии:Закрытые", iconName: "completed" }
     ],
     charts: [
       { title: "Отклики по вакансиям", caption: "входящий поток", items: state.vacancies.map((item) => [item.title, item.responses]) },
