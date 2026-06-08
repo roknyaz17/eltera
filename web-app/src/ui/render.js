@@ -1160,10 +1160,16 @@ export function renderSettings(state) {
         <div class="elt-card ${studioLocked ? 'elt-card-locked' : ''}" ${lockAttr}>
           <div class="elt-card-head"><h2>Интерфейс</h2>${studioLocked ? '<span class="elt-lock-badge">TalentStudio</span>' : ''}</div>
           <div class="elt-form-grid">
-            <label class="elt-label">Логотип компании<input class="elt-input" type="file"></label>
-            <label class="elt-label">Часовой пояс<select class="elt-select"><option>Europe/Moscow</option></select></label>
-            <label class="elt-label">Язык интерфейса<select class="elt-select"><option>Русский</option></select></label>
-            <div><button class="elt-btn-ghost">Загрузить логотип</button></div>
+            <label class="elt-label elt-label-full">Логотип компании
+              <label class="elt-file-upload-btn">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 4l3-3 3 3M2 11h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span id="elt-file-name">Выбрать файл</span>
+                <input type="file" accept="image/*" style="display:none" onchange="document.getElementById('elt-file-name').textContent=this.files[0]?.name||'Выбрать файл'">
+              </label>
+            </label>
+            <label class="elt-label">Часовой пояс<select class="elt-select"><option>Europe/Moscow</option><option>Europe/Kaliningrad</option><option>Asia/Yekaterinburg</option><option>Asia/Novosibirsk</option><option>Asia/Vladivostok</option></select></label>
+            <label class="elt-label">Язык интерфейса<select class="elt-select"><option>Русский</option><option>English</option></select></label>
+            <div><button class="elt-btn-primary">Сохранить</button></div>
           </div>
         </div>
         <div class="elt-card ${studioLocked ? 'elt-card-locked' : ''}" ${lockAttr}>

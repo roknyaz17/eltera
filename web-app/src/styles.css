@@ -5256,6 +5256,41 @@ small {
   outline: none;
   font-family: inherit;
   transition: border-color 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+.elt-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238899BB' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+  cursor: pointer;
+}
+/* скрываем нативный file input, показываем стилизованную кнопку */
+.elt-input[type="file"] {
+  display: none;
+}
+.elt-file-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 7px;
+  color: #E6F2FF;
+  font-size: 13px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s, background 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+.elt-file-upload-btn:hover {
+  border-color: rgba(30,91,255,0.4);
+  background: rgba(30,91,255,0.06);
 }
 .elt-input:focus, .elt-select:focus, .elt-textarea:focus {
   border-color: rgba(30,91,255,0.5);
@@ -5766,6 +5801,18 @@ small {
   background: #F8FAFC;
   border-color: rgba(0,0,0,.12);
   color: #0A0F1E;
+}
+.lightTheme .elt-select {
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%230A0F1E' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.lightTheme .elt-file-upload-btn {
+  background: #F8FAFC;
+  border-color: rgba(0,0,0,.12);
+  color: #0A0F1E;
+}
+.lightTheme .elt-file-upload-btn:hover {
+  border-color: rgba(30,91,255,.4);
+  background: rgba(30,91,255,.04);
 }
 .lightTheme .elt-input:focus,
 .lightTheme .elt-select:focus,
