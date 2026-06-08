@@ -6116,3 +6116,78 @@ small {
 .lightTheme .elt-upgrade-max-block { background: rgba(0,229,212,.03); }
 .lightTheme .elt-upgrade-max-text h3 { color: #0A0F1E; }
 .lightTheme .elt-upgrade-max-text p { color: #64748B; }
+
+/* ─── Dev Portal ─────────────────────────────────────────────────────────────── */
+.devBody { background: #060A14; min-height: 100vh; font-family: 'Manrope', sans-serif; color: #E6F2FF; }
+.devLockPage { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: radial-gradient(ellipse at 30% 40%, rgba(30,91,255,.15) 0%, transparent 60%), radial-gradient(ellipse at 70% 70%, rgba(0,229,212,.08) 0%, transparent 60%), #060A14; }
+.devLockCard { background: rgba(17,26,51,.85); border: 1px solid rgba(30,91,255,.25); border-radius: 20px; padding: 48px 40px; width: 100%; max-width: 420px; text-align: center; backdrop-filter: blur(20px); }
+.devLockIcon { font-size: 36px; margin-bottom: 16px; }
+.devLockTitle { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+.devLockSub { font-size: 13px; color: rgba(230,242,255,.5); margin-bottom: 32px; }
+.devLockLabel { display: block; text-align: left; font-size: 12px; color: rgba(230,242,255,.6); margin-bottom: 8px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
+.devLockInput { width: 100%; background: rgba(10,15,30,.8); border: 1px solid rgba(30,91,255,.3); border-radius: 12px; padding: 12px 16px; color: #E6F2FF; font-size: 15px; font-family: 'Manrope', sans-serif; outline: none; box-sizing: border-box; transition: border-color .2s; }
+.devLockInput:focus { border-color: #1E5BFF; }
+.devLockError { color: #FF6B6B; font-size: 13px; margin-top: 8px; }
+.devLockBtn { width: 100%; margin-top: 20px; padding: 13px; background: linear-gradient(135deg, #1E5BFF, #00E5D4); border: none; border-radius: 12px; color: #fff; font-size: 15px; font-weight: 700; font-family: 'Manrope', sans-serif; cursor: pointer; transition: opacity .2s; }
+.devLockBtn:hover { opacity: .9; }
+.devLockFooter { margin-top: 24px; font-size: 12px; color: rgba(230,242,255,.3); }
+.devPortal { display: flex; flex-direction: column; min-height: 100vh; }
+.devPortalHeader { display: flex; align-items: center; justify-content: space-between; padding: 16px 32px; background: rgba(11,16,32,.95); border-bottom: 1px solid rgba(255,255,255,.06); position: sticky; top: 0; z-index: 100; backdrop-filter: blur(12px); }
+.devPortalLogo { display: flex; align-items: center; gap: 12px; }
+.devPortalBadge { background: rgba(30,91,255,.2); border: 1px solid rgba(30,91,255,.4); color: #7AABFF; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 3px 10px; border-radius: 20px; }
+.devPortalActions { display: flex; gap: 8px; }
+.devPortalBody { padding: 28px 32px; flex: 1; }
+.devStats { display: flex; gap: 16px; margin-bottom: 28px; }
+.devStat { background: rgba(17,26,51,.7); border: 1px solid rgba(255,255,255,.07); border-radius: 14px; padding: 16px 24px; display: flex; flex-direction: column; gap: 4px; min-width: 120px; }
+.devStatNum { font-size: 28px; font-weight: 800; color: #1E5BFF; }
+.devStatLabel { font-size: 12px; color: rgba(230,242,255,.5); }
+.devPortalGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+.devCol { display: flex; flex-direction: column; gap: 20px; }
+.devSection { background: rgba(17,26,51,.6); border: 1px solid rgba(255,255,255,.07); border-radius: 16px; padding: 20px; }
+.devFormSection { background: rgba(30,91,255,.06); border-color: rgba(30,91,255,.2); }
+.devSectionHead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.devSectionHead h2 { font-size: 15px; font-weight: 700; color: #E6F2FF; margin: 0; }
+.devBtn { padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; font-family: 'Manrope', sans-serif; cursor: pointer; border: none; transition: opacity .2s, background .2s; }
+.devBtnPrimary { background: #1E5BFF; color: #fff; }
+.devBtnPrimary:hover { background: #1a4fd6; }
+.devBtnSecondary { background: rgba(255,255,255,.08); color: #E6F2FF; border: 1px solid rgba(255,255,255,.12); }
+.devBtnSecondary:hover { background: rgba(255,255,255,.13); }
+.devBtnDanger { background: rgba(255,80,80,.12); color: #FF8080; border: 1px solid rgba(255,80,80,.25); }
+.devBtnDanger:hover { background: rgba(255,80,80,.2); }
+.devBtnIcon { width: 28px; height: 28px; border-radius: 6px; font-size: 13px; cursor: pointer; border: none; display: inline-flex; align-items: center; justify-content: center; font-family: 'Manrope', sans-serif; }
+.devBtnEdit { background: rgba(30,91,255,.15); color: #7AABFF; }
+.devBtnEdit:hover { background: rgba(30,91,255,.3); }
+.devBtnDel { background: rgba(255,80,80,.1); color: #FF8080; }
+.devBtnDel:hover { background: rgba(255,80,80,.2); }
+.devProfList { display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto; }
+.devProfItem { display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.06); border-radius: 10px; padding: 10px 14px; }
+.devProfInfo { display: flex; align-items: center; gap: 10px; }
+.devProfInfo strong { font-size: 14px; color: #E6F2FF; }
+.devProfCat { font-size: 11px; color: rgba(230,242,255,.4); background: rgba(255,255,255,.06); padding: 2px 8px; border-radius: 20px; }
+.devProfComps { font-size: 11px; color: #00E5D4; }
+.devProfActions { display: flex; gap: 6px; }
+.devQList { display: flex; flex-direction: column; gap: 8px; max-height: 500px; overflow-y: auto; }
+.devQItem { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06); border-radius: 10px; padding: 12px 14px; position: relative; }
+.devQMeta { display: flex; gap: 8px; margin-bottom: 6px; }
+.devQScope { font-size: 11px; color: #1E5BFF; background: rgba(30,91,255,.15); padding: 2px 8px; border-radius: 20px; }
+.devQComp { font-size: 11px; color: #00E5D4; background: rgba(0,229,212,.1); padding: 2px 8px; border-radius: 20px; }
+.devQText { font-size: 13px; color: #E6F2FF; margin-bottom: 8px; line-height: 1.4; }
+.devQAnswers { display: flex; flex-direction: column; gap: 3px; }
+.devQAnswer { font-size: 12px; color: rgba(230,242,255,.55); }
+.devQRedFlag { color: #FF8080; }
+.devQActions { position: absolute; top: 10px; right: 10px; }
+.devCompSection { margin-top: 0; }
+.devCompGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.devCompItem { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.06); border-radius: 8px; padding: 8px 12px; }
+.devCompId { font-size: 11px; color: #1E5BFF; font-family: monospace; min-width: 80px; }
+.devCompTitle { font-size: 13px; color: #E6F2FF; flex: 1; }
+.devAddCompRow { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+.devFormGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.devField { display: flex; flex-direction: column; gap: 6px; }
+.devFieldFull { grid-column: 1 / -1; }
+.devField label { font-size: 12px; color: rgba(230,242,255,.6); font-weight: 600; letter-spacing: .04em; }
+.devInput { background: rgba(10,15,30,.8); border: 1px solid rgba(30,91,255,.25); border-radius: 10px; padding: 9px 12px; color: #E6F2FF; font-size: 13px; font-family: 'Manrope', sans-serif; outline: none; transition: border-color .2s; width: 100%; box-sizing: border-box; }
+.devInput:focus { border-color: #1E5BFF; }
+.devTextarea { resize: vertical; min-height: 80px; }
+.devSelect { appearance: none; cursor: pointer; }
+.devFormActions { display: flex; gap: 8px; margin-top: 16px; }

@@ -26,6 +26,8 @@ import {
   renderReports,
   renderSettings,
   renderSupport,
+  renderDevPortalLock,
+  renderDevPortal,
   renderTariffs,
   renderThreeSixty,
   renderPerformance,
@@ -347,6 +349,7 @@ function currentRoute() {
   if (hash.startsWith("#/assess/")) return { route: "assess", token: hash.replace("#/assess/", "") };
   if (hash === "#/login") return { route: "login" };
   if (hash === "#/thanks") return { route: "thanks" };
+  if (hash === "#/dev") return { route: "dev" };
   return { route: "landing" };
 }
 
@@ -367,6 +370,17 @@ function render() {
   state.route = route.route;
   if (route.view) state.view = route.view;
   if (route.reportId) state.reportId = route.reportId;
+
+  if (route.route === "dev") {
+    document.body.className = "devBody";
+    const devAuth = sessionStorage.getItem("eltera_dev_auth");
+    if (!devAuth) {
+      app.innerHTML = renderDevPortalLock();
+    } else {
+      app.innerHTML = renderDevPortal(getDevLibrary());
+    }
+    return;
+  }
 
   if (route.route === "landing") {
     document.body.className = "landingBody";
@@ -792,6 +806,183 @@ document.addEventListener("change", (event) => {
       link.history.push(["начата", new Date().toISOString()]);
     }
     saveState();
+  }
+});
+
+// ─── Dev Portal ───────────────────────────────────────────────────────────────
+const DEV_PASSWORD = "eltera-dev-2026";
+const DEV_LIB_KEY = "eltera-dev-library-v1";
+
+function getDevLibrary() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(DEV_LIB_KEY) || "null");
+    if (saved) return saved;
+  } catch {}
+  return {
+    professions: professions.map(p => ({ ...p })),
+    questions: questions.map(q => ({ ...q })),
+    commonCompetencies: commonCompetencies.map(c => ({ ...c })),
+    professionalCompetencies: { ...professionalCompetencies }
+  };
+}
+
+function saveDevLibrary(lib) {
+  localStorage.setItem(DEV_LIB_KEY, JSON.stringify(lib));
+}
+
+document.addEventListener("click", (event) => {
+  if (event.target.matches("#devPasswordSubmit")) {
+    const input = document.querySelector("#devPasswordInput");
+    if (input && input.value === DEV_PASSWORD) {
+      sessionStorage.setItem("eltera_dev_auth", "1");
+      render();
+    } else {
+      const err = document.querySelector("#devPasswordError");
+      if (err) err.style.display = "block";
+      if (input) input.value = "";
+    }
+    return;
+  }
+  if (event.target.matches("#devExportBtn")) {
+    const lib = getDevLibrary();
+    const blob = new Blob([JSON.stringify(lib, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "eltera-library.json"; a.click();
+    URL.revokeObjectURL(url);
+    return;
+  }
+  if (event.target.matches("#devImportTrigger")) {
+    document.querySelector("#devImportInput")?.click();
+    return;
+  }
+  if (event.target.matches("#devResetBtn")) {
+    if (confirm("Сбросить библиотеку к дефолтным данным? Все изменения будут потеряны.")) {
+      localStorage.removeItem(DEV_LIB_KEY);
+      render();
+    }
+    return;
+  }
+  if (event.target.matches("#devAddProfBtn")) {
+    const form = document.querySelector("#devAddProfForm");
+    if (form) form.style.display = form.style.display === "none" ? "block" : "none";
+    return;
+  }
+  if (event.target.matches("#devCancelProfBtn")) {
+    const form = document.querySelector("#devAddProfForm");
+    if (form) form.style.display = "none";
+    return;
+  }
+  if (event.target.matches("#devSaveProfBtn")) {
+    const id = document.querySelector("#newProfId")?.value.trim();
+    const title = document.querySelector("#newProfTitle")?.value.trim();
+    const category = document.querySelector("#newProfCategory")?.value.trim();
+    const summary = document.querySelector("#newProfSummary")?.value.trim();
+    const compsRaw = document.querySelector("#newProfComps")?.value.trim();
+    if (!id || !title) { alert("Заполните ID и название профессии"); return; }
+    const lib = getDevLibrary();
+    const competencies = compsRaw ? compsRaw.split(",").map(s => ({ id: s.trim(), weight: 1 })) : [];
+    lib.professions.push({ id, title, category: category || "Другое", summary: summary || "", competencies });
+    saveDevLibrary(lib);
+    render();
+    return;
+  }
+  const delProf = event.target.closest("[data-del-prof]")?.dataset.delProf;
+  if (delProf) {
+    if (confirm(`Удалить профессию "${delProf}"?`)) {
+      const lib = getDevLibrary();
+      lib.professions = lib.professions.filter(p => p.id !== delProf);
+      saveDevLibrary(lib);
+      render();
+    }
+    return;
+  }
+  if (event.target.matches("#devAddQBtn")) {
+    const form = document.querySelector("#devAddQForm");
+    if (form) form.style.display = form.style.display === "none" ? "block" : "none";
+    return;
+  }
+  if (event.target.matches("#devCancelQBtn")) {
+    const form = document.querySelector("#devAddQForm");
+    if (form) form.style.display = "none";
+    return;
+  }
+  if (event.target.matches("#devSaveQBtn")) {
+    const scope = document.querySelector("#newQScope")?.value;
+    const competencyId = document.querySelector("#newQComp")?.value;
+    const text = document.querySelector("#newQText")?.value.trim();
+    const answersRaw = document.querySelector("#newQAnswers")?.value.trim();
+    if (!text || !answersRaw) { alert("Заполните текст вопроса и ответы"); return; }
+    const answers = answersRaw.split("\n").filter(Boolean).map(line => {
+      const parts = line.split("|").map(s => s.trim());
+      return { text: parts[0], score: Number(parts[1]) || 0, redFlag: parts[2] === "red_flag" };
+    });
+    const lib = getDevLibrary();
+    lib.questions.push({ id: `${scope}-${competencyId}-${Date.now()}`, scope, competencyId, text, answers });
+    saveDevLibrary(lib);
+    render();
+    return;
+  }
+  const delQ = event.target.closest("[data-del-q]")?.dataset.delQ;
+  if (delQ !== undefined && event.target.closest("[data-del-q]")) {
+    const lib = getDevLibrary();
+    lib.questions.splice(Number(delQ), 1);
+    saveDevLibrary(lib);
+    render();
+    return;
+  }
+  if (event.target.matches("#devAddCompBtn")) {
+    const row = document.querySelector("#devAddCompRow");
+    if (row) row.style.display = row.style.display === "none" ? "flex" : "none";
+    return;
+  }
+  if (event.target.matches("#devCancelCompBtn")) {
+    const row = document.querySelector("#devAddCompRow");
+    if (row) row.style.display = "none";
+    return;
+  }
+  if (event.target.matches("#devSaveCompBtn")) {
+    const id = document.querySelector("#newCompId")?.value.trim();
+    const title = document.querySelector("#newCompTitle")?.value.trim();
+    if (!id || !title) { alert("Заполните ID и название компетенции"); return; }
+    const lib = getDevLibrary();
+    lib.professionalCompetencies[id] = title;
+    saveDevLibrary(lib);
+    render();
+    return;
+  }
+  const delComp = event.target.closest("[data-del-comp]")?.dataset.delComp;
+  if (delComp) {
+    if (confirm(`Удалить компетенцию "${delComp}"?`)) {
+      const lib = getDevLibrary();
+      delete lib.professionalCompetencies[delComp];
+      saveDevLibrary(lib);
+      render();
+    }
+    return;
+  }
+});
+
+document.addEventListener("change", (event) => {
+  if (event.target.matches("#devImportInput")) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const lib = JSON.parse(e.target.result);
+        if (!lib.professions || !lib.questions) { alert("Неверный формат файла. Нужны поля professions и questions."); return; }
+        saveDevLibrary(lib);
+        render();
+      } catch { alert("Ошибка чтения файла JSON"); }
+    };
+    reader.readAsText(file);
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && event.target.matches("#devPasswordInput")) {
+    document.querySelector("#devPasswordSubmit")?.click();
   }
 });
 

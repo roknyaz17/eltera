@@ -1565,3 +1565,188 @@ function professionIdByTitle(title) {
   if (/координатор|офис/i.test(title)) return "coordinator";
   return "recruiter";
 }
+
+export function renderDevPortalLock() {
+  return `
+    <div class="devLockPage">
+      <div class="devLockCard">
+        <div class="devLockIcon">⚙️</div>
+        <div class="devLockTitle">Dev Portal</div>
+        <div class="devLockSub">Eltera Assessment Intelligence · Управление библиотекой тестов</div>
+        <div class="devLockForm">
+          <label class="devLockLabel">Пароль разработчика</label>
+          <input id="devPasswordInput" type="password" class="devLockInput" placeholder="Введите пароль..." autocomplete="off">
+          <div id="devPasswordError" class="devLockError" style="display:none">Неверный пароль</div>
+          <button id="devPasswordSubmit" class="devLockBtn">Войти в Dev Portal</button>
+        </div>
+        <div class="devLockFooter">Эта страница не видна обычным пользователям</div>
+      </div>
+    </div>
+  `;
+}
+
+export function renderDevPortal(library) {
+  const { professions: profs, questions: qs, commonCompetencies: cc, professionalCompetencies: pc } = library;
+  const profOptions = profs.map(p => `<option value="${p.id}">${p.title} (${p.category})</option>`).join("");
+  const compOptions = Object.entries(pc).map(([id, title]) => `<option value="${id}">${title}</option>`).join("");
+
+  return `
+    <div class="devPortal">
+      <div class="devPortalHeader">
+        <div class="devPortalLogo">
+          <img src="/assets/eltera_logo_horizontal_on_dark.svg?v=5" alt="Eltera" height="28">
+          <span class="devPortalBadge">Dev Portal</span>
+        </div>
+        <div class="devPortalActions">
+          <button class="devBtn devBtnSecondary" id="devExportBtn">⬇ Экспорт JSON</button>
+          <button class="devBtn devBtnSecondary" id="devImportTrigger">⬆ Импорт JSON</button>
+          <input type="file" id="devImportInput" accept=".json" style="display:none">
+          <button class="devBtn devBtnDanger" id="devResetBtn">↺ Сброс к дефолту</button>
+          <button class="devBtn devBtnSecondary" data-route="login">✕ Выйти</button>
+        </div>
+      </div>
+
+      <div class="devPortalBody">
+
+        <!-- Статистика -->
+        <div class="devStats">
+          <div class="devStat"><span class="devStatNum">${profs.length}</span><span class="devStatLabel">Профессий</span></div>
+          <div class="devStat"><span class="devStatNum">${qs.length}</span><span class="devStatLabel">Вопросов</span></div>
+          <div class="devStat"><span class="devStatNum">${Object.keys(pc).length}</span><span class="devStatLabel">Проф. компетенций</span></div>
+          <div class="devStat"><span class="devStatNum">${cc.length}</span><span class="devStatLabel">Общих компетенций</span></div>
+        </div>
+
+        <div class="devPortalGrid">
+
+          <!-- Левая колонка: профессии и вопросы -->
+          <div class="devCol">
+
+            <!-- Профессии -->
+            <div class="devSection">
+              <div class="devSectionHead">
+                <h2>Профессии / Профили</h2>
+                <button class="devBtn devBtnPrimary" id="devAddProfBtn">+ Добавить профессию</button>
+              </div>
+              <div class="devProfList">
+                ${profs.map(p => `
+                  <div class="devProfItem" data-prof-id="${p.id}">
+                    <div class="devProfInfo">
+                      <strong>${p.title}</strong>
+                      <span class="devProfCat">${p.category}</span>
+                      <span class="devProfComps">${p.competencies.length} компетенций</span>
+                    </div>
+                    <div class="devProfActions">
+                      <button class="devBtnIcon devBtnEdit" data-edit-prof="${p.id}" title="Редактировать">✎</button>
+                      <button class="devBtnIcon devBtnDel" data-del-prof="${p.id}" title="Удалить">✕</button>
+                    </div>
+                  </div>
+                `).join("")}
+              </div>
+            </div>
+
+            <!-- Форма добавления профессии -->
+            <div class="devSection devFormSection" id="devAddProfForm" style="display:none">
+              <div class="devSectionHead"><h2>Новая профессия</h2></div>
+              <div class="devFormGrid">
+                <div class="devField"><label>ID (латиница, без пробелов)</label><input type="text" id="newProfId" placeholder="sales_manager" class="devInput"></div>
+                <div class="devField"><label>Название</label><input type="text" id="newProfTitle" placeholder="Менеджер по продажам" class="devInput"></div>
+                <div class="devField"><label>Категория</label><input type="text" id="newProfCategory" placeholder="Коммерция" class="devInput"></div>
+                <div class="devField devFieldFull"><label>Описание (summary)</label><input type="text" id="newProfSummary" placeholder="Краткое описание роли" class="devInput"></div>
+                <div class="devField devFieldFull"><label>Компетенции (через запятую, ID из списка)</label><input type="text" id="newProfComps" placeholder="needs_discovery, presentation, objections" class="devInput"></div>
+              </div>
+              <div class="devFormActions">
+                <button class="devBtn devBtnPrimary" id="devSaveProfBtn">Сохранить профессию</button>
+                <button class="devBtn devBtnSecondary" id="devCancelProfBtn">Отмена</button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Правая колонка: вопросы -->
+          <div class="devCol">
+
+            <!-- Вопросы -->
+            <div class="devSection">
+              <div class="devSectionHead">
+                <h2>Вопросы</h2>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <select id="devFilterProf" class="devSelect">
+                    <option value="">Все профессии</option>
+                    ${profOptions}
+                  </select>
+                  <button class="devBtn devBtnPrimary" id="devAddQBtn">+ Добавить вопрос</button>
+                </div>
+              </div>
+              <div class="devQList" id="devQList">
+                ${qs.map((q, i) => `
+                  <div class="devQItem" data-q-scope="${q.scope}">
+                    <div class="devQMeta">
+                      <span class="devQScope">${q.scope}</span>
+                      <span class="devQComp">${pc[q.competencyId] || q.competencyId}</span>
+                    </div>
+                    <div class="devQText">${q.text}</div>
+                    <div class="devQAnswers">
+                      ${q.answers.map(a => `<span class="devQAnswer ${a.redFlag ? 'devQRedFlag' : ''}">${a.text} <b>[${a.score}]</b>${a.redFlag ? ' 🚩' : ''}</span>`).join("")}
+                    </div>
+                    <div class="devQActions">
+                      <button class="devBtnIcon devBtnDel" data-del-q="${i}" title="Удалить">✕</button>
+                    </div>
+                  </div>
+                `).join("")}
+              </div>
+            </div>
+
+            <!-- Форма добавления вопроса -->
+            <div class="devSection devFormSection" id="devAddQForm" style="display:none">
+              <div class="devSectionHead"><h2>Новый вопрос</h2></div>
+              <div class="devFormGrid">
+                <div class="devField">
+                  <label>Профессия (scope)</label>
+                  <select id="newQScope" class="devSelect devInput">${profOptions}</select>
+                </div>
+                <div class="devField">
+                  <label>Компетенция</label>
+                  <select id="newQComp" class="devSelect devInput">${compOptions}</select>
+                </div>
+                <div class="devField devFieldFull"><label>Текст вопроса</label><textarea id="newQText" class="devInput devTextarea" placeholder="Введите вопрос..."></textarea></div>
+                <div class="devField devFieldFull">
+                  <label>Ответы (каждый с новой строки, формат: <code>текст | балл | red_flag</code>)</label>
+                  <textarea id="newQAnswers" class="devInput devTextarea" rows="4" placeholder="Правильный ответ | 5&#10;Средний ответ | 2&#10;Неверный ответ | 0 | red_flag"></textarea>
+                </div>
+              </div>
+              <div class="devFormActions">
+                <button class="devBtn devBtnPrimary" id="devSaveQBtn">Сохранить вопрос</button>
+                <button class="devBtn devBtnSecondary" id="devCancelQBtn">Отмена</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Компетенции -->
+        <div class="devSection devCompSection">
+          <div class="devSectionHead">
+            <h2>Профессиональные компетенции</h2>
+            <button class="devBtn devBtnPrimary" id="devAddCompBtn">+ Добавить компетенцию</button>
+          </div>
+          <div class="devCompGrid">
+            ${Object.entries(pc).map(([id, title]) => `
+              <div class="devCompItem">
+                <span class="devCompId">${id}</span>
+                <span class="devCompTitle">${title}</span>
+                <button class="devBtnIcon devBtnDel" data-del-comp="${id}" title="Удалить">✕</button>
+              </div>
+            `).join("")}
+          </div>
+          <div class="devAddCompRow" id="devAddCompRow" style="display:none">
+            <input type="text" id="newCompId" class="devInput" placeholder="comp_id (латиница)">
+            <input type="text" id="newCompTitle" class="devInput" placeholder="Название компетенции">
+            <button class="devBtn devBtnPrimary" id="devSaveCompBtn">Добавить</button>
+            <button class="devBtn devBtnSecondary" id="devCancelCompBtn">Отмена</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  `;
+}
