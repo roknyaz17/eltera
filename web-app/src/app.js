@@ -571,23 +571,23 @@ document.addEventListener("click", (event) => {
   const route = event.target.closest("[data-route]")?.dataset.route;
   if (route === "login") setHash("#/login");
 
-  // Auth tabs switching
+  // Auth pill switching
   const authTab = event.target.closest("[data-auth-tab]")?.dataset.authTab;
   if (authTab) {
-    document.querySelectorAll(".authTab").forEach(t => t.classList.remove("active"));
-    document.querySelectorAll(".authTabPanel").forEach(p => p.classList.add("hidden"));
+    document.querySelectorAll(".authPillBtn").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".authFormWrap").forEach(p => p.classList.remove("open"));
     event.target.closest("[data-auth-tab]").classList.add("active");
-    document.querySelector(`[data-auth-panel="${authTab}"]`)?.classList.remove("hidden");
+    document.querySelector(`[data-auth-panel="${authTab}"]`)?.classList.add("open");
   }
 
   // Switch tab via link
   const switchTab = event.target.closest("[data-switch-tab]")?.dataset.switchTab;
   if (switchTab) {
     event.preventDefault();
-    document.querySelectorAll(".authTab").forEach(t => t.classList.remove("active"));
-    document.querySelectorAll(".authTabPanel").forEach(p => p.classList.add("hidden"));
+    document.querySelectorAll(".authPillBtn").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".authFormWrap").forEach(p => p.classList.remove("open"));
     document.querySelector(`[data-auth-tab="${switchTab}"]`)?.classList.add("active");
-    document.querySelector(`[data-auth-panel="${switchTab}"]`)?.classList.remove("hidden");
+    document.querySelector(`[data-auth-panel="${switchTab}"]`)?.classList.add("open");
   }
 
   // Contact type switch (email / phone)

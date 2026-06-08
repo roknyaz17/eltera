@@ -529,37 +529,114 @@ p { line-height: 1.6; }
   overflow: hidden;
 }
 
-/* ── Auth Tabs ── */
-.authTabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+/* ── Auth Pulsing Background ── */
+.authPage {
+  position: relative;
 }
 
-.authTab {
-  padding: 14px 16px;
+.authPage::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 700px 700px at -10% -10%, rgba(30,91,255,0.20) 0%, transparent 60%),
+    radial-gradient(ellipse 600px 600px at 110% 110%, rgba(0,229,212,0.14) 0%, transparent 60%),
+    radial-gradient(ellipse 480px 480px at 50% 60%, rgba(200,80,192,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 380px 380px at 90% -5%, rgba(30,91,255,0.09) 0%, transparent 60%);
+  animation: authBgPulse 12s ease-in-out infinite alternate;
+}
+
+@keyframes authBgPulse {
+  0%   { opacity: 0.7; transform: scale(1); }
+  50%  { opacity: 1;   transform: scale(1.04); }
+  100% { opacity: 0.8; transform: scale(0.98); }
+}
+
+/* ── Auth Gradient Heading ── */
+.authGradientText {
+  background: linear-gradient(135deg, #00E5D4 0%, #1E5BFF 60%, #00E5D4 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: authGradientShift 5s linear infinite;
+  display: inline;
+}
+
+.authWhiteText {
+  color: #FFFFFF;
+  -webkit-text-fill-color: #FFFFFF;
+  display: inline;
+}
+
+@keyframes authGradientShift {
+  0%   { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+/* ── Auth Pill Switcher ── */
+.authPill {
+  padding: 18px 20px 0;
+}
+
+.authPillInner {
+  display: flex;
+  background: rgba(255,255,255,0.05);
+  border-radius: 100px;
+  padding: 4px;
+  border: 1px solid rgba(255,255,255,0.07);
+  gap: 3px;
+}
+
+.authPillBtn {
+  flex: 1;
+  padding: 9px 16px;
+  border-radius: 100px;
+  border: none;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 600;
-  color: rgba(230,242,255,0.45);
-  background: transparent;
-  border: none;
   cursor: pointer;
-  transition: color 0.18s, background 0.18s;
+  transition: all 0.25s ease;
+  color: rgba(230,242,255,0.38);
+  background: transparent;
   letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
-.authTab:hover {
-  color: rgba(230,242,255,0.75);
-  background: rgba(255,255,255,0.03);
+.authPillBtn.active {
+  background: linear-gradient(135deg, #1E5BFF, #0EA5E9);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(30,91,255,0.35);
 }
 
-.authTab.active {
-  color: #E6F2FF;
-  background: rgba(30,91,255,0.10);
-  border-bottom: 2px solid #1E5BFF;
+/* ── Auth Form Wrap (smooth expand) ── */
+.authFormWrap {
+  overflow: hidden;
+  transition: max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease;
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
-/* ── Auth Tab Panels ── */
+.authFormWrap.open {
+  max-height: 800px;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.authFormWrap form {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px 22px;
+}
+
+/* ── Auth Tabs (legacy, kept for compatibility) ── */
+.authTabs {
+  display: none;
+}
+
 .authTabPanel {
   display: grid;
   gap: 14px;

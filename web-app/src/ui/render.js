@@ -72,24 +72,21 @@ export function renderLogin() {
   return `
     <div class="authPage">
       <section class="authBrand">
-        <img src="/assets/eltera_logo_horizontal_on_dark.svg" alt="Eltera">
-        <h1>Интеллект в оценке.<br>Уверенность в решениях.</h1>
-        <p>Платформа для оценки кандидатов и сотрудников. Готовые профили, HR-отчёты, аналитика и рекомендации.</p>
-        <ul class="authFeatureList">
-          <li><span class="authFeatureIcon">✓</span> Готовые профили профессий</li>
-          <li><span class="authFeatureIcon">✓</span> Оценочные ссылки за 1 минуту</li>
-          <li><span class="authFeatureIcon">✓</span> PDF-отчёты и красные флаги</li>
-          <li><span class="authFeatureIcon">✓</span> Аналитика команд и кандидатов</li>
-        </ul>
+        <img src="/assets/eltera_logo_horizontal_on_dark.svg?v=5" alt="Eltera">
+        <h1><span class="authGradientText">Интеллект в оценке.</span><br><span class="authWhiteText">Уверенность в решениях.</span></h1>
+        <p>Разберётесь за 5 минут. Первая оценка — за 1 минуту. Без инструкций и долгого обучения.</p>
       </section>
       <div class="authCard glass">
-        <div class="authTabs">
-          <button class="authTab active" data-auth-tab="login">Войти</button>
-          <button class="authTab" data-auth-tab="register">Зарегистрироваться</button>
+        <div class="authPill">
+          <div class="authPillInner">
+            <button class="authPillBtn active" data-auth-tab="login">Войти</button>
+            <button class="authPillBtn" data-auth-tab="register">Зарегистрироваться</button>
+          </div>
         </div>
 
         <!-- Форма входа -->
-        <form class="authTabPanel" data-auth-panel="login" data-login-form>
+        <div class="authFormWrap open" data-auth-panel="login">
+        <form data-login-form>
           <div class="authInputGroup">
             <label class="authLabel">Email или телефон</label>
             <input name="email" type="text" value="hr@eltera.ai" placeholder="name@company.ru или +7..." autocomplete="email" class="authInput">
@@ -102,9 +99,11 @@ export function renderLogin() {
           <button class="authSubmitBtn" type="submit">Войти в кабинет</button>
           <p class="authHint">Нет аккаунта? <a href="#" class="authLink" data-switch-tab="register">Зарегистрироваться</a></p>
         </form>
+        </div>
 
         <!-- Форма регистрации -->
-        <form class="authTabPanel hidden" data-auth-panel="register" data-register-form>
+        <div class="authFormWrap" data-auth-panel="register">
+        <form data-register-form>
           <div class="authInputRow">
             <div class="authInputGroup">
               <label class="authLabel">Имя</label>
@@ -138,6 +137,7 @@ export function renderLogin() {
           <button class="authSubmitBtn" type="submit">Создать аккаунт</button>
           <p class="authHint">Уже есть аккаунт? <a href="#" class="authLink" data-switch-tab="login">Войти</a></p>
         </form>
+        </div>
       </div>
     </div>
   `;
