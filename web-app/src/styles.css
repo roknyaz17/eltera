@@ -5362,3 +5362,318 @@ small {
   .elt-kpi-row { grid-template-columns: repeat(3, 1fr); }
   .elt-form-grid-3 { grid-template-columns: 1fr 1fr; }
 }
+
+/* ============================================================
+   LIGHT THEME — переопределения для новых .elt-* компонентов
+   ============================================================ */
+
+/* Page layout */
+.lightTheme .elt-page-title { color: #0A0F1E; }
+.lightTheme .elt-page-subtitle { color: rgba(10,15,30,.5); }
+.lightTheme .elt-mini-label { color: #1E5BFF; }
+
+/* Cards */
+.lightTheme .elt-card {
+  background: #FFFFFF;
+  border-color: rgba(0,0,0,.08);
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.lightTheme .elt-card-head h2 { color: #0A0F1E; }
+.lightTheme .elt-card-caption { color: rgba(10,15,30,.45); }
+
+/* Lock badge */
+.lightTheme .elt-lock-badge {
+  color: #B07A10;
+  background: rgba(217,164,65,.1);
+  border-color: rgba(217,164,65,.25);
+}
+
+/* Buttons */
+.lightTheme .elt-btn-ghost {
+  color: rgba(10,15,30,.55);
+  border-color: rgba(0,0,0,.12);
+}
+.lightTheme .elt-btn-ghost:hover {
+  color: #0A0F1E;
+  border-color: rgba(0,0,0,.22);
+}
+.lightTheme .elt-btn-secondary {
+  background: rgba(30,91,255,.08);
+  color: #1E5BFF;
+  border-color: rgba(30,91,255,.25);
+}
+
+/* Form elements */
+.lightTheme .elt-label { color: rgba(10,15,30,.5); }
+.lightTheme .elt-input,
+.lightTheme .elt-select,
+.lightTheme .elt-textarea {
+  background: #F8FAFC;
+  border-color: rgba(0,0,0,.12);
+  color: #0A0F1E;
+}
+.lightTheme .elt-input:focus,
+.lightTheme .elt-select:focus,
+.lightTheme .elt-textarea:focus {
+  border-color: rgba(30,91,255,.4);
+}
+.lightTheme .elt-select option { background: #fff; color: #0A0F1E; }
+.lightTheme .elt-form-warning {
+  color: #B07A10;
+  background: rgba(217,164,65,.07);
+  border-color: rgba(217,164,65,.2);
+}
+
+/* Table panel */
+.lightTheme .elt-table-panel {
+  background: #FFFFFF;
+  border-color: rgba(0,0,0,.08);
+}
+.lightTheme .elt-table-head {
+  border-bottom-color: rgba(0,0,0,.07);
+}
+.lightTheme .elt-table-head h2 { color: #0A0F1E; }
+.lightTheme .elt-table th {
+  color: rgba(10,15,30,.45);
+  border-bottom-color: rgba(0,0,0,.07);
+}
+.lightTheme .elt-table td {
+  color: #1A2A4A;
+  border-bottom-color: rgba(0,0,0,.05);
+}
+.lightTheme .elt-table tr:hover td { background: rgba(30,91,255,.03); }
+
+/* Code */
+.lightTheme .elt-code {
+  color: #0A7A6E;
+  background: rgba(0,229,212,.08);
+}
+.lightTheme .elt-pre {
+  background: #F1F5F9;
+  border-color: rgba(0,0,0,.08);
+  color: #0A7A6E;
+}
+
+/* Status badges */
+.lightTheme .elt-status-completed,
+.lightTheme .elt-status-done { color: #16A34A; background: rgba(22,163,74,.1); }
+.lightTheme .elt-status-pending,
+.lightTheme .elt-status-sent { color: #B07A10; background: rgba(217,164,65,.1); }
+.lightTheme .elt-status-cancelled,
+.lightTheme .elt-status-bad { color: #DC2626; background: rgba(220,38,38,.08); }
+
+/* KPI row (Referrals) */
+.lightTheme .elt-kpi-val { color: #0A0F1E; }
+.lightTheme .elt-kpi-label { color: rgba(10,15,30,.5); }
+.lightTheme .elt-kpi-caption { color: rgba(10,15,30,.4); }
+
+/* Profile cards */
+.lightTheme .elt-profile-card {
+  background: #FFFFFF;
+  border-color: rgba(0,0,0,.08);
+}
+.lightTheme .elt-profile-card:hover { border-color: rgba(30,91,255,.25); }
+.lightTheme .elt-profile-title { color: #0A0F1E; }
+.lightTheme .elt-profile-summary { color: rgba(10,15,30,.5); }
+.lightTheme .elt-profile-category { color: rgba(10,15,30,.45); }
+.lightTheme .elt-profile-meta span {
+  color: rgba(10,15,30,.5);
+  background: rgba(0,0,0,.04);
+}
+.lightTheme .elt-profile-icon-wrap {
+  background: rgba(30,91,255,.08);
+}
+
+/* Profile rows (Constructor sidebar) */
+.lightTheme .elt-profile-row {
+  background: rgba(0,0,0,.03);
+  border-color: rgba(0,0,0,.07);
+}
+.lightTheme .elt-profile-row:hover { background: rgba(30,91,255,.06); }
+.lightTheme .elt-profile-row b { color: #0A0F1E; }
+.lightTheme .elt-profile-row span { color: rgba(10,15,30,.45); }
+
+/* Competency tags */
+.lightTheme .elt-comp-tag {
+  color: rgba(10,15,30,.55);
+  background: rgba(0,0,0,.04);
+  border-color: rgba(0,0,0,.09);
+}
+.lightTheme .elt-comp-tag:hover {
+  color: #1E5BFF;
+  background: rgba(30,91,255,.08);
+  border-color: rgba(30,91,255,.25);
+}
+.lightTheme .elt-comp-tag-ai {
+  color: #0A7A6E;
+  background: rgba(0,229,212,.07);
+  border-color: rgba(0,229,212,.2);
+}
+.lightTheme .elt-comp-section-head b { color: #0A0F1E; }
+.lightTheme .elt-comp-section-head small { color: rgba(10,15,30,.45); }
+
+/* AI panel */
+.lightTheme .elt-ai-badge {
+  color: #0A7A6E;
+  background: rgba(0,229,212,.09);
+  border-color: rgba(0,229,212,.22);
+}
+.lightTheme .elt-ai-suggest-label { color: rgba(10,15,30,.45); }
+
+/* Import steps */
+.lightTheme .elt-import-num {
+  background: rgba(30,91,255,.1);
+  color: #1E5BFF;
+}
+.lightTheme .elt-import-step b { color: #0A0F1E; }
+.lightTheme .elt-import-step p { color: rgba(10,15,30,.5); }
+
+/* Support */
+.lightTheme .elt-support-card h2 { color: #0A0F1E; }
+.lightTheme .elt-support-card p { color: rgba(10,15,30,.5); }
+.lightTheme .elt-support-sla { color: rgba(10,15,30,.4); }
+.lightTheme .elt-support-badge-neutral {
+  color: rgba(10,15,30,.5);
+  background: rgba(0,0,0,.05);
+}
+.lightTheme .elt-support-badge-idea {
+  color: #0A7A6E;
+  background: rgba(0,229,212,.08);
+}
+
+/* Gratitude */
+.lightTheme .elt-gratitude-hero h2 { color: #0A0F1E; }
+.lightTheme .elt-gratitude-hero p { color: rgba(10,15,30,.5); }
+.lightTheme .elt-gratitude-stats strong { color: #0A0F1E; }
+.lightTheme .elt-gratitude-stats span { color: rgba(10,15,30,.45); }
+.lightTheme .elt-gratitude-name { color: #0A0F1E; }
+.lightTheme .elt-gratitude-role { color: rgba(10,15,30,.45); }
+.lightTheme .elt-gratitude-idea { color: #1A2A4A; }
+.lightTheme .elt-gratitude-result {
+  background: rgba(0,229,212,.05);
+  border-color: rgba(0,229,212,.15);
+}
+.lightTheme .elt-gratitude-result-label { color: #0A7A6E; }
+.lightTheme .elt-gratitude-result p { color: rgba(10,15,30,.5); }
+
+/* News */
+.lightTheme .elt-news-item { border-bottom-color: rgba(0,0,0,.07); }
+.lightTheme .elt-news-date { color: rgba(10,15,30,.4); }
+.lightTheme .elt-news-item p { color: #1A2A4A; }
+
+/* API keys */
+.lightTheme .elt-api-card {
+  background: #FFFFFF;
+  border-color: rgba(0,0,0,.08);
+}
+.lightTheme .elt-api-primary {
+  background: linear-gradient(135deg, rgba(30,91,255,.06), #FFFFFF);
+  border-color: rgba(30,91,255,.2);
+}
+.lightTheme .elt-api-label { color: rgba(10,15,30,.45); }
+.lightTheme .elt-api-key-id { color: #0A0F1E; }
+.lightTheme .elt-api-card h2 { color: #0A0F1E; }
+.lightTheme .elt-api-card p { color: rgba(10,15,30,.5); }
+.lightTheme .elt-api-doc-actions .elt-btn-ghost { color: rgba(10,15,30,.55); }
+
+/* Referral */
+.lightTheme .elt-referral-link-card { background: #FFFFFF; }
+
+/* Settings grid */
+.lightTheme .elt-settings-grid .elt-card { background: #FFFFFF; }
+
+/* Tariff grid */
+.lightTheme .elt-tariff-grid .tariffCard {
+  background: #FFFFFF;
+  border-color: rgba(0,0,0,.09);
+}
+
+/* ---- TARIFF CARD (premium) ---- */
+.elt-tariff-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-content: start;
+}
+
+.elt-tariff-tag {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.elt-tariff-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: #E6F2FF;
+}
+
+.elt-tariff-price {
+  font-size: 24px;
+  font-weight: 800;
+  color: #FFFFFF;
+}
+
+.elt-tariff-desc {
+  font-size: 13px;
+  color: #8899BB;
+  margin: 0;
+  flex: 1;
+}
+
+.elt-tariff-features {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.elt-tariff-features li {
+  font-size: 13px;
+  color: #C8D8F0;
+}
+
+.elt-tariff-locked {
+  border-top: 1px solid rgba(255,255,255,.07);
+  padding-top: 10px;
+  margin-top: 4px;
+}
+
+.elt-tariff-locked span {
+  font-size: 11px;
+  color: #8899BB;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.elt-tariff-locked-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.elt-tariff-locked-tags em {
+  font-style: normal;
+  font-size: 11px;
+  color: #8899BB;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 4px;
+  padding: 2px 7px;
+}
+
+/* Light theme overrides for tariff card */
+.lightTheme .elt-tariff-card { background: #FFFFFF; border-color: rgba(0,0,0,.09); }
+.lightTheme .elt-tariff-name { color: #0A0F1E; }
+.lightTheme .elt-tariff-price { color: #0A0F1E; }
+.lightTheme .elt-tariff-desc { color: rgba(10,15,30,.5); }
+.lightTheme .elt-tariff-features li { color: #1A2A4A; }
+.lightTheme .elt-tariff-locked { border-top-color: rgba(0,0,0,.07); }
+.lightTheme .elt-tariff-locked span { color: rgba(10,15,30,.45); }
+.lightTheme .elt-tariff-locked-tags em {
+  color: rgba(10,15,30,.5);
+  background: rgba(0,0,0,.04);
+  border-color: rgba(0,0,0,.08);
+}

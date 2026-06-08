@@ -1056,7 +1056,19 @@ function renderReportTable(state) {
 }
 
 function renderTariffCard(tariff, inApp = false) {
-  return `<article class="tariffCard ${tariff.highlight ? "highlight" : ""}"><span>${tariff.tag}</span><h3>${tariff.name}</h3><strong>${tariff.price}</strong><p>${tariff.description}</p><ul>${tariff.features.map((feature) => `<li>${feature}</li>`).join("")}</ul>${tariff.locked?.length ? `<div class="lockedList"><b>Не входит:</b>${tariff.locked.map((item) => `<em>${item}</em>`).join("")}</div>` : ""}<button class="blueButton wide" ${inApp ? `data-select-tariff="${tariff.name}"` : `data-route="login"`}>${tariff.cta}</button></article>`;
+  const accentColor = tariff.highlight ? '#00E5D4' : '#1E5BFF';
+  const borderStyle = tariff.highlight ? 'border-color:rgba(0,229,212,.4);' : '';
+  return `
+    <div class="elt-card elt-tariff-card" style="${borderStyle}">
+      <div class="elt-tariff-tag" style="color:${accentColor}">${tariff.tag}</div>
+      <div class="elt-tariff-name">${tariff.name}</div>
+      <div class="elt-tariff-price">${tariff.price}</div>
+      <p class="elt-tariff-desc">${tariff.description}</p>
+      <ul class="elt-tariff-features">${tariff.features.map((f) => `<li>${f}</li>`).join('')}</ul>
+      ${tariff.locked?.length ? `<div class="elt-tariff-locked"><span>Не входит:</span><div class="elt-tariff-locked-tags">${tariff.locked.map((item) => `<em>${item}</em>`).join('')}</div></div>` : ''}
+      <button class="elt-btn-primary elt-btn-wide" ${inApp ? `data-select-tariff="${tariff.name}"` : `data-route="login"`}>${tariff.cta}</button>
+    </div>
+  `;
 }
 
 function metric(title, value, width) { return `<div class="metric"><div><span>${title}</span><b>${value}</b></div><i><em style="width:${width}%"></em></i></div>`; }
