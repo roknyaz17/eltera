@@ -71,8 +71,74 @@ export function renderLanding(tariffs) {
 export function renderLogin() {
   return `
     <div class="authPage">
-      <section class="authBrand"><img src="/assets/eltera_logo_horizontal_on_dark.svg" alt="Eltera"><h1>Интеллект в оценке. Уверенность в решениях.</h1><p>Войдите в демо-кабинет, чтобы увидеть дашборды, ссылки, вакансии, отчеты, тарифы и реферальную программу.</p></section>
-      <form class="authCard glass" data-login-form><span class="miniLabel">Демо-вход</span><h2>Личный кабинет</h2><label>Email<input name="email" value="hr@eltera.ai" autocomplete="email"></label><label>Пароль<input name="password" value="demo" type="password" autocomplete="current-password"></label><button class="blueButton wide" type="submit">Войти</button><p>На MVP это локальная авторизация. Backend, OTP и роли подключаются следующим этапом.</p></form>
+      <section class="authBrand">
+        <img src="/assets/eltera_logo_horizontal_on_dark.svg" alt="Eltera">
+        <h1>Интеллект в оценке.<br>Уверенность в решениях.</h1>
+        <p>Платформа для оценки кандидатов и сотрудников. Готовые профили, HR-отчёты, аналитика и рекомендации.</p>
+        <ul class="authFeatureList">
+          <li><span class="authFeatureIcon">✓</span> Готовые профили профессий</li>
+          <li><span class="authFeatureIcon">✓</span> Оценочные ссылки за 1 минуту</li>
+          <li><span class="authFeatureIcon">✓</span> PDF-отчёты и красные флаги</li>
+          <li><span class="authFeatureIcon">✓</span> Аналитика команд и кандидатов</li>
+        </ul>
+      </section>
+      <div class="authCard glass">
+        <div class="authTabs">
+          <button class="authTab active" data-auth-tab="login">Войти</button>
+          <button class="authTab" data-auth-tab="register">Зарегистрироваться</button>
+        </div>
+
+        <!-- Форма входа -->
+        <form class="authTabPanel" data-auth-panel="login" data-login-form>
+          <div class="authInputGroup">
+            <label class="authLabel">Email или телефон</label>
+            <input name="email" type="text" value="hr@eltera.ai" placeholder="name@company.ru или +7..." autocomplete="email" class="authInput">
+          </div>
+          <div class="authInputGroup">
+            <label class="authLabel">Пароль</label>
+            <input name="password" type="password" value="demo" placeholder="Введите пароль" autocomplete="current-password" class="authInput">
+            <a href="#" class="authForgot" data-forgot-password>Забыли пароль?</a>
+          </div>
+          <button class="authSubmitBtn" type="submit">Войти в кабинет</button>
+          <p class="authHint">Нет аккаунта? <a href="#" class="authLink" data-switch-tab="register">Зарегистрироваться</a></p>
+        </form>
+
+        <!-- Форма регистрации -->
+        <form class="authTabPanel hidden" data-auth-panel="register" data-register-form>
+          <div class="authInputRow">
+            <div class="authInputGroup">
+              <label class="authLabel">Имя</label>
+              <input name="firstName" type="text" placeholder="Иван" class="authInput" required>
+            </div>
+            <div class="authInputGroup">
+              <label class="authLabel">Фамилия</label>
+              <input name="lastName" type="text" placeholder="Петров" class="authInput" required>
+            </div>
+          </div>
+          <div class="authInputGroup">
+            <label class="authLabel">Название компании</label>
+            <input name="company" type="text" placeholder="ООО Ромашка" class="authInput" required>
+          </div>
+          <div class="authInputGroup authContactToggle">
+            <label class="authLabel">Контакт для входа</label>
+            <div class="authContactSwitch">
+              <button type="button" class="authContactBtn active" data-contact-type="email">Email</button>
+              <button type="button" class="authContactBtn" data-contact-type="phone">Телефон</button>
+            </div>
+            <input name="contact" type="text" placeholder="name@company.ru" class="authInput" required>
+          </div>
+          <div class="authInputGroup">
+            <label class="authLabel">Пароль</label>
+            <input name="password" type="password" placeholder="Минимум 8 символов" class="authInput" required minlength="6">
+          </div>
+          <label class="authCheckbox">
+            <input type="checkbox" name="agree" required>
+            <span>Согласен на <a href="#" class="authLink">обработку персональных данных</a></span>
+          </label>
+          <button class="authSubmitBtn" type="submit">Создать аккаунт</button>
+          <p class="authHint">Уже есть аккаунт? <a href="#" class="authLink" data-switch-tab="login">Войти</a></p>
+        </form>
+      </div>
     </div>
   `;
 }

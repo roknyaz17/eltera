@@ -571,6 +571,44 @@ document.addEventListener("click", (event) => {
   const route = event.target.closest("[data-route]")?.dataset.route;
   if (route === "login") setHash("#/login");
 
+  // Auth tabs switching
+  const authTab = event.target.closest("[data-auth-tab]")?.dataset.authTab;
+  if (authTab) {
+    document.querySelectorAll(".authTab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".authTabPanel").forEach(p => p.classList.add("hidden"));
+    event.target.closest("[data-auth-tab]").classList.add("active");
+    document.querySelector(`[data-auth-panel="${authTab}"]`)?.classList.remove("hidden");
+  }
+
+  // Switch tab via link
+  const switchTab = event.target.closest("[data-switch-tab]")?.dataset.switchTab;
+  if (switchTab) {
+    event.preventDefault();
+    document.querySelectorAll(".authTab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".authTabPanel").forEach(p => p.classList.add("hidden"));
+    document.querySelector(`[data-auth-tab="${switchTab}"]`)?.classList.add("active");
+    document.querySelector(`[data-auth-panel="${switchTab}"]`)?.classList.remove("hidden");
+  }
+
+  // Contact type switch (email / phone)
+  const contactType = event.target.closest("[data-contact-type]")?.dataset.contactType;
+  if (contactType) {
+    const switchEl = event.target.closest(".authContactSwitch");
+    switchEl?.querySelectorAll(".authContactBtn").forEach(b => b.classList.remove("active"));
+    event.target.closest("[data-contact-type]").classList.add("active");
+    const input = event.target.closest(".authContactToggle")?.querySelector(".authInput");
+    if (input) {
+      input.placeholder = contactType === "email" ? "name@company.ru" : "+7 900 000-00-00";
+      input.type = contactType === "email" ? "email" : "tel";
+    }
+  }
+
+  // Forgot password mock
+  if (event.target.closest("[data-forgot-password]")) {
+    event.preventDefault();
+    alert("Сброс пароля будет доступен после подключения backend. Напишите на hello@eltera.ai");
+  }
+
   const view = event.target.closest("[data-view]")?.dataset.view;
   if (view) {
     window.scrollTo(0, 0);
@@ -700,6 +738,22 @@ document.addEventListener("click", (event) => {
 document.addEventListener("submit", (event) => {
   if (event.target.matches("[data-login-form]")) {
     event.preventDefault();
+    state.authenticated = true;
+    saveState();
+    setHash("#/app/dashboard");
+  }
+
+  if (event.target.matches("[data-register-form]")) {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+    const firstName = fd.get("firstName") || "";
+    const lastName = fd.get("lastName") || "";
+    const company = fd.get("company") || "";
+    const contact = fd.get("contact") || "";
+    // Mock: save to state and authenticate
+    if (company) state.company.name = company;
+    if (firstName || lastName) state.company.contactName = `${firstName} ${lastName}`.trim();
+    if (contact) state.company.contactEmail = contact;
     state.authenticated = true;
     saveState();
     setHash("#/app/dashboard");
