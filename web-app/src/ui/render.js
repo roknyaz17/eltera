@@ -681,35 +681,38 @@ export function renderCandidateThanks() {
 }
 
 function renderModal(state) {
+  const mHead = (title, icon = '') => `<div class="modal-head"><div class="modal-head-left">${icon ? `<span class="modal-head-icon">${icon}</span>` : ''}<h2 class="modal-head-title">${title}</h2></div><button class="modal-close-btn" data-action="close-modal" title="Закрыть"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>`;
+
   if (state.modal?.type === "list") {
     const [scope, metricName] = state.modal.target.split(":");
     const people = peopleForModal(state, scope, metricName);
-    return `<div class="modalBackdrop"><div class="modal panel modalWide"><div class="panelHead"><h2>${scope}: ${metricName}</h2><button class="iconButton" data-action="close-modal">×</button></div><p>Список открыт из кликабельного KPI. В реальном продукте сюда подключается фильтр backend.</p>${renderPeopleTable(people, scope)}</div></div>`;
+    const icons = { 'Кандидаты': '👤', 'Сотрудники': '🏢', 'Вакансии': '📋', 'Отчеты': '📊' };
+    return `<div class="modalBackdrop"><div class="modal modalWide">${mHead(`${scope}: ${metricName}`, icons[scope] || '📊')}<div class="modal-inner">${renderPeopleTable(people, scope)}</div></div></div>`;
   }
   if (state.modal?.type === "card") {
     const item = findPerson(state, state.modal.id);
-    return `<div class="modalBackdrop"><div class="modal panel"><div class="panelHead"><h2>Карточка</h2><button class="iconButton" data-action="close-modal">×</button></div>${personCard(item)}</div></div>`;
+    return `<div class="modalBackdrop"><div class="modal">${mHead('Карточка участника', '👤')}<div class="modal-inner">${personCard(item)}</div></div></div>`;
   }
   if (state.modal?.type === "answers") {
     const item = findPerson(state, state.modal.id);
-    return `<div class="modalBackdrop"><div class="modal panel modalWide"><div class="panelHead"><h2>Ответы участника</h2><button class="iconButton" data-action="close-modal">×</button></div><p>${personName(item)} · ${item?.professionTitle || item?.position || "оценка"}</p><div class="answersPreview">${["Берет ответственность за результат", "Уточняет ожидания руководителя", "Фиксирует договоренности", "Просит обратную связь", "Видит риски до дедлайна"].map((text, index) => `<div><span>${index + 1}</span><b>${text}</b><em>${index % 2 ? "Средний уровень проявления" : "Сильное проявление"}</em></div>`).join("")}</div></div></div>`;
+    return `<div class="modalBackdrop"><div class="modal modalWide">${mHead('Ответы участника', '📝')}<div class="modal-inner"><p class="modal-subtitle">${personName(item)} · ${item?.professionTitle || item?.position || 'оценка'}</p><div class="answersPreview">${["Берет ответственность за результат", "Уточняет ожидания руководителя", "Фиксирует договоренности", "Просит обратную связь", "Видит риски до дедлайна"].map((text, index) => `<div><span>${index + 1}</span><b>${text}</b><em>${index % 2 ? 'Средний уровень проявления' : 'Сильное проявление'}</em></div>`).join('')}</div></div></div></div>`;
   }
   if (state.modal?.type === "competency") {
     const profile = assessmentProfile(state.modal.id);
-    return `<div class="modalBackdrop"><div class="modal panel modalWide"><div class="panelHead"><h2>${profile.title}</h2><button class="iconButton" data-action="close-modal">×</button></div><p>${profile.description}</p><div class="competencyModalGrid"><article>${miniBars(profile.professional.map((item) => [item, 24]))}</article><article>${miniBars(profile.personal.map((item) => [item, 18]))}</article></div><div class="profileExplain"><b>Шкала достоверности</b><p>Проверяет противоречивые ответы, социальную желательность и попытку выглядеть лучше. Вес достоверности: 15%.</p><b>Интерпретация</b><p>Итоговая рекомендация не заменяет интервью, а показывает зоны для проверки, красные флаги и вопросы для нанимающего менеджера.</p></div></div></div>`;
+    return `<div class="modalBackdrop"><div class="modal modalWide">${mHead(profile.title, '🎯')}<div class="modal-inner"><p class="modal-subtitle">${profile.description}</p><div class="competencyModalGrid"><article>${miniBars(profile.professional.map((item) => [item, 24]))}</article><article>${miniBars(profile.personal.map((item) => [item, 18]))}</article></div><div class="profileExplain"><b>Шкала достоверности</b><p>Проверяет противоречивые ответы, социальную желательность и попытку выглядеть лучше. Вес достоверности: 15%.</p><b>Интерпретация</b><p>Итоговая рекомендация не заменяет интервью, а показывает зоны для проверки, красные флаги и вопросы для нанимающего менеджера.</p></div></div></div></div>`;
   }
   if (state.modal?.type === "tariffs") {
-    return `<div class="modalBackdrop"><div class="modal panel modalWide"><div class="panelHead"><h2>Изменить тариф</h2><button class="iconButton" data-action="close-modal">×</button></div><p>Start — текущий базовый доступ. Для смены доступны только основные тарифы.</p><div class="tariffPicker">${["TalentCheck", "TalentPro", "TalentStudio"].map((name) => `<button class="panel tariffMini" data-select-tariff="${name}"><b>${name}</b><span>${tariffDescription(name)}</span></button>`).join("")}</div></div></div>`;
+    return `<div class="modalBackdrop"><div class="modal modalWide">${mHead('Изменить тариф', '⚡')}<div class="modal-inner"><p class="modal-subtitle">Start — текущий базовый доступ. Для смены доступны только основные тарифы.</p><div class="tariffPicker">${["TalentCheck", "TalentPro", "TalentStudio"].map((name) => `<button class="panel tariffMini" data-select-tariff="${name}"><b>${name}</b><span>${tariffDescription(name)}</span></button>`).join('')}</div></div></div></div>`;
   }
   if (state.modal?.type === "locked") {
-    return `<div class="modalBackdrop"><div class="modal panel"><div class="panelHead"><h2>Функция недоступна</h2><button class="iconButton" data-action="close-modal">×</button></div><p>${state.modal.message}</p><button class="blueButton" data-open-tariff-picker>Изменить тариф</button></div></div>`;
+    return `<div class="modalBackdrop"><div class="modal">${mHead('Функция недоступна', '🔒')}<div class="modal-inner"><p class="modal-subtitle">${state.modal.message}</p><button class="blueButton" data-open-tariff-picker>Изменить тариф</button></div></div></div>`;
   }
   if (state.modal === "spendBonuses") {
     const max = Math.floor(state.referrals.available / state.company.assessmentPrice);
-    return `<div class="modalBackdrop"><div class="modal panel"><div class="panelHead"><h2>Потратить бонусы</h2><button class="iconButton" data-action="close-modal">×</button></div><p>Доступно: ${state.referrals.available.toLocaleString("ru-RU")} бонусов. 1 оценка = ${state.company.assessmentPrice} ₽.</p><div class="bonusOptions"><button class="blueButton" data-buy-bonus-assessments="${max}">Докупить ${max} оценок</button><button class="button subtle">Компенсировать часть тарифа</button><button class="button subtle">Оплатить тариф бонусами</button></div></div></div>`;
+    return `<div class="modalBackdrop"><div class="modal">${mHead('Потратить бонусы', '🎁')}<div class="modal-inner"><p class="modal-subtitle">Доступно: ${state.referrals.available.toLocaleString('ru-RU')} бонусов. 1 оценка = ${state.company.assessmentPrice} ₽.</p><div class="bonusOptions"><button class="blueButton" data-buy-bonus-assessments="${max}">Докупить ${max} оценок</button><button class="button subtle">Компенсировать часть тарифа</button><button class="button subtle">Оплатить тариф бонусами</button></div></div></div></div>`;
   }
   if (state.modal === "withdraw") {
-    return `<div class="modalBackdrop"><form class="modal panel" data-withdraw-form><div class="panelHead"><h2>Вывести бонусы на карту</h2><button class="iconButton" type="button" data-action="close-modal">×</button></div><label>Сумма вывода<input name="amount" type="number" max="${state.referrals.available}" value="${Math.min(3000, state.referrals.available)}"></label><label>Номер карты<input name="card" placeholder="0000 0000 0000 0000"></label><label>ФИО получателя<input name="name" placeholder="Иванов Иван"></label><label>Банк<input name="bank" placeholder="Сбербанк"></label><label>Телефон<input name="phone" placeholder="+7..."></label><label>Комментарий<input name="comment" placeholder="Комментарий"></label><button class="blueButton" type="submit">Создать заявку на вывод</button></form></div>`;
+    return `<div class="modalBackdrop"><form class="modal" data-withdraw-form>${mHead('Вывести бонусы на карту', '💳')}<div class="modal-inner"><label>Сумма вывода<input name="amount" type="number" max="${state.referrals.available}" value="${Math.min(3000, state.referrals.available)}"></label><label>Номер карты<input name="card" placeholder="0000 0000 0000 0000"></label><label>ФИО получателя<input name="name" placeholder="Иванов Иван"></label><label>Банк<input name="bank" placeholder="Сбербанк"></label><label>Телефон<input name="phone" placeholder="+7..."></label><label>Комментарий<input name="comment" placeholder="Комментарий"></label><button class="blueButton" type="submit">Создать заявку на вывод</button></div></form></div>`;
   }
   return "";
 }
@@ -745,7 +748,26 @@ function dashboardData(state, filter) {
 }
 
 function renderPeopleTable(people, scope = "Кандидаты") {
-  return `<table><thead><tr><th>ФИО</th><th>Вакансия / должность</th><th>Балл</th><th>Соответствие</th><th>Дата</th><th>Действия</th></tr></thead><tbody>${people.map((item) => `<tr><td>${personName(item)}</td><td>${item.vacancy || item.position || item.professionTitle}</td><td>${item.result?.percent || item.fit}%</td><td>${item.stage || item.recommendation}</td><td>${item.completedAt ? new Date(item.completedAt).toLocaleDateString("ru-RU") : item.startDate}</td><td><div class="rowActions">${!item.id?.startsWith("emp-") ? `<button class="button subtle" data-report-id="${item.id}">PDF</button>` : `<button class="button subtle" data-open-card="${item.id}">PDF</button>`}<button class="button subtle" data-open-card="${item.id}">Карточка</button><button class="button subtle" data-open-answers="${item.id}">Ответы</button></div></td></tr>`).join("") || `<tr><td colspan="6">Нет данных для выбранного фильтра.</td></tr>`}</tbody></table>`;
+  const stageColor = (s) => {
+    if (!s) return '';
+    const sl = s.toLowerCase();
+    if (sl.includes('подход') || sl.includes('интервью') || sl.includes('оффер') || sl.includes('норма')) return 'modal-badge-good';
+    if (sl.includes('не подход') || sl.includes('риск') || sl.includes('отказ')) return 'modal-badge-bad';
+    return 'modal-badge-neutral';
+  };
+  const scoreColor = (v) => {
+    const n = Number(v);
+    if (n >= 75) return 'modal-score-good';
+    if (n >= 55) return 'modal-score-medium';
+    return 'modal-score-bad';
+  };
+  return `<table><thead><tr><th>ФИО</th><th>Вакансия / должность</th><th>Балл</th><th>Соответствие</th><th>Дата</th><th>Действия</th></tr></thead><tbody>${people.map((item) => {
+    const score = item.result?.percent || item.fit || 0;
+    const stage = item.stage || item.recommendation || '';
+    const date = item.completedAt ? new Date(item.completedAt).toLocaleDateString('ru-RU') : (item.startDate || '—');
+    const isEmp = item.id?.startsWith('emp-');
+    return `<tr><td class="modal-td-name">${personName(item)}</td><td class="modal-td-role">${item.vacancy || item.position || item.professionTitle || '—'}</td><td><span class="modal-score ${scoreColor(score)}">${score}%</span></td><td><span class="modal-badge ${stageColor(stage)}">${stage}</span></td><td class="modal-td-date">${date}</td><td><div class="rowActions">${!isEmp ? `<button class="button subtle" data-report-id="${item.id}">PDF</button>` : `<button class="button subtle" data-open-card="${item.id}">PDF</button>`}<button class="button subtle" data-open-card="${item.id}">Карточка</button><button class="button subtle" data-open-answers="${item.id}">Ответы</button></div></td></tr>`;
+  }).join('') || `<tr><td colspan="6" style="text-align:center;padding:24px;color:rgba(230,242,255,.35)">Нет данных для выбранного фильтра.</td></tr>`}</tbody></table>`;
 }
 
 function renderEmployeeTable(employees) {

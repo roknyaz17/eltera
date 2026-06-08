@@ -1992,22 +1992,217 @@ small {
   z-index: 20;
   display: grid;
   place-items: center;
-  background: rgba(2, 6, 23, .68);
-  padding: 22px;
+  background: rgba(5, 8, 22, .72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  padding: 24px;
+  animation: backdropIn .18s ease;
+}
+
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .modal {
   width: min(560px, 100%);
   display: grid;
-  gap: 14px;
-  padding: 20px;
-  max-height: calc(100vh - 44px);
-  overflow: auto;
+  gap: 0;
+  padding: 0;
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+  border: 1px solid rgba(30, 91, 255, .22);
+  border-radius: 18px;
+  background: linear-gradient(160deg, rgba(17, 26, 51, .96) 0%, rgba(11, 16, 32, .98) 100%);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  box-shadow: 0 32px 80px rgba(0, 0, 0, .52), 0 0 0 1px rgba(30, 91, 255, .1), inset 0 1px 0 rgba(255, 255, 255, .06);
+  animation: modalIn .2s cubic-bezier(.16,1,.3,1);
 }
 
-.modalWide {
-  width: min(980px, 100%);
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(.96) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)  translateY(0); }
 }
+
+.modal-inner {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  overflow-y: auto;
+  max-height: calc(100vh - 48px);
+}
+
+.modal-inner::-webkit-scrollbar { width: 4px; }
+.modal-inner::-webkit-scrollbar-track { background: transparent; }
+.modal-inner::-webkit-scrollbar-thumb { background: rgba(30,91,255,.28); border-radius: 4px; }
+
+.modalWide {
+  width: min(900px, 100%);
+}
+
+/* ── Modal head ── */
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 24px 18px;
+  border-bottom: 1px solid rgba(30, 91, 255, .14);
+  background: linear-gradient(180deg, rgba(30, 91, 255, .06) 0%, transparent 100%);
+  flex-shrink: 0;
+}
+
+.modal-head-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.modal-head-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(30, 91, 255, .22), rgba(0, 229, 212, .14));
+  border: 1px solid rgba(30, 91, 255, .24);
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.modal-head-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #E6F2FF;
+  letter-spacing: -.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.modal-close-btn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  border: 1px solid rgba(30, 91, 255, .2);
+  border-radius: 8px;
+  background: rgba(30, 91, 255, .08);
+  color: rgba(230, 242, 255, .55);
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+
+.modal-close-btn:hover {
+  background: rgba(30, 91, 255, .18);
+  border-color: rgba(30, 91, 255, .4);
+  color: #E6F2FF;
+}
+
+.modal-subtitle {
+  margin: 0;
+  color: rgba(230, 242, 255, .5);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ── Modal table ── */
+.modal-inner table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.modal-inner table thead tr {
+  border-bottom: 1px solid rgba(30, 91, 255, .16);
+}
+
+.modal-inner table th {
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(230, 242, 255, .38);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.modal-inner table td {
+  padding: 10px 12px;
+  color: rgba(230, 242, 255, .82);
+  border-bottom: 1px solid rgba(30, 91, 255, .07);
+  vertical-align: middle;
+}
+
+.modal-inner table tr:last-child td {
+  border-bottom: none;
+}
+
+.modal-inner table tr:hover td {
+  background: rgba(30, 91, 255, .04);
+}
+
+/* ── Modal row actions ── */
+.modal-inner .rowActions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.modal-inner .rowActions .button.subtle {
+  padding: 4px 10px;
+  font-size: 12px;
+  height: auto;
+  min-height: 28px;
+  border-radius: 7px;
+  border: 1px solid rgba(30, 91, 255, .28);
+  background: rgba(30, 91, 255, .1);
+  color: rgba(230, 242, 255, .8);
+  font-weight: 600;
+  transition: background .15s, border-color .15s;
+}
+
+.modal-inner .rowActions .button.subtle:hover {
+  background: rgba(30, 91, 255, .2);
+  border-color: rgba(30, 91, 255, .5);
+  color: #E6F2FF;
+}
+
+/* ── Modal score & badge ── */
+.modal-score {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+
+.modal-score-good  { background: rgba(0, 229, 212, .12); color: #00E5D4; border: 1px solid rgba(0, 229, 212, .22); }
+.modal-score-medium { background: rgba(245, 158, 11, .1); color: #F59E0B; border: 1px solid rgba(245, 158, 11, .2); }
+.modal-score-bad   { background: rgba(100, 116, 139, .1); color: #94A3B8; border: 1px solid rgba(100, 116, 139, .2); }
+
+.modal-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.modal-badge-good    { background: rgba(0, 229, 212, .1); color: #00E5D4; border: 1px solid rgba(0, 229, 212, .18); }
+.modal-badge-bad     { background: rgba(100, 116, 139, .1); color: #94A3B8; border: 1px solid rgba(100, 116, 139, .18); }
+.modal-badge-neutral { background: rgba(30, 91, 255, .1); color: rgba(230, 242, 255, .65); border: 1px solid rgba(30, 91, 255, .18); }
+
+.modal-td-name { font-weight: 600; color: #E6F2FF; }
+.modal-td-role { color: rgba(230, 242, 255, .6); font-size: 12.5px; }
+.modal-td-date { color: rgba(230, 242, 255, .45); font-size: 12px; white-space: nowrap; }
 
 .tariffPicker,
 .competencyModalGrid,
