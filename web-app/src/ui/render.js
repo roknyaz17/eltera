@@ -303,7 +303,7 @@ export function renderEmployees(state) {
     subtitle: "Что происходит с действующими сотрудниками и кто требует внимания.",
     meta: ["оценка", "риски", "развитие"],
     period: state.period,
-    actions: [{ label: "Оценить сотрудника", primary: true, attrs: "data-action=\"create-link\"" }],
+    actions: [{ label: "Оценить сотрудника", primary: true, attrs: "data-action=\"open-assess-wizard\"" }],
     filters: pageFilterConfig.employees,
     activeFiltersMap: (state.activeFilters && state.activeFilters.employees) || {},
     kpiCards: [
@@ -1356,6 +1356,9 @@ function renderModal(state) {
         '<button class="blueButton" data-action="apply-filters-modal">Применить</button>' +
       '</div></div></div>';
   }
+  if (state.modal?.type === "assess-wizard") {
+    return renderAssessmentWizard(state);
+  }
   if (state.modal === "withdraw") {
     return `<div class="modalBackdrop"><form class="modal" data-withdraw-form>${mHead('Вывести бонусы на карту', '💳')}<div class="modal-inner"><label>Сумма вывода<input name="amount" type="number" max="${state.referrals.available}" value="${Math.min(3000, state.referrals.available)}"></label><label>Номер карты<input name="card" placeholder="0000 0000 0000 0000"></label><label>ФИО получателя<input name="name" placeholder="Иванов Иван"></label><label>Банк<input name="bank" placeholder="Сбербанк"></label><label>Телефон<input name="phone" placeholder="+7..."></label><label>Комментарий<input name="comment" placeholder="Комментарий"></label><button class="blueButton" type="submit">Создать заявку на вывод</button></div></form></div>`;
   }
@@ -2051,4 +2054,233 @@ export function renderDevPortal(library) {
       </div>
     </div>
   `;
+}
+
+// ─── Assessment Wizard ────────────────────────────────────────────────────────
+function renderAssessmentWizard(state) {
+  const w = state.modal;
+  const step = w.step || 1;
+  const scope = w.scope || null;       // "one" | "group" | "dept"
+  const assessType = w.assessType || null; // "standard" | "360" | "review"
+  const selected = w.selected || [];   // ids of selected employees
+  const deptSelected = w.dept || null;
+  const profId = w.profId || null;
+  const deadline = w.deadline || "";
+  const searchQ = w.searchQ || "";
+
+  const employees = state.employees || [];
+  const departments = state.departments || [];
+  const professions = (state.professions || []);
+  const isTalentStudio = state.company?.tariff === "TalentStudio";
+
+  // ── Step indicator ──────────────────────────────────────────────────────────
+  const stepLabels = ["Масштаб", "Тип оценки", "Настройка"];
+  const stepsHtml = `
+    <div class="aw-steps">
+      ${stepLabels.map((label, i) => {
+        const n = i + 1;
+        const cls = n < step ? "aw-step done" : n === step ? "aw-step active" : "aw-step";
+        const icon = n < step
+          ? `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+          : `<span>${n}</span>`;
+        return `<div class="${cls}">${icon}<span class="aw-step-label">${label}</span></div>`;
+      }).join('<div class="aw-step-line"></div>')}
+    </div>`;
+
+  // ── Step 1: Масштаб ─────────────────────────────────────────────────────────
+  let bodyHtml = "";
+  if (step === 1) {
+    const opts = [
+      { id: "one", icon: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M3 17c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`, title: "Один сотрудник", desc: "Выбрать конкретного человека из базы" },
+      { id: "group", icon: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="7" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><circle cx="14" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M1 17c0-2.761 2.686-5 6-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M19 17c0-2.761-2.686-5-6-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M7 12c0-2.761 2.686-5 6-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`, title: "Группа сотрудников", desc: "Выбрать несколько человек вручную" },
+      { id: "dept", icon: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="11" width="4" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="8" y="7" width="4" height="11" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="3" width="4" height="15" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>`, title: "Весь отдел", desc: "Оценить всех сотрудников отдела сразу" }
+    ];
+    bodyHtml = `
+      <div class="aw-scope-grid">
+        ${opts.map(o => `
+          <button class="aw-scope-card ${scope === o.id ? "selected" : ""}" data-aw-scope="${o.id}">
+            <div class="aw-scope-icon">${o.icon}</div>
+            <div class="aw-scope-text">
+              <strong>${o.title}</strong>
+              <span>${o.desc}</span>
+            </div>
+            <div class="aw-scope-check"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7l4 4 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          </button>
+        `).join("")}
+      </div>
+      <div class="aw-footer">
+        <button class="elt-btn-ghost" data-action="close-modal">Отмена</button>
+        <button class="blueButton" data-aw-next="2" ${!scope ? "disabled" : ""}>Далее →</button>
+      </div>`;
+  }
+
+  // ── Step 2: Тип оценки ──────────────────────────────────────────────────────
+  if (step === 2) {
+    const types = [
+      {
+        id: "standard",
+        icon: `<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="3" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.5"/><path d="M7 11h8M7 7.5h8M7 14.5h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`,
+        title: "Стандартная оценка",
+        desc: "Профиль компетенций, психологические и профессиональные блоки. Ссылка отправляется сотруднику.",
+        locked: false,
+        badge: null
+      },
+      {
+        id: "360",
+        icon: `<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.5"/><circle cx="11" cy="11" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M11 3v2M11 17v2M3 11h2M17 11h2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`,
+        title: "Оценка 360°",
+        desc: "Самооценка + руководитель + коллеги + подчинённые. Разные роли, разные веса.",
+        locked: !isTalentStudio,
+        badge: "TalentStudio"
+      },
+      {
+        id: "review",
+        icon: `<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M4 18V8l7-5 7 5v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="8" y="13" width="6" height="5" rx="1" stroke="currentColor" stroke-width="1.4"/><path d="M11 10v1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`,
+        title: "Performance Review",
+        desc: "Оценка результативности и потенциала. Формирует 9-box и кадровый резерв.",
+        locked: !isTalentStudio,
+        badge: "TalentStudio"
+      }
+    ];
+    bodyHtml = `
+      <div class="aw-type-grid">
+        ${types.map(t => `
+          <button class="aw-type-card ${assessType === t.id ? "selected" : ""} ${t.locked ? "locked" : ""}" data-aw-type="${t.id}" ${t.locked ? "data-aw-locked" : ""}>
+            <div class="aw-type-icon">${t.icon}</div>
+            <div class="aw-type-text">
+              <div class="aw-type-title-row">
+                <strong>${t.title}</strong>
+                ${t.badge ? `<span class="aw-badge-lock">${t.badge}</span>` : ""}
+              </div>
+              <span>${t.desc}</span>
+            </div>
+            ${t.locked ? `<div class="aw-lock-overlay"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="7" width="10" height="8" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span>Нужен тариф TalentStudio</span></div>` : ""}
+            <div class="aw-scope-check"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7l4 4 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          </button>
+        `).join("")}
+      </div>
+      <div class="aw-footer">
+        <button class="elt-btn-ghost" data-aw-back="1">← Назад</button>
+        <button class="blueButton" data-aw-next="3" ${!assessType ? "disabled" : ""}>Далее →</button>
+      </div>`;
+  }
+
+  // ── Step 3: Настройка ───────────────────────────────────────────────────────
+  if (step === 3) {
+    // Список сотрудников для выбора
+    const filtered = employees.filter(e =>
+      !searchQ || e.fullName.toLowerCase().includes(searchQ.toLowerCase()) ||
+      e.position.toLowerCase().includes(searchQ.toLowerCase()) ||
+      e.department.toLowerCase().includes(searchQ.toLowerCase())
+    );
+
+    const empListHtml = scope === "dept"
+      ? `<div class="aw-dept-select">
+          <span class="aw-field-label">Выберите отдел</span>
+          <div class="aw-dept-grid">
+            ${departments.map(d => `
+              <button class="aw-dept-btn ${deptSelected === d.name ? "selected" : ""}" data-aw-dept="${d.name}">
+                <strong>${d.name}</strong>
+                <span>${d.employees} чел.</span>
+              </button>
+            `).join("")}
+          </div>
+        </div>`
+      : `<div class="aw-emp-select">
+          <div class="aw-emp-search-wrap">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="4" stroke="currentColor" stroke-width="1.4"/><line x1="8.5" y1="8.5" x2="11.5" y2="11.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            <input class="aw-emp-search" placeholder="Поиск по имени, должности, отделу..." data-aw-search value="${searchQ}">
+          </div>
+          <div class="aw-emp-list">
+            ${filtered.length === 0 ? `<div class="aw-emp-empty">Сотрудники не найдены</div>` :
+              filtered.map(e => {
+                const isSel = selected.includes(e.id);
+                const initials = e.fullName.split(" ").slice(0, 2).map(w => w[0]).join("");
+                return `
+                  <button class="aw-emp-row ${isSel ? "selected" : ""}" data-aw-emp="${e.id}">
+                    <div class="aw-emp-avatar">${initials}</div>
+                    <div class="aw-emp-info">
+                      <strong>${e.fullName}</strong>
+                      <span>${e.position} · ${e.department}</span>
+                    </div>
+                    <div class="aw-emp-check"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5l3.5 3.5 5.5-5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                  </button>`;
+              }).join("")
+            }
+          </div>
+          ${scope === "group" && selected.length > 0 ? `<div class="aw-selected-count">Выбрано: <strong>${selected.length}</strong> сотр.</div>` : ""}
+        </div>`;
+
+    // Профиль оценки
+    const profListHtml = `
+      <div class="aw-prof-select">
+        <span class="aw-field-label">Профиль оценки</span>
+        <div class="aw-prof-grid">
+          ${professions.slice(0, 6).map(p => `
+            <button class="aw-prof-btn ${profId === p.id ? "selected" : ""}" data-aw-prof="${p.id}">
+              <strong>${p.title}</strong>
+              <span>${p.category}</span>
+            </button>
+          `).join("")}
+        </div>
+      </div>`;
+
+    // Срок
+    const deadlineHtml = `
+      <div class="aw-deadline">
+        <span class="aw-field-label">Срок прохождения</span>
+        <div class="aw-deadline-opts">
+          ${["3 дня", "7 дней", "14 дней", "30 дней"].map(d => `
+            <button class="aw-deadline-btn ${deadline === d ? "selected" : ""}" data-aw-deadline="${d}">${d}</button>
+          `).join("")}
+        </div>
+      </div>`;
+
+    const canSend = (scope === "dept" ? !!deptSelected : selected.length > 0) && !!profId && !!deadline;
+    const sendCount = scope === "dept"
+      ? (departments.find(d => d.name === deptSelected)?.employees || 0)
+      : selected.length;
+
+    bodyHtml = `
+      <div class="aw-step3-layout">
+        <div class="aw-step3-left">
+          <span class="aw-field-label">${scope === "dept" ? "Отдел" : scope === "group" ? "Сотрудники (мультивыбор)" : "Сотрудник"}</span>
+          ${empListHtml}
+        </div>
+        <div class="aw-step3-right">
+          ${profListHtml}
+          ${deadlineHtml}
+          ${canSend ? `<div class="aw-send-preview">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11z" stroke="currentColor" stroke-width="1.3"/><path d="M7 4.5v3l2 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            Будет отправлено <strong>${sendCount}</strong> ссылок
+          </div>` : ""}
+        </div>
+      </div>
+      <div class="aw-footer">
+        <button class="elt-btn-ghost" data-aw-back="2">← Назад</button>
+        <button class="blueButton" data-aw-send ${!canSend ? "disabled" : ""}>
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 6.5L11.5 1.5l-5 10-1-4.5-4.5-0.5z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Отправить оценку${sendCount > 1 ? ` (${sendCount})` : ""}
+        </button>
+      </div>`;
+  }
+
+  return `
+    <div class="modalBackdrop">
+      <div class="modal aw-modal">
+        <div class="modal-head">
+          <div class="modal-head-left">
+            <span class="modal-head-icon">📋</span>
+            <h2 class="modal-head-title">Создать оценку сотрудника</h2>
+          </div>
+          <button class="modal-close-btn" data-action="close-modal">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        ${stepsHtml}
+        <div class="modal-inner aw-body">
+          ${bodyHtml}
+        </div>
+      </div>
+    </div>`;
 }

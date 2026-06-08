@@ -671,6 +671,11 @@ document.addEventListener("click", (event) => {
     const professionId = event.target.closest("[data-profession]")?.dataset.profession || "recruiter";
     quickCreateLink(professionId);
   }
+  if (action === "open-assess-wizard") {
+    state.modal = { type: "assess-wizard", step: 1, scope: null, assessType: null, selected: [], dept: null, profId: null, deadline: "", searchQ: "" };
+    render();
+    return;
+  }
   if (action === "top-up") {
     state.modal = { type: "sbp-payment", mode: "topup", pack: 20 };
     render();
@@ -1314,6 +1319,118 @@ document.addEventListener("input", (event) => {
   if (event.target.matches("#elt-ai-input")) {
     event.target.style.height = "auto";
     event.target.style.height = Math.min(event.target.scrollHeight, 100) + "px";
+  }
+});
+
+// ── Assessment Wizard handlers ──────────────────────────────────────────────────
+document.addEventListener("click", (event) => {
+  // Step navigation: next
+  const awNext = event.target.closest("[data-aw-next]")?.dataset.awNext;
+  if (awNext) {
+    state.modal = { ...state.modal, step: parseInt(awNext) };
+    render();
+    return;
+  }
+  // Step navigation: back
+  const awBack = event.target.closest("[data-aw-back]")?.dataset.awBack;
+  if (awBack) {
+    state.modal = { ...state.modal, step: parseInt(awBack) };
+    render();
+    return;
+  }
+  // Select scope (one/group/dept)
+  const awScope = event.target.closest("[data-aw-scope]")?.dataset.awScope;
+  if (awScope) {
+    state.modal = { ...state.modal, scope: awScope, selected: [], dept: null };
+    render();
+    return;
+  }
+  // Select assessment type
+  const awType = event.target.closest("[data-aw-type]");
+  if (awType && !awType.hasAttribute("data-aw-locked")) {
+    state.modal = { ...state.modal, assessType: awType.dataset.awType };
+    render();
+    return;
+  }
+  // Select employee (toggle)
+  const awEmp = event.target.closest("[data-aw-emp]")?.dataset.awEmp;
+  if (awEmp) {
+    const sel = state.modal.selected || [];
+    const isOne = state.modal.scope === "one";
+    const idx = sel.indexOf(awEmp);
+    let newSel;
+    if (isOne) {
+      newSel = idx >= 0 ? [] : [awEmp];
+    } else {
+      newSel = idx >= 0 ? sel.filter(id => id !== awEmp) : [...sel, awEmp];
+    }
+    state.modal = { ...state.modal, selected: newSel };
+    render();
+    return;
+  }
+  // Select department
+  const awDept = event.target.closest("[data-aw-dept]")?.dataset.awDept;
+  if (awDept) {
+    state.modal = { ...state.modal, dept: awDept };
+    render();
+    return;
+  }
+  // Select profile
+  const awProf = event.target.closest("[data-aw-prof]")?.dataset.awProf;
+  if (awProf) {
+    state.modal = { ...state.modal, profId: awProf };
+    render();
+    return;
+  }
+  // Select deadline
+  const awDeadline = event.target.closest("[data-aw-deadline]")?.dataset.awDeadline;
+  if (awDeadline) {
+    state.modal = { ...state.modal, deadline: awDeadline };
+    render();
+    return;
+  }
+  // Send assessments
+  if (event.target.closest("[data-aw-send]")) {
+    const w = state.modal;
+    const employees = state.employees || [];
+    const targets = w.scope === "dept"
+      ? employees.filter(e => e.department === w.dept)
+      : employees.filter(e => w.selected.includes(e.id));
+    const profession = (state.professions || []).find(p => p.id === w.profId);
+    const now = new Date();
+    const newLinks = targets.map(emp => ({
+      token: Math.random().toString(36).slice(2, 10),
+      fullName: emp.fullName,
+      email: emp.email || "",
+      phone: emp.phone || "",
+      professionId: w.profId,
+      professionTitle: profession?.title || "Оценка",
+      recipientType: "employee",
+      status: "sent",
+      createdAt: now.toISOString(),
+      deadline: w.deadline,
+      employeeId: emp.id
+    }));
+    state.links = [...(state.links || []), ...newLinks];
+    if (state.company) state.company.assessmentBalance = Math.max(0, (state.company.assessmentBalance || 0) - newLinks.length);
+    state.modal = null;
+    saveState();
+    render();
+    // Show success toast
+    const toast = document.createElement("div");
+    toast.className = "elt-toast elt-toast-success";
+    toast.textContent = `Оценка отправлена: ${newLinks.length} ссылок`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3500);
+    return;
+  }
+});
+
+document.addEventListener("input", (event) => {
+  const awSearch = event.target.closest(".aw-emp-search");
+  if (awSearch && state.modal?.type === "assess-wizard") {
+    state.modal = { ...state.modal, searchQ: awSearch.value };
+    render();
   }
 });
 
