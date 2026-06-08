@@ -6716,11 +6716,14 @@ body.light .oc-view-toggle { background: rgba(0,0,0,.06); }
   gap: 6px;
 }
 .elt-fp-label {
+  display: block;
   font-size: 11px;
   font-weight: 600;
   color: rgba(230,242,255,.4);
   text-transform: uppercase;
   letter-spacing: .06em;
+  width: auto;
+  gap: 0;
 }
 .elt-fp-opts {
   display: flex;

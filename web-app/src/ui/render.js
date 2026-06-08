@@ -1333,7 +1333,7 @@ function renderModal(state) {
       const opts = filterOptions[f] || [];
       const cur = active[f] || "";
       return '<div class="elt-fp-row">' +
-        '<label class="elt-fp-label">' + f + '</label>' +
+        '<span class="elt-fp-label">' + f + '</span>' +
         '<div class="elt-fp-opts">' +
           '<button class="elt-fp-opt ' + (!cur ? 'active' : '') + '" data-fp-key="' + f + '" data-fp-val="">Все</button>' +
           opts.map((o) => '<button class="elt-fp-opt ' + (cur === o ? 'active' : '') + '" data-fp-key="' + f + '" data-fp-val="' + o + '">' + o + '</button>').join('') +
