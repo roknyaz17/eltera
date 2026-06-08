@@ -1247,10 +1247,20 @@ function renderModal(state) {
   }
 
   if (state.modal?.type === "sbp-payment") {
-    const { tariffId, tariffName, price, assessments, promoApplied } = state.modal;
-    const isTopup = !!assessments;
-    const title = isTopup ? `Пополнение оценок · +${assessments} оценок` : `Подключение ${tariffName}`;
-    const amount = promoApplied ? Math.round(price * 0.9) : price;
+    const { tariffId, tariffName, price, assessments, promoApplied, mode, pack } = state.modal;
+    const isTopup = mode === 'topup' || !!assessments;
+    const selectedPack = pack || assessments || 20;
+    const packPrices = { 20: 990, 100: 3900, 500: 14900 };
+    const packPrice = packPrices[selectedPack] || 990;
+    const basePrice = isTopup ? packPrice : price;
+    const amount = promoApplied ? Math.round(basePrice * 0.9) : basePrice;
+    const title = isTopup ? `Пополнение оценок` : `Подключение ${tariffName}`;
+    const packSelector = isTopup ? `<div class="sbp-pack-selector">
+      <div class="sbp-pack-label">Выберите пакет оценок</div>
+      <div class="sbp-pack-options">
+        ${[20,100,500].map(p => `<button class="sbp-pack-btn${selectedPack===p?' active':''}" data-action="sbp-select-pack" data-pack="${p}">+${p} оценок<span>${packPrices[p].toLocaleString('ru-RU')} ₽</span></button>`).join('')}
+      </div>
+    </div>` : '';
     const qrSvg = `<svg width="140" height="140" viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="140" height="140" rx="8" fill="#fff"/><rect x="10" y="10" width="40" height="40" rx="3" fill="#0A0F1E"/><rect x="16" y="16" width="28" height="28" rx="1" fill="#fff"/><rect x="20" y="20" width="20" height="20" rx="1" fill="#0A0F1E"/><rect x="90" y="10" width="40" height="40" rx="3" fill="#0A0F1E"/><rect x="96" y="16" width="28" height="28" rx="1" fill="#fff"/><rect x="100" y="20" width="20" height="20" rx="1" fill="#0A0F1E"/><rect x="10" y="90" width="40" height="40" rx="3" fill="#0A0F1E"/><rect x="16" y="96" width="28" height="28" rx="1" fill="#fff"/><rect x="20" y="100" width="20" height="20" rx="1" fill="#0A0F1E"/><rect x="56" y="10" width="8" height="8" fill="#0A0F1E"/><rect x="68" y="10" width="8" height="8" fill="#0A0F1E"/><rect x="56" y="22" width="8" height="8" fill="#0A0F1E"/><rect x="68" y="22" width="8" height="8" fill="#0A0F1E"/><rect x="56" y="34" width="8" height="8" fill="#0A0F1E"/><rect x="56" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="68" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="80" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="56" y="68" width="8" height="8" fill="#0A0F1E"/><rect x="80" y="68" width="8" height="8" fill="#0A0F1E"/><rect x="56" y="80" width="8" height="8" fill="#0A0F1E"/><rect x="68" y="80" width="8" height="8" fill="#0A0F1E"/><rect x="80" y="80" width="8" height="8" fill="#0A0F1E"/><rect x="56" y="92" width="8" height="8" fill="#0A0F1E"/><rect x="80" y="92" width="8" height="8" fill="#0A0F1E"/><rect x="56" y="104" width="8" height="8" fill="#0A0F1E"/><rect x="68" y="104" width="8" height="8" fill="#0A0F1E"/><rect x="80" y="104" width="8" height="8" fill="#0A0F1E"/><rect x="56" y="116" width="8" height="8" fill="#0A0F1E"/><rect x="80" y="116" width="8" height="8" fill="#0A0F1E"/><rect x="92" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="104" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="116" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="92" y="68" width="8" height="8" fill="#0A0F1E"/><rect x="116" y="68" width="8" height="8" fill="#0A0F1E"/><rect x="92" y="80" width="8" height="8" fill="#0A0F1E"/><rect x="104" y="80" width="8" height="8" fill="#0A0F1E"/><rect x="116" y="80" width="8" height="8" fill="#0A0F1E"/><rect x="92" y="92" width="8" height="8" fill="#0A0F1E"/><rect x="116" y="92" width="8" height="8" fill="#0A0F1E"/><rect x="92" y="104" width="8" height="8" fill="#0A0F1E"/><rect x="104" y="104" width="8" height="8" fill="#0A0F1E"/><rect x="116" y="104" width="8" height="8" fill="#0A0F1E"/><rect x="92" y="116" width="8" height="8" fill="#0A0F1E"/><rect x="104" y="116" width="8" height="8" fill="#0A0F1E"/><rect x="116" y="116" width="8" height="8" fill="#0A0F1E"/><rect x="10" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="22" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="34" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="10" y="68" width="8" height="8" fill="#0A0F1E"/><rect x="34" y="68" width="8" height="8" fill="#0A0F1E"/><rect x="10" y="80" width="8" height="8" fill="#0A0F1E"/><rect x="22" y="80" width="8" height="8" fill="#0A0F1E"/><rect x="34" y="80" width="8" height="8" fill="#0A0F1E"/></svg>`;
     const promoHtml = promoApplied
       ? `<div class="sbp-promo-applied">✓ Промокод применён — скидка 10%</div>`
@@ -1264,14 +1274,15 @@ function renderModal(state) {
           <button class="sbp-deeplink-btn" data-action="sbp-deeplink">Открыть СБП в приложении</button>
         </div>
         <div class="sbp-details">
+          ${packSelector}
           <div class="sbp-detail-row"><span>Сумма</span><strong>${amount.toLocaleString('ru-RU')} ₽</strong></div>
           <div class="sbp-detail-row"><span>Получатель</span><span>ООО «Элтера»</span></div>
-          <div class="sbp-detail-row"><span>Назначение</span><span>${isTopup ? `Пополнение +${assessments} оценок` : `${tariffName}, 1 мес.`}</span></div>
+          <div class="sbp-detail-row"><span>Назначение</span><span>${isTopup ? `Пополнение +${selectedPack} оценок` : `${tariffName}, 1 мес.`}</span></div>
           <div class="sbp-detail-row sbp-detail-status"><span>Статус</span><span class="sbp-status-waiting" data-sbp-status>⏱ Ожидание оплаты...</span></div>
           <div class="sbp-promo-section">${promoHtml}</div>
           <div class="sbp-actions">
             <button class="elt-btn-ghost" data-action="close-modal">Отмена</button>
-            <button class="elt-btn-primary" data-action="sbp-confirm" data-tariff-id="${tariffId || ''}" data-assessments="${assessments || 0}">Подтвердить оплату</button>
+            <button class="elt-btn-primary" data-action="sbp-confirm" data-tariff-id="${tariffId || ''}" data-assessments="${isTopup ? selectedPack : 0}">Подтвердить оплату</button>
           </div>
           <div class="sbp-footer">Платёж защищён СБП · ЦБ РФ · ЮKassa</div>
         </div>

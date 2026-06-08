@@ -642,7 +642,8 @@ document.addEventListener("click", (event) => {
     quickCreateLink(professionId);
   }
   if (action === "top-up") {
-    buyAssessments(20);
+    state.modal = { type: "sbp-payment", mode: "topup", pack: 20 };
+    render();
   }
   if (action === "print-report") window.print();
   if (action === "add-structure-member") {
@@ -761,6 +762,12 @@ document.addEventListener("click", (event) => {
       document.body.appendChild(toast);
       setTimeout(() => toast.remove(), 3500);
     }, 1800);
+  }
+
+  if (sbpAction === "sbp-select-pack") {
+    const pack = parseInt(event.target.closest("[data-pack]")?.dataset.pack || 20);
+    state.modal = { ...state.modal, pack, mode: 'topup' };
+    render();
   }
 
   if (sbpAction === "apply-sbp-promo") {
