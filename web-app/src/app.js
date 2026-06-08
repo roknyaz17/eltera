@@ -1389,6 +1389,66 @@ document.addEventListener("click", (event) => {
     render();
     return;
   }
+  // PR scale selection
+  const prKeyEl = event.target.closest('[data-aw-pr-key]');
+  if (prKeyEl) {
+    const key = prKeyEl.dataset.awPrKey;
+    const val = parseInt(prKeyEl.dataset.awPrVal, 10);
+    state.modal = { ...state.modal, prValues: { ...(state.modal.prValues || {}), [key]: val } };
+    render();
+    return;
+  }
+  // 360 role toggle / counter
+  const roleEl = event.target.closest('[data-aw-role]');
+  if (roleEl) {
+    const role = roleEl.dataset.awRole;
+    const val = roleEl.dataset.awRoleVal;
+    const r360 = { ...(state.modal.roles360 || { self: true, manager: false, peers: 0, reports: 0 }) };
+    if (val === 'toggle') r360[role] = !r360[role];
+    else if (val === 'inc') r360[role] = Math.min((r360[role] || 0) + 1, 10);
+    else if (val === 'dec') r360[role] = Math.max((r360[role] || 0) - 1, 0);
+    state.modal = { ...state.modal, roles360: r360 };
+    render();
+    return;
+  }
+  // Send Performance Review
+  if (event.target.closest('[data-aw-send-review]')) {
+    const w = state.modal;
+    const emps = state.employees || [];
+    const targets = w.scope === 'dept' ? emps.filter(e => e.department === w.dept) : emps.filter(e => w.selected.includes(e.id));
+    const prVals = w.prValues || {};
+    const nineBoxMap = {'00':'Зона риска','01':'Зона риска','10':'Зона риска','11':'Зона развития','02':'Стабильный','20':'Стабильный','12':'Стабильный','21':'Стабильный','22':'Стабильный','03':'Стабильный','30':'Стабильный','13':'Перспективный','31':'Перспективный','04':'HiPo','40':'HiPo','14':'HiPo','41':'HiPo','23':'Перспективный','32':'Перспективный','24':'HiPo','42':'HiPo','33':'Перспективный','34':'HiPo','43':'HiPo','44':'HiPo'};
+    const pi = prVals.performance ?? 2;
+    const po = prVals.potential ?? 2;
+    const nineBox = nineBoxMap[`${pi}${po}`] || 'Стабильный';
+    const now = new Date();
+    const newLinks = targets.map(emp => ({ token: Math.random().toString(36).slice(2,10), fullName: emp.fullName, email: emp.email||'', professionTitle: 'Performance Review', recipientType: 'employee', assessType: 'review', status: 'sent', createdAt: now.toISOString(), deadline: w.deadline, employeeId: emp.id, prValues: prVals, nineBox }));
+    state.links = [...(state.links||[]), ...newLinks];
+    if (state.company) state.company.assessmentBalance = Math.max(0, (state.company.assessmentBalance||0) - newLinks.length);
+    state.modal = null; saveState(); render();
+    const t1 = document.createElement('div'); t1.className='elt-toast elt-toast-success'; t1.textContent=`Performance Review запущен: ${newLinks.length} чел.`; document.body.appendChild(t1); setTimeout(()=>t1.remove(),3500);
+    return;
+  }
+  // Send 360
+  if (event.target.closest('[data-aw-send-360]')) {
+    const w = state.modal;
+    const emps = state.employees || [];
+    const targets = emps.filter(e => w.selected.includes(e.id));
+    const r360 = w.roles360 || { self: true, manager: false, peers: 0, reports: 0 };
+    const roleNames = [];
+    if (r360.self) roleNames.push('Самооценка');
+    if (r360.manager) roleNames.push('Руководитель');
+    for (let i=0;i<r360.peers;i++) roleNames.push(`Коллега ${i+1}`);
+    for (let i=0;i<r360.reports;i++) roleNames.push(`Подчинённый ${i+1}`);
+    const now = new Date();
+    const newLinks = [];
+    targets.forEach(emp => roleNames.forEach(role => newLinks.push({ token: Math.random().toString(36).slice(2,10), fullName: emp.fullName, email: emp.email||'', professionTitle: `360° — ${role}`, recipientType: 'employee', assessType: '360', role360: role, status: 'sent', createdAt: now.toISOString(), deadline: w.deadline, employeeId: emp.id })));
+    state.links = [...(state.links||[]), ...newLinks];
+    if (state.company) state.company.assessmentBalance = Math.max(0, (state.company.assessmentBalance||0) - newLinks.length);
+    state.modal = null; saveState(); render();
+    const t2 = document.createElement('div'); t2.className='elt-toast elt-toast-success'; t2.textContent=`Оценка 360° запущена: ${targets.length} чел., ${newLinks.length} ссылок`; document.body.appendChild(t2); setTimeout(()=>t2.remove(),3500);
+    return;
+  }
   // Send assessments
   if (event.target.closest("[data-aw-send]")) {
     const w = state.modal;

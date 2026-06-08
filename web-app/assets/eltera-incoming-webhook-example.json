@@ -1,0 +1,21 @@
+{
+  "api_key_id": "elt_live_demo_01",
+  "source": "company_hrm",
+  "event": "employees.import",
+  "created_at": "2026-06-07T12:00:00+03:00",
+  "payload": {
+    "employees": [
+      {
+        "external_id": "emp_1001",
+        "full_name": "Иванов Иван Иванович",
+        "phone": "+7 900 000-00-00",
+        "email": "ivanov@example.ru",
+        "department": "Продажи",
+        "position": "Менеджер по продажам",
+        "manager": "Петров Петр",
+        "project": "B2B",
+        "assessment_profile": "Менеджер по продажам"
+      }
+    ]
+  }
+}

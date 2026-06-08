@@ -1,0 +1,16 @@
+{
+  "api_key_id": "elt_live_demo_01",
+  "event": "assessment.completed",
+  "created_at": "2026-06-07T12:30:00+03:00",
+  "payload": {
+    "assessment_id": "asm_653757",
+    "person_type": "employee",
+    "full_name": "Иванов Иван Иванович",
+    "profile_title": "Менеджер по продажам",
+    "status": "completed",
+    "fit_percent": 82,
+    "recommendation": "Рекомендован",
+    "report_url": "https://app.eltera.ai/reports/asm_653757",
+    "pdf_url": "https://app.eltera.ai/reports/asm_653757.pdf"
+  }
+}

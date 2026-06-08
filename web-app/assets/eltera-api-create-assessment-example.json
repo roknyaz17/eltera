@@ -1,0 +1,25 @@
+{
+  "api_key_id": "elt_live_demo_01",
+  "request_id": "req_2026_0001",
+  "assessment": {
+    "person_type": "employee",
+    "profile_id": "sales_manager",
+    "profile_title": "Менеджер по продажам",
+    "send_to": {
+      "full_name": "Иванов Иван Иванович",
+      "phone": "+7 900 000-00-00",
+      "email": "ivanov@example.ru"
+    },
+    "company_context": {
+      "department": "Продажи",
+      "position": "Менеджер по продажам",
+      "manager": "Петров Петр",
+      "project": "B2B"
+    },
+    "delivery": {
+      "email": true,
+      "telegram": false,
+      "expires_in_days": 7
+    }
+  }
+}

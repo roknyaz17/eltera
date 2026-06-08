@@ -6949,6 +6949,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 .aw-type-card { position: relative; display: flex; align-items: flex-start; gap: 14px; padding: 14px 16px; background: rgba(255,255,255,.03); border: 1.5px solid rgba(255,255,255,.08); border-radius: 10px; cursor: pointer; transition: all .15s; text-align: left; width: 100%; color: #E6F2FF; overflow: hidden; }
 .aw-type-card:hover:not(.locked) { background: rgba(30,91,255,.08); border-color: rgba(30,91,255,.3); }
 .aw-type-card.selected { background: rgba(30,91,255,.12); border-color: #1E5BFF; }
+.aw-type-card.selected .aw-scope-check { background: #1E5BFF; border-color: #1E5BFF; color: #fff; }
 .aw-type-card.locked { opacity: .7; cursor: default; }
 .aw-type-icon { width: 40px; height: 40px; border-radius: 10px; background: rgba(255,255,255,.05); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #00E5D4; }
 .aw-type-text { flex: 1; display: flex; flex-direction: column; gap: 4px; }

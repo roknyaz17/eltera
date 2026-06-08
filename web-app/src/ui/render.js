@@ -2130,17 +2130,15 @@ function renderAssessmentWizard(state) {
         icon: `<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.5"/><circle cx="11" cy="11" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M11 3v2M11 17v2M3 11h2M17 11h2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`,
         title: "Оценка 360°",
         desc: "Самооценка + руководитель + коллеги + подчинённые. Разные роли, разные веса.",
-        locked: !isTalentStudio,
-        badge: "TalentStudio"
+        locked: false
       },
       {
         id: "review",
         icon: `<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M4 18V8l7-5 7 5v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="8" y="13" width="6" height="5" rx="1" stroke="currentColor" stroke-width="1.4"/><path d="M11 10v1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`,
         title: "Performance Review",
         desc: "Оценка результативности и потенциала. Формирует 9-box и кадровый резерв.",
-        locked: !isTalentStudio,
-        badge: "TalentStudio"
-      }
+        locked: false
+      },
     ];
     bodyHtml = `
       <div class="aw-type-grid">
@@ -2165,104 +2163,202 @@ function renderAssessmentWizard(state) {
       </div>`;
   }
 
-  // ── Step 3: Настройка ───────────────────────────────────────────────────────
+    // ── Step 3: Настройка (зависит от типа) ──────────────────────────────────────────────────
   if (step === 3) {
-    // Список сотрудников для выбора
+    // Общий список сотрудников для выбора
     const filtered = employees.filter(e =>
       !searchQ || e.fullName.toLowerCase().includes(searchQ.toLowerCase()) ||
       e.position.toLowerCase().includes(searchQ.toLowerCase()) ||
       e.department.toLowerCase().includes(searchQ.toLowerCase())
     );
-
-    const empListHtml = scope === "dept"
-      ? `<div class="aw-dept-select">
+    const empSelectHtml = (labelText, multiHint) => {
+      if (scope === 'dept') {
+        return `<div class="aw-dept-select">
           <span class="aw-field-label">Выберите отдел</span>
           <div class="aw-dept-grid">
-            ${departments.map(d => `
-              <button class="aw-dept-btn ${deptSelected === d.name ? "selected" : ""}" data-aw-dept="${d.name}">
-                <strong>${d.name}</strong>
-                <span>${d.employees} чел.</span>
-              </button>
-            `).join("")}
+            ${departments.map(d => `<button class="aw-dept-btn ${deptSelected===d.name?'selected':''}" data-aw-dept="${d.name}"><strong>${d.name}</strong><span>${d.employees} чел.</span></button>`).join('')}
+          </div></div>`;
+      }
+      return `<div class="aw-emp-select">
+        <div class="aw-emp-search-wrap">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="4" stroke="currentColor" stroke-width="1.4"/><line x1="8.5" y1="8.5" x2="11.5" y2="11.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <input class="aw-emp-search" placeholder="${labelText}" data-aw-search value="${searchQ}">
+        </div>
+        <div class="aw-emp-list">
+          ${filtered.length === 0 ? '<div class="aw-emp-empty">Сотрудники не найдены</div>' :
+            filtered.map(e => {
+              const isSel = selected.includes(e.id);
+              const ini = e.fullName.split(' ').slice(0,2).map(x=>x[0]).join('');
+              return `<button class="aw-emp-row ${isSel?'selected':''}" data-aw-emp="${e.id}">
+                <div class="aw-emp-avatar">${ini}</div>
+                <div class="aw-emp-info"><strong>${e.fullName}</strong><span>${e.position} · ${e.department}</span></div>
+                <div class="aw-emp-check"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5l3.5 3.5 5.5-5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+              </button>`;
+            }).join('')
+          }
+        </div>
+        ${selected.length > 0 ? `<div class="aw-selected-count">${multiHint}: <strong>${selected.length}</strong></div>` : ''}
+      </div>`;
+    };
+    const deadlineHtml = `<div class="aw-deadline">
+      <span class="aw-field-label">Срок прохождения</span>
+      <div class="aw-deadline-opts">
+        ${['3 дня','7 дней','14 дней','30 дней'].map(d=>`<button class="aw-deadline-btn ${deadline===d?'selected':''}" data-aw-deadline="${d}">${d}</button>`).join('')}
+      </div></div>`;
+
+    // ── 3a: Performance Review ────────────────────────────────────────────────────────────────
+    if (assessType === 'review') {
+      const prVals = w.prValues || {};
+      const prScales = [
+        { key: 'performance', label: 'Результативность', desc: 'Насколько сотрудник достигает целей и KPI', opts: ['Низкая','Ниже ожиданий','Соответствует','Выше ожиданий','Исключительная'] },
+        { key: 'potential',   label: 'Потенциал',        desc: 'Способность к росту и развитию',        opts: ['Низкий','Ограниченный','Умеренный','Высокий','Исключительный'] }
+      ];
+      const pi = prVals.performance ?? -1;
+      const po = prVals.potential ?? -1;
+      const nineBoxMap = {
+        '00':'Зона риска','01':'Зона риска','10':'Зона риска','11':'Зона развития',
+        '02':'Стабильный','20':'Стабильный','12':'Стабильный','21':'Стабильный','22':'Стабильный',
+        '03':'Стабильный','30':'Стабильный','13':'Перспективный','31':'Перспективный',
+        '04':'HiPo','40':'HiPo','14':'HiPo','41':'HiPo','23':'Перспективный','32':'Перспективный',
+        '24':'HiPo','42':'HiPo','33':'Перспективный','34':'HiPo','43':'HiPo','44':'HiPo'
+      };
+      const nbLabel = pi >= 0 && po >= 0 ? (nineBoxMap[`${pi}${po}`] || 'Стабильный') : null;
+      const nbColor = nbLabel === 'HiPo' ? '#00E5D4' : nbLabel === 'Перспективный' ? '#1E5BFF' : nbLabel === 'Зона риска' ? '#e07070' : '#6b7a99';
+      const sendCount = scope === 'dept' ? (departments.find(d=>d.name===deptSelected)?.employees||0) : selected.length;
+      const canSend = (scope === 'dept' ? !!deptSelected : selected.length > 0) && pi >= 0 && po >= 0 && !!deadline;
+      bodyHtml = `
+        <div class="aw-step3-layout">
+          <div class="aw-step3-left">
+            <span class="aw-field-label">${scope==='dept'?'Отдел':scope==='group'?'Сотрудники (мультивыбор)':'Сотрудник'}</span>
+            ${empSelectHtml('Поиск по имени, должности...', 'Выбрано')}
           </div>
-        </div>`
-      : `<div class="aw-emp-select">
-          <div class="aw-emp-search-wrap">
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="4" stroke="currentColor" stroke-width="1.4"/><line x1="8.5" y1="8.5" x2="11.5" y2="11.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-            <input class="aw-emp-search" placeholder="Поиск по имени, должности, отделу..." data-aw-search value="${searchQ}">
+          <div class="aw-step3-right">
+            <div class="aw-pr-scales">
+              ${prScales.map(s => `
+                <div class="aw-pr-scale">
+                  <span class="aw-field-label">${s.label}</span>
+                  <span class="aw-pr-scale-desc">${s.desc}</span>
+                  <div class="aw-pr-opts">
+                    ${s.opts.map((opt,idx) => `<button class="aw-pr-opt ${prVals[s.key]===idx?'selected':''}" data-aw-pr-key="${s.key}" data-aw-pr-val="${idx}">${opt}</button>`).join('')}
+                  </div>
+                </div>`).join('')}
+            </div>
+            ${nbLabel ? `<div class="aw-ninebox-preview">
+              <span class="aw-field-label">9-Box категория</span>
+              <div class="aw-ninebox-badge" style="background:${nbColor}20;border:1px solid ${nbColor}40;color:${nbColor}">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="3.5" height="3.5" rx=".7" stroke="currentColor" stroke-width="1.2"/><rect x="5.3" y="1" width="3.5" height="3.5" rx=".7" stroke="currentColor" stroke-width="1.2"/><rect x="9.5" y="1" width="3.5" height="3.5" rx=".7" stroke="currentColor" stroke-width="1.2"/><rect x="1" y="5.3" width="3.5" height="3.5" rx=".7" stroke="currentColor" stroke-width="1.2"/><rect x="5.3" y="5.3" width="3.5" height="3.5" rx=".7" stroke="currentColor" stroke-width="1.2"/><rect x="9.5" y="5.3" width="3.5" height="3.5" rx=".7" stroke="currentColor" stroke-width="1.2"/><rect x="1" y="9.5" width="3.5" height="3.5" rx=".7" stroke="currentColor" stroke-width="1.2"/><rect x="5.3" y="9.5" width="3.5" height="3.5" rx=".7" stroke="currentColor" stroke-width="1.2"/><rect x="9.5" y="9.5" width="3.5" height="3.5" rx=".7" stroke="currentColor" stroke-width="1.2"/></svg>
+                ${nbLabel}
+              </div></div>` : ''}
+            ${deadlineHtml}
+            ${canSend ? `<div class="aw-send-preview"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11z" stroke="currentColor" stroke-width="1.3"/><path d="M7 4.5v3l2 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Будет запущено <strong>${sendCount}</strong> ревью</div>` : ''}
           </div>
-          <div class="aw-emp-list">
-            ${filtered.length === 0 ? `<div class="aw-emp-empty">Сотрудники не найдены</div>` :
-              filtered.map(e => {
-                const isSel = selected.includes(e.id);
-                const initials = e.fullName.split(" ").slice(0, 2).map(w => w[0]).join("");
-                return `
-                  <button class="aw-emp-row ${isSel ? "selected" : ""}" data-aw-emp="${e.id}">
-                    <div class="aw-emp-avatar">${initials}</div>
-                    <div class="aw-emp-info">
-                      <strong>${e.fullName}</strong>
-                      <span>${e.position} · ${e.department}</span>
-                    </div>
-                    <div class="aw-emp-check"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5l3.5 3.5 5.5-5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-                  </button>`;
-              }).join("")
-            }
-          </div>
-          ${scope === "group" && selected.length > 0 ? `<div class="aw-selected-count">Выбрано: <strong>${selected.length}</strong> сотр.</div>` : ""}
+        </div>
+        <div class="aw-footer">
+          <button class="elt-btn-ghost" data-aw-back="2">← Назад</button>
+          <button class="blueButton" data-aw-send-review ${!canSend?'disabled':''}>
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 6.5L11.5 1.5l-5 10-1-4.5-4.5-0.5z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Запустить ревью${sendCount>1?` (${sendCount})`:''}
+          </button>
         </div>`;
 
-    // Профиль оценки
-    const profListHtml = `
-      <div class="aw-prof-select">
+    // ── 3b: Оценка 360 ────────────────────────────────────────────────────────────────
+    } else if (assessType === '360') {
+      const roles360 = w.roles360 || { self: true, manager: false, peers: 0, reports: 0 };
+      const totalRaters = (roles360.self?1:0) + (roles360.manager?1:0) + roles360.peers + roles360.reports;
+      const canSend = selected.length > 0 && totalRaters >= 2 && !!deadline;
+      bodyHtml = `
+        <div class="aw-step3-layout">
+          <div class="aw-step3-left">
+            <span class="aw-field-label">Кого оцениваем</span>
+            ${empSelectHtml('Кого оцениваем? Поиск по имени...', 'Оцениваемых')}
+          </div>
+          <div class="aw-step3-right">
+            <div class="aw-360-roles">
+              <span class="aw-field-label">Роли оценщиков</span>
+              <span class="aw-pr-scale-desc">Минимум 2 роли. Каждая роль получает отдельную ссылку.</span>
+              <div class="aw-role-list">
+                <div class="aw-role-row">
+                  <div class="aw-role-info">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M2 14c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                    <div><strong>Самооценка</strong><span>Сотрудник оценивает себя сам</span></div>
+                  </div>
+                  <button class="aw-role-toggle ${roles360.self?'on':''}" data-aw-role="self" data-aw-role-val="toggle">${roles360.self?'Вкл':'Выкл'}</button>
+                </div>
+                <div class="aw-role-row">
+                  <div class="aw-role-info">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2l1.5 3 3.5.5-2.5 2.5.6 3.5L8 10l-3.1 1.5.6-3.5L3 5.5 6.5 5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+                    <div><strong>Руководитель</strong><span>Прямой руководитель</span></div>
+                  </div>
+                  <button class="aw-role-toggle ${roles360.manager?'on':''}" data-aw-role="manager" data-aw-role-val="toggle">${roles360.manager?'Вкл':'Выкл'}</button>
+                </div>
+                <div class="aw-role-row">
+                  <div class="aw-role-info">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.4"/><circle cx="11" cy="5" r="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M1 14c0-2.21 1.79-4 4-4M15 14c0-2.21-1.79-4-4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                    <div><strong>Коллеги</strong><span>Сотрудники одного уровня</span></div>
+                  </div>
+                  <div class="aw-role-counter">
+                    <button class="aw-cnt-btn" data-aw-role="peers" data-aw-role-val="dec">−</button>
+                    <span class="aw-cnt-val">${roles360.peers}</span>
+                    <button class="aw-cnt-btn" data-aw-role="peers" data-aw-role-val="inc">+</button>
+                  </div>
+                </div>
+                <div class="aw-role-row">
+                  <div class="aw-role-info">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M2 14c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M8 9v5M5.5 11.5l2.5-2.5 2.5 2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <div><strong>Подчинённые</strong><span>Сотрудники в подчинении</span></div>
+                  </div>
+                  <div class="aw-role-counter">
+                    <button class="aw-cnt-btn" data-aw-role="reports" data-aw-role-val="dec">−</button>
+                    <span class="aw-cnt-val">${roles360.reports}</span>
+                    <button class="aw-cnt-btn" data-aw-role="reports" data-aw-role-val="inc">+</button>
+                  </div>
+                </div>
+              </div>
+              ${totalRaters >= 2
+                ? `<div class="aw-360-summary">Всего оценщиков на 1 чел.: <strong>${totalRaters}</strong> · Ссылок: <strong>${selected.length * totalRaters}</strong></div>`
+                : `<div class="aw-360-warn">Выберите минимум 2 роли</div>`}
+            </div>
+            ${deadlineHtml}
+            ${canSend ? `<div class="aw-send-preview"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11z" stroke="currentColor" stroke-width="1.3"/><path d="M7 4.5v3l2 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Будет отправлено <strong>${selected.length * totalRaters}</strong> ссылок</div>` : ''}
+          </div>
+        </div>
+        <div class="aw-footer">
+          <button class="elt-btn-ghost" data-aw-back="2">← Назад</button>
+          <button class="blueButton" data-aw-send-360 ${!canSend?'disabled':''}>
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 6.5L11.5 1.5l-5 10-1-4.5-4.5-0.5z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Запустить 360°${selected.length>0?` (${selected.length})`:''}
+          </button>
+        </div>`;
+
+    // ── 3c: Стандартная оценка ────────────────────────────────────────────────────────────────
+    } else {
+      const profListHtml = `<div class="aw-prof-select">
         <span class="aw-field-label">Профиль оценки</span>
         <div class="aw-prof-grid">
-          ${professions.slice(0, 6).map(p => `
-            <button class="aw-prof-btn ${profId === p.id ? "selected" : ""}" data-aw-prof="${p.id}">
-              <strong>${p.title}</strong>
-              <span>${p.category}</span>
-            </button>
-          `).join("")}
+          ${professions.slice(0,6).map(p=>`<button class="aw-prof-btn ${profId===p.id?'selected':''}" data-aw-prof="${p.id}"><strong>${p.title}</strong><span>${p.category}</span></button>`).join('')}
+        </div></div>`;
+      const canSend = (scope==='dept'?!!deptSelected:selected.length>0) && !!profId && !!deadline;
+      const sendCount = scope==='dept'?(departments.find(d=>d.name===deptSelected)?.employees||0):selected.length;
+      bodyHtml = `
+        <div class="aw-step3-layout">
+          <div class="aw-step3-left">
+            <span class="aw-field-label">${scope==='dept'?'Отдел':scope==='group'?'Сотрудники (мультивыбор)':'Сотрудник'}</span>
+            ${empSelectHtml('Поиск по имени, должности, отделу...', 'Выбрано')}
+          </div>
+          <div class="aw-step3-right">
+            ${profListHtml}
+            ${deadlineHtml}
+            ${canSend?`<div class="aw-send-preview"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11z" stroke="currentColor" stroke-width="1.3"/><path d="M7 4.5v3l2 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Будет отправлено <strong>${sendCount}</strong> ссылок</div>`:''}
+          </div>
         </div>
-      </div>`;
-
-    // Срок
-    const deadlineHtml = `
-      <div class="aw-deadline">
-        <span class="aw-field-label">Срок прохождения</span>
-        <div class="aw-deadline-opts">
-          ${["3 дня", "7 дней", "14 дней", "30 дней"].map(d => `
-            <button class="aw-deadline-btn ${deadline === d ? "selected" : ""}" data-aw-deadline="${d}">${d}</button>
-          `).join("")}
-        </div>
-      </div>`;
-
-    const canSend = (scope === "dept" ? !!deptSelected : selected.length > 0) && !!profId && !!deadline;
-    const sendCount = scope === "dept"
-      ? (departments.find(d => d.name === deptSelected)?.employees || 0)
-      : selected.length;
-
-    bodyHtml = `
-      <div class="aw-step3-layout">
-        <div class="aw-step3-left">
-          <span class="aw-field-label">${scope === "dept" ? "Отдел" : scope === "group" ? "Сотрудники (мультивыбор)" : "Сотрудник"}</span>
-          ${empListHtml}
-        </div>
-        <div class="aw-step3-right">
-          ${profListHtml}
-          ${deadlineHtml}
-          ${canSend ? `<div class="aw-send-preview">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11z" stroke="currentColor" stroke-width="1.3"/><path d="M7 4.5v3l2 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-            Будет отправлено <strong>${sendCount}</strong> ссылок
-          </div>` : ""}
-        </div>
-      </div>
-      <div class="aw-footer">
-        <button class="elt-btn-ghost" data-aw-back="2">← Назад</button>
-        <button class="blueButton" data-aw-send ${!canSend ? "disabled" : ""}>
-          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 6.5L11.5 1.5l-5 10-1-4.5-4.5-0.5z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Отправить оценку${sendCount > 1 ? ` (${sendCount})` : ""}
-        </button>
-      </div>`;
+        <div class="aw-footer">
+          <button class="elt-btn-ghost" data-aw-back="2">← Назад</button>
+          <button class="blueButton" data-aw-send ${!canSend?'disabled':''}>
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 6.5L11.5 1.5l-5 10-1-4.5-4.5-0.5z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Отправить оценку${sendCount>1?` (${sendCount})`:''}
+          </button>
+        </div>`;
+    }
   }
 
   return `
