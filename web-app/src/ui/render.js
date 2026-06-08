@@ -268,6 +268,7 @@ export function renderCandidates(state) {
       { label: "Создать ссылку", primary: true, attrs: "data-action=\"create-link\"" }
     ],
     filters: pageFilterConfig.candidates,
+    activeFiltersMap: (state.activeFilters && state.activeFilters.candidates) || {},
     kpiCards: [
       { label: "Всего кандидатов", value: candidates.length + 128, caption: "+24 за период", status: "neutral", target: "Кандидаты:Кандидатов всего", iconName: "candidates" },
       { label: "Оценка отправлена", value: state.links.filter((x) => x.recipientType === "Кандидат").length, caption: "активные ссылки", status: "medium", target: "Кандидаты:Оценка отправлена", iconName: "link" },
@@ -304,6 +305,7 @@ export function renderEmployees(state) {
     period: state.period,
     actions: [{ label: "Оценить сотрудника", primary: true, attrs: "data-action=\"create-link\"" }],
     filters: pageFilterConfig.employees,
+    activeFiltersMap: (state.activeFilters && state.activeFilters.employees) || {},
     kpiCards: [
       { label: "Всего сотрудников", value: 70, caption: "в базе", status: "neutral", target: "Сотрудники:Сотрудников всего", iconName: "employees" },
       { label: "В оценке", value: 16, caption: "активные", status: "neutral", target: "Сотрудники:В оценке", iconName: "active" },
@@ -604,6 +606,7 @@ export function renderVacancies(state) {
       { label: "Добавить вакансию", primary: true }
     ],
     filters: pageFilterConfig.vacancies,
+    activeFiltersMap: (state.activeFilters && state.activeFilters.vacancies) || {},
     kpiCards: [
       { label: "Активные вакансии", value: state.vacancies.filter((x) => x.status === "Активна").length, caption: "в работе", status: "neutral", target: "Вакансии:Активные", iconName: "vacancies" },
       { label: "Без откликов", value: 1, caption: "больше 7 дней", status: "bad", target: "Вакансии:Без откликов", iconName: "risk" },
@@ -686,6 +689,7 @@ export function renderAdaptation(state) {
     period: state.period,
     actions: [{ label: "Запустить опрос адаптации", primary: true, attrs: "data-action=\"create-link\"" }],
     filters: pageFilterConfig.adaptation,
+    activeFiltersMap: (state.activeFilters && state.activeFilters.adaptation) || {},
     kpiCards: [
       { label: "Новые сотрудники", value: 14, caption: "до 90 дней", status: "neutral", target: "Адаптация:Новые сотрудники" },
       { label: "Прошли адаптацию", value: 4, caption: "успешно", status: "good", target: "Адаптация:Прошли" },
@@ -715,6 +719,7 @@ export function renderThreeSixty(state) {
     period: state.period,
     actions: [{ label: "Запустить 360", primary: true, attrs: locked ? "data-open-locked=\"Оценка 360 доступна на тарифе TalentStudio.\"" : "data-action=\"create-link\"" }],
     filters: pageFilterConfig["360"],
+    activeFiltersMap: (state.activeFilters && state.activeFilters["360"]) || {},
     kpiCards: [
       { label: "Активные 360", value: 5, caption: "циклов", status: locked ? "noData" : "neutral", target: "Оценка 360:Активные" },
       { label: "Завершены", value: 2, caption: "цикла", status: "medium", target: "Оценка 360:Завершены" },
@@ -741,6 +746,7 @@ export function renderPerformance(state) {
     period: state.period,
     actions: [{ label: "Запустить review", primary: true, attrs: "data-action=\"create-link\"" }],
     filters: pageFilterConfig.performance,
+    activeFiltersMap: (state.activeFilters && state.activeFilters.performance) || {},
     kpiCards: [
       { label: "В цикле", value: 42, caption: "сотрудника", status: "neutral", target: "Performance Review:В цикле" },
       { label: "Завершили", value: 28, caption: "review", status: "medium", target: "Performance Review:Завершили" },
@@ -823,6 +829,7 @@ export function renderReports(state) {
     period: state.period,
     actions: [{ label: "Экспорт PDF" }, { label: "Создать оценку", primary: true, attrs: "data-action=\"create-link\"" }],
     filters: pageFilterConfig.reports,
+    activeFiltersMap: (state.activeFilters && state.activeFilters.reports) || {},
     kpiCards: [
       { label: "Готовые отчеты", value: completed.length, caption: "за период", status: "neutral", target: "Отчеты:Готовые" },
       { label: "Кандидаты", value: completed.filter((item) => item.person.assessmentType === "Кандидат").length, caption: "отчеты", status: "neutral", target: "Отчеты:Кандидаты" },

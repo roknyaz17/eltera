@@ -92,12 +92,13 @@ function PremiumHeader({ title, subtitle, actions = [], meta = [] }) {
   `;
 }
 
-function PremiumFilterBar(filters, activePeriod = "30 дней") {
+function PremiumFilterBar(filters, activePeriod = "30 дней", activeFiltersMap = {}) {
   if (!filters || !filters.length) return "";
-  const periods = ["Сегодня", "7 дней", "14 дней", "30 дней", "90 дней", "Весь период", "Произвольный период"];
-  const activeFilters = filters.filter((f) => !periods.includes(f));
   const periodBtns = ["7 дней","14 дней","30 дней","90 дней","Весь период"];
-  // Variant 3: collapsed — period segment + Filters button + active tags
+  // Only show tags for filters that have been actively selected by user
+  const activeFilters = Object.entries(activeFiltersMap)
+    .filter(([, v]) => v && v !== "")
+    .map(([k, v]) => k + ": " + v);
   return `
     <section class="elt-filter-bar elt-filter-bar-v3">
       <div class="elt-fb-period">
@@ -109,7 +110,7 @@ function PremiumFilterBar(filters, activePeriod = "30 дней") {
         Фильтры
         ${activeFilters.length ? `<span class="elt-fb-badge">${activeFilters.length}</span>` : ""}
       </button>
-      ${activeFilters.length ? `<span class="elt-filter-sep"></span>${activeFilters.slice(0, 3).map((f) => `<span class="elt-fb-tag">${f} <span class="elt-fb-tag-x" data-remove-filter="${f}">×</span></span>`).join("")}
+      ${activeFilters.length ? `<span class="elt-filter-sep"></span>${activeFilters.slice(0, 3).map((f) => { const key = f.split(": ")[0]; return `<span class="elt-fb-tag">${f} <span class="elt-fb-tag-x" data-remove-filter="${key}">×</span></span>`; }).join("")}
       ${activeFilters.length > 3 ? `<span class="elt-fb-tag elt-fb-tag-more">+${activeFilters.length - 3}</span>` : ""}
       <button class="elt-fb-clear" data-action="clear-filters">Сбросить</button>` : ""}
     </section>
@@ -303,7 +304,7 @@ export function DashboardPageLayout(config) {
   return `
     <section class="elt-dashboard">
       ${PremiumHeader(config)}
-      ${PremiumFilterBar(config.filters || [], config.period)}
+      ${PremiumFilterBar(config.filters || [], config.period, config.activeFiltersMap || {})}
       <section class="elt-kpi-grid">
         ${(config.kpiCards || []).map(PremiumKpiCard).join("")}
       </section>
