@@ -19,8 +19,7 @@ function easeOutExpo(t) {
  * Поддерживает дробные: data-countup-decimals="1"
  */
 function animateCountUp(el, duration = 900) {
-  const target = parseFloat(el.dataset.countup);
-  if (isNaN(target)) return;
+  if (isNaN(parseFloat(el.dataset.countup))) return;
 
   const suffix = el.dataset.countupSuffix || '';
   const prefix = el.dataset.countupPrefix || '';
@@ -31,24 +30,26 @@ function animateCountUp(el, duration = 900) {
   if (el._countupRunning) return;
   el._countupRunning = true;
 
+  const format = (value) =>
+    prefix + (decimals > 0 ? value.toFixed(decimals) : Math.round(value).toLocaleString('ru-RU')) + suffix;
+
   function tick(now) {
+    // Цель перечитываем каждый кадр: если DOM обновили (morphdom при загрузке с API),
+    // анимация плавно идёт к новому значению, а не к захваченному в замыкании.
+    const target = parseFloat(el.dataset.countup);
+    if (isNaN(target)) {
+      el._countupRunning = false;
+      return;
+    }
     const elapsed = now - start;
     const progress = Math.min(elapsed / duration, 1);
     const eased = easeOutExpo(progress);
-    const value = target * eased;
-
-    el.textContent = prefix + (decimals > 0
-      ? value.toFixed(decimals)
-      : Math.round(value).toLocaleString('ru-RU')
-    ) + suffix;
 
     if (progress < 1) {
+      el.textContent = format(target * eased);
       requestAnimationFrame(tick);
     } else {
-      el.textContent = prefix + (decimals > 0
-        ? target.toFixed(decimals)
-        : target.toLocaleString('ru-RU')
-      ) + suffix;
+      el.textContent = format(target);
       el._countupRunning = false;
     }
   }
@@ -62,8 +63,7 @@ function animateCountUp(el, duration = 900) {
  * Заполняет ширину от 0 до целевого значения
  */
 function animateBar(el, duration = 700, delay = 0) {
-  const targetWidth = parseFloat(el.dataset.barWidth);
-  if (isNaN(targetWidth)) return;
+  if (isNaN(parseFloat(el.dataset.barWidth))) return;
   if (el._barRunning) return;
   el._barRunning = true;
 
@@ -73,6 +73,12 @@ function animateBar(el, duration = 700, delay = 0) {
     const start = performance.now();
 
     function tick(now) {
+      // Ширину-цель перечитываем каждый кадр (см. комментарий в animateCountUp).
+      const targetWidth = parseFloat(el.dataset.barWidth);
+      if (isNaN(targetWidth)) {
+        el._barRunning = false;
+        return;
+      }
       const elapsed = now - start;
       const progress = Math.min(elapsed / duration, 1);
       const eased = easeOutCubic(progress);

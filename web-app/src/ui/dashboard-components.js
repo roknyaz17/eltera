@@ -149,7 +149,7 @@ function premiumBarChart(items) {
           <div class="elt-bar-row ${pStatusClass(status)}">
             <span class="elt-bar-label">${label}</span>
             <div class="elt-bar-track">
-              <div class="elt-bar-fill" data-bar-width="${w}" style="width:0%"></div>
+              <div class="elt-bar-fill" data-bar-width="${w}" style="width:${w}%"></div>
             </div>
             <strong class="elt-bar-value">${value}</strong>
           </div>
@@ -181,7 +181,7 @@ function premiumFunnel(items) {
               ${convLabel ? `<em class="elt-funnel-conv">${convLabel}</em>` : ""}
             </div>
             <div class="elt-funnel-bar">
-              <div class="elt-funnel-fill" data-bar-width="${pctVal}" data-bar-delay="${idx * 60}" style="width:0%"></div>
+              <div class="elt-funnel-fill" data-bar-width="${pctVal}" data-bar-delay="${idx * 60}" style="width:${pctVal}%"></div>
             </div>
           </button>
         `;
@@ -191,13 +191,17 @@ function premiumFunnel(items) {
 }
 
 function premiumTopFit(items) {
-  return `<div class="elt-top-fit-list">${items.map(([name, score]) => {
+  return `<div class="elt-top-fit-list">${items.map(([name, score, id, candStatus]) => {
     const initials = name.split(" ").slice(0,2).map((w) => w[0]).join("");
-    const status = getFitStatus(Number(score));
+    const fitStatus = getFitStatus(Number(score));
+    const passed = candStatus === "completed";
+    const actions = id
+      ? `<button class="elt-action-pill" data-open-card="${id}">Карточка</button>${passed ? `<button class="elt-action-pill" data-pdf-id="${id}">PDF</button>` : ""}<button class="elt-action-pill" data-open-answers="${id}">Ответы</button>`
+      : `<button class="elt-action-pill">Карточка</button>`;
     return `<div class="elt-top-fit-card">
-      <div class="elt-top-fit-avatar ${pStatusClass(status)}">${initials}</div>
-      <div class="elt-top-fit-info"><b>${name}</b><span class="elt-status-badge ${pStatusClass(status)}">${score}%</span></div>
-      <button class="elt-action-pill">Карточка</button>
+      <div class="elt-top-fit-avatar ${pStatusClass(fitStatus)}">${initials}</div>
+      <div class="elt-top-fit-info"><b>${name}</b><span class="elt-status-badge ${pStatusClass(fitStatus)}">${score}%</span></div>
+      <div class="elt-top-fit-actions">${actions}</div>
     </div>`;
   }).join("")}</div>`;
 }
@@ -374,13 +378,17 @@ export function ChartCard(chart) {
 }
 
 function topFitCards(items) {
-  return `<div class="top-fit-list">${items.map(([name, score]) => {
+  return `<div class="top-fit-list">${items.map(([name, score, id, candStatus]) => {
     const initials = name.split(" ").slice(0,2).map((w) => w[0]).join("");
     const status = getFitStatus(Number(score));
+    const passed = candStatus === "completed";
+    const actions = id
+      ? `<button class="action-pill" data-open-card="${id}">Карточка</button>${passed ? `<button class="action-pill" data-pdf-id="${id}">PDF</button>` : ""}<button class="action-pill" data-open-answers="${id}">Ответы</button>`
+      : `<button class="action-pill">Карточка</button>`;
     return `<div class="top-fit-card">
       <div class="top-fit-avatar status-${status}">${initials}</div>
       <div class="top-fit-info"><b>${name}</b><span class="statusBadge status-${status}">${score}%</span></div>
-      <button class="action-pill">Карточка</button>
+      <div class="top-fit-actions">${actions}</div>
     </div>`;
   }).join("")}</div>`;
 }
@@ -458,7 +466,7 @@ function barChart(items) {
     const pct = total > 0 ? Math.round(num / total * 100) : 0;
     const status = item.status || getFitStatus(pct);
     const barW = Math.max(6, Math.round(num / max * 100));
-    return `<div class="mini-bar-row status-${status}"><span class="mini-bar-label">${label}</span><i class="mini-bar-track"><b class="mini-bar-fill" data-bar-width="${barW}" style="width:0%"></b></i><strong class="mini-bar-value" data-countup="${num}">${value}</strong><em class="mini-bar-pct" data-countup="${pct}" data-countup-suffix="%">${pct}%</em></div>`;
+    return `<div class="mini-bar-row status-${status}"><span class="mini-bar-label">${label}</span><i class="mini-bar-track"><b class="mini-bar-fill" data-bar-width="${barW}" style="width:${barW}%"></b></i><strong class="mini-bar-value" data-countup="${num}">${value}</strong><em class="mini-bar-pct" data-countup="${pct}" data-countup-suffix="%">${pct}%</em></div>`;
   }).join("")}</div>`;
 }
 

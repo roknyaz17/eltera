@@ -1693,6 +1693,64 @@ code {
   background: #EFF6FF;
 }
 
+.answersHint {
+  margin: 0 0 2px;
+  font-size: 12px;
+  color: #64748B;
+  font-weight: 600;
+}
+
+.scaleRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.scaleCell {
+  position: relative;
+  flex: 1 1 44px;
+  min-width: 44px;
+  text-align: center;
+  padding: 12px 0;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  background: #F8FAFC;
+  color: #0F172A;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.scaleCell input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  cursor: pointer;
+}
+
+.scaleCell:has(input:checked) {
+  border-color: var(--blue);
+  background: #EFF6FF;
+  color: var(--blue);
+}
+
+.openAnswer {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  background: #F8FAFC;
+  color: #0F172A;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.openAnswer:focus {
+  outline: none;
+  border-color: var(--blue);
+  background: #fff;
+}
+
 .thanks {
   max-width: 620px;
   margin: 12vh auto 0;
@@ -7258,4 +7316,68 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   right: auto;
   transform: translateX(-50%);
   white-space: nowrap;
+}
+
+/* Действия в карточках «Кого взять в работу» (top fit) */
+.elt-top-fit-actions,
+.top-fit-actions {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Меню быстрых действий «три точки» у кандидата */
+.rowActionsWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.elt-kebab-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 18px;
+  line-height: 1;
+  color: rgba(230, 242, 255, 0.55);
+}
+.elt-kebab-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e6f2ff;
+}
+.elt-kebab-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+}
+.elt-kebab-pop {
+  position: fixed;
+  z-index: 201;
+  /* привязка по правому-нижнему углу: меню раскрывается влево и ВВЕРХ */
+  transform: translate(-100%, -100%);
+  min-width: 184px;
+  background: #0e1726;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.55);
+  padding: 4px;
+}
+.elt-kebab-pop button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 12px;
+  background: none;
+  border: none;
+  color: #cfe0f5;
+  font-size: 13px;
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.elt-kebab-pop button:hover {
+  background: rgba(30, 91, 255, 0.2);
+  color: #fff;
 }

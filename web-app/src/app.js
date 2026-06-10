@@ -11,6 +11,33 @@ import {
 } from "./data/assessment-library.js";
 import { buildAssessment, calculateResult } from "./domain/scoring.js";
 import {
+  fetchCandidates,
+  fetchCandidateStats,
+  fetchCandidateHeatmap,
+  createCandidate,
+  recordCandidateResult,
+  createLink,
+  fetchLinks,
+  fetchAssessmentForm,
+  submitAssessment,
+  updateCandidate,
+  candidatePdfUrl,
+  fetchCandidateAnswers,
+  fetchCandidate,
+  fetchEmployees,
+  fetchEmployeeStats,
+  fetchEmployee,
+  recordEmployeeResult,
+  fetchOrgTree,
+  addStructureMember,
+  fetchTests,
+  fetchTest,
+  createTest,
+  addQuestion,
+  deleteQuestion,
+  deleteTest
+} from "./data/api.js";
+import {
   renderAppShell,
   renderAdaptation,
   renderApiKeys,
@@ -82,6 +109,25 @@ const competencyTitleById = {
 };
 
 let state = loadState();
+// Данные кандидатов всегда загружаем заново с бэкенда (не из localStorage).
+state.candidatesStatus = "idle";
+state.candidatesApi = null;
+state.candidateStats = null;
+state.candidateHeatmap = null;
+state.kebabMenu = null;
+state.answersData = null;
+state.cardData = null;
+state.employeesStatus = "idle";
+state.employeesApi = null;
+state.employeeStats = null;
+state.structureStatus = "idle";
+state.orgTree = null;
+state.testsApi = null;
+state.constructorStatus = "idle";
+state.constructorTests = null;
+state.constructorTest = null;
+state.linksStatus = "idle";
+state.linksApi = null;
 if (!state.company.planPrice || !state.company.planLimit) {
   state.company.tariff = "Start";
   state.company.planPrice = 990;
@@ -373,6 +419,237 @@ function questionsForProfession(professionId) {
   return buildAssessment(professionById(professionId), questions);
 }
 
+// --- Загрузка кандидатов с бэкенда ---
+
+const STAGE_LABELS = {
+  new: "Новый",
+  assessment_sent: "Оценка отправлена",
+  in_progress: "Проходит оценку",
+  interview: "Интервью",
+  fit: "Подходит",
+  conditional: "Условно подходит",
+  not_fit: "Не подходит",
+  accepted: "Принят",
+  stuck: "Завис"
+};
+
+// Приводим кандидата из API к форме, которую ожидает рендер таблицы/карточек.
+function mapApiCandidate(item) {
+  const a = item.assessment;
+  const passed = a && ["submitted", "scored", "reviewed"].includes(a.status);
+  return {
+    id: item.id,
+    vacancy: item.vacancy_title || "—",
+    source: item.source || "—",
+    selectionType: item.selection_type || "",
+    stage: STAGE_LABELS[item.stage] || item.stage,
+    status: passed ? "completed" : "sent",
+    person: {
+      fullName: item.full_name,
+      assessmentType: "Кандидат",
+      city: item.city || "",
+      email: item.email || "",
+      phone: item.phone || ""
+    },
+    result: {
+      percent: a ? a.percent : 0,
+      redFlags: a ? a.red_flags : 0,
+      recommendation: a ? a.recommendation_text || "" : ""
+    },
+    completedAt: (a && (a.submitted_at || a.scored_at)) || item.created_at
+  };
+}
+
+async function loadCandidatesFromApi() {
+  state.candidatesStatus = "loading";
+  try {
+    // Список и статистика — обязательны для вкладки.
+    const [list, stats] = await Promise.all([fetchCandidates(), fetchCandidateStats()]);
+    state.candidatesApi = (list.items || []).map(mapApiCandidate);
+    state.candidateStats = stats;
+    state.candidatesStatus = "ready";
+    // Тепловая карта — необязательна: её сбой не ломает вкладку.
+    try {
+      state.candidateHeatmap = await fetchCandidateHeatmap();
+    } catch (heatmapError) {
+      console.warn("Тепловая карта недоступна:", heatmapError);
+      state.candidateHeatmap = null;
+    }
+  } catch (error) {
+    console.error("Не удалось загрузить кандидатов с бэкенда:", error);
+    state.candidatesApi = null;
+    state.candidateStats = null;
+    state.candidateHeatmap = null;
+    state.candidatesStatus = "error";
+  }
+  // Данные изменились — разрешаем красивую анимацию на этом рендере.
+  state._animateOnce = true;
+  render();
+}
+
+// --- Сотрудники и структура ---
+
+const RISK_LABELS = { low: "низкий", medium: "средний", high: "повышенный" };
+
+function mapApiEmployee(e) {
+  return {
+    id: e.id,
+    fullName: e.full_name,
+    position: e.position || "—",
+    department: e.department || "—",
+    project: e.project || "—",
+    manager: e.manager || "—",
+    startDate: e.start_date || "",
+    fit: e.fit ?? 0,
+    turnoverRisk: RISK_LABELS[e.turnover_risk] || e.turnover_risk || "низкий",
+    burnout: e.burnout || "—",
+    satisfaction: e.satisfaction ?? 0,
+    recommendation: e.recommendation || ""
+  };
+}
+
+async function loadEmployeesFromApi() {
+  state.employeesStatus = "loading";
+  try {
+    const [list, stats] = await Promise.all([fetchEmployees(), fetchEmployeeStats()]);
+    state.employeesApi = (list.items || []).map(mapApiEmployee);
+    state.employeeStats = stats;
+    state.employeesStatus = "ready";
+  } catch (error) {
+    console.warn("Не удалось загрузить сотрудников:", error);
+    state.employeesApi = null;
+    state.employeeStats = null;
+    state.employeesStatus = "error";
+  }
+  state._animateOnce = true;
+  render();
+}
+
+async function loadStructureFromApi() {
+  state.structureStatus = "loading";
+  try {
+    state.orgTree = await fetchOrgTree();
+    state.structureStatus = "ready";
+  } catch (error) {
+    console.warn("Не удалось загрузить структуру:", error);
+    state.orgTree = null;
+    state.structureStatus = "error";
+  }
+  render();
+}
+
+async function loadTests() {
+  try {
+    state.testsApi = await fetchTests();
+    render();
+  } catch (error) {
+    console.warn("Не удалось загрузить тесты:", error);
+  }
+}
+
+// --- Оценочные ссылки (вкладка «Оценки») ---
+
+const linkStatusMap = {
+  pending: "pending", sent: "sent", opened: "opened",
+  in_progress: "started", completed: "completed",
+  cancelled: "cancelled", expired: "expired"
+};
+
+function mapApiLink(row) {
+  const recipient = row.recipient_type === "employee" ? "Сотрудник" : "Кандидат";
+  return {
+    token: row.token,
+    apiToken: row.token,
+    fullName: row.full_name || "",
+    recipientType: recipient,
+    professionTitle: row.test_title || "Оценка",
+    email: row.email || "",
+    phone: row.phone || "",
+    status: linkStatusMap[row.status] || row.status,
+    percent: row.percent,
+    createdAt: row.created_at,
+    fromApi: true
+  };
+}
+
+async function loadLinksFromApi() {
+  state.linksStatus = "loading";
+  try {
+    const rows = await fetchLinks();
+    state.linksApi = rows.map(mapApiLink);
+    state.linksStatus = "ready";
+  } catch (error) {
+    console.warn("Не удалось загрузить оценки:", error);
+    state.linksApi = null;
+    state.linksStatus = "error";
+  }
+  render();
+}
+
+// --- Конструктор тестов ---
+
+async function loadConstructorTests() {
+  state.constructorStatus = "loading";
+  try {
+    state.constructorTests = await fetchTests();
+    state.constructorStatus = "ready";
+  } catch (error) {
+    console.warn("Не удалось загрузить тесты:", error);
+    state.constructorTests = null;
+    state.constructorStatus = "error";
+  }
+  render();
+}
+
+async function selectConstructorTest(testId) {
+  try {
+    state.constructorTest = await fetchTest(testId);
+  } catch (error) {
+    console.warn("Не удалось загрузить тест:", error);
+    state.constructorTest = null;
+  }
+  render();
+}
+
+async function createConstructorTest(payload) {
+  try {
+    const test = await createTest(payload);
+    state.constructorTest = test;
+    await loadConstructorTests();
+  } catch (error) {
+    console.warn("Не удалось создать тест:", error);
+  }
+}
+
+async function addConstructorQuestion(testId, payload) {
+  try {
+    state.constructorTest = await addQuestion(testId, payload);
+    state.testsApi = null; // счётчики/список тестов обновим
+    await loadConstructorTests();
+  } catch (error) {
+    console.warn("Не удалось добавить вопрос:", error);
+  }
+}
+
+async function deleteConstructorQuestion(testId, qvId) {
+  try {
+    state.constructorTest = await deleteQuestion(testId, qvId);
+    await loadConstructorTests();
+  } catch (error) {
+    console.warn("Не удалось удалить вопрос:", error);
+  }
+}
+
+async function deleteConstructorTest(testId) {
+  try {
+    await deleteTest(testId);
+    if (state.constructorTest && state.constructorTest.id === testId) state.constructorTest = null;
+    await loadConstructorTests();
+  } catch (error) {
+    console.warn("Не удалось удалить тест:", error);
+  }
+}
+
 function render() {
   const route = currentRoute();
   state.route = route.route;
@@ -417,10 +694,29 @@ function render() {
   if (route.route === "assess") {
     document.body.className = "candidateBody";
     const link = state.links.find((item) => item.token === route.token && item.status !== "cancelled" && item.status !== "expired");
+    state.candidate.token = route.token;
+    // Токен бэка: либо apiToken локальной ссылки, либо сам token (ссылка из вкладки «Оценки»).
+    const apiToken = (link && link.apiToken) || (link ? null : route.token);
+    const isMockLink = link && !link.apiToken && link.professionId;
+    if (apiToken && !isMockLink) {
+      state.candidate.apiToken = apiToken;
+      if (state.candidate.formToken !== apiToken) {
+        state.candidate.formToken = apiToken;
+        state.candidate.form = null;
+        state.candidate.formError = null;
+        loadAssessmentForm(apiToken);
+      }
+      if (link && link.status === "pending") link.status = "opened";
+      const headLink = link || { recipientType: "Кандидат", token: route.token, apiToken, fullName: "", history: [] };
+      app.innerHTML = renderCandidateAssessment(headLink, null, null, null, competencyTitleById, state.candidate.form, state.candidate.formError);
+      saveState();
+      return;
+    }
+    // Fallback: локальные mock-вопросы (демо-ссылка, офлайн).
+    state.candidate.apiToken = null;
     const profession = link ? professionById(link.professionId) : professions[0];
     const assessmentQuestions = link ? questionsForProfession(link.professionId) : [];
     if (link && link.status === "pending") link.status = "opened";
-    state.candidate.token = route.token;
     app.innerHTML = renderCandidateAssessment(link, profession, assessmentQuestions, state.candidate.answers, competencyTitleById);
     saveState();
     return;
@@ -435,17 +731,49 @@ function render() {
   let content = "";
 
   if (state.view === "dashboard") content = renderDashboard(state, dashboardFilters);
-  if (state.view === "candidates") content = renderCandidates(state);
-  if (state.view === "employees") content = renderEmployees(state);
-  if (state.view === "structure") content = renderStructure(state);
-  if (state.view === "constructor") content = renderConstructor(state, professions);
+  if (state.view === "candidates") {
+    // Подтягиваем данные с бэкенда при первом открытии вкладки.
+    if (!state.candidatesStatus || state.candidatesStatus === "idle") {
+      state.candidatesStatus = "idle";
+      loadCandidatesFromApi();
+    }
+    content = renderCandidates(state);
+  }
+  if (state.view === "employees") {
+    if (!state.employeesStatus || state.employeesStatus === "idle") {
+      state.employeesStatus = "idle";
+      loadEmployeesFromApi();
+    }
+    content = renderEmployees(state);
+  }
+  if (state.view === "structure") {
+    if (!state.structureStatus || state.structureStatus === "idle") {
+      state.structureStatus = "idle";
+      loadStructureFromApi();
+    }
+    content = renderStructure(state);
+  }
+  if (state.view === "constructor") {
+    if (!state.constructorStatus || state.constructorStatus === "idle") {
+      state.constructorStatus = "idle";
+      loadConstructorTests();
+    }
+    content = renderConstructor(state);
+  }
   if (state.view === "people") content = renderPeople(state);
   if (state.view === "vacancies") content = renderVacancies(state);
   if (state.view === "assessments") content = renderAssessments(state, professions);
   if (state.view === "adaptation") content = renderAdaptation(state);
   if (state.view === "360") content = renderThreeSixty(state);
   if (state.view === "performance") content = renderPerformance(state);
-  if (state.view === "links") content = renderLinks(state, professions);
+  if (state.view === "links") {
+    if (!state.linksStatus || state.linksStatus === "idle") {
+      state.linksStatus = "idle";
+      loadLinksFromApi();
+    }
+    if (!state.testsApi) loadTests();
+    content = renderLinks(state, professions);
+  }
   if (state.view === "reports") content = renderReports(state);
   if (state.view === "report") content = renderReport(state, state.sessions.find((item) => item.id === state.reportId));
   if (state.view === "tariffs") content = renderTariffs(state, tariffs);
@@ -457,6 +785,12 @@ function render() {
 
   const newHTML = renderAppShell(state, content || renderDashboard(state, dashboardFilters));
 
+  // Анимации (count-up, полосы) запускаем только при смене вкладки или когда
+  // данные реально изменились (флаг _animateOnce). Обычные перерисовки
+  // (открытие модалок, меню и т.п.) DOM не «прыгает».
+  const viewChanged = state._prevView !== state.view;
+  const shouldAnimate = viewChanged || state._animateOnce === true;
+
   // Функция обновления DOM через morphdom или innerHTML
   function applyDOM() {
     if (typeof morphdom !== 'undefined') {
@@ -466,24 +800,27 @@ function render() {
     } else {
       app.innerHTML = newHTML;
     }
-    // Запускаем count-up и animated bars после обновления DOM
-    requestAnimationFrame(() => runPageAnimations(app));
+    if (shouldAnimate) {
+      requestAnimationFrame(() => runPageAnimations(app));
+    }
   }
 
-  // View Transitions API — плавная смена страниц
-  if (document.startViewTransition && state._prevView !== state.view) {
-    state._prevView = state.view;
+  state._prevView = state.view;
+  state._animateOnce = false;
+
+  // View Transitions API — плавная смена страниц только при смене вкладки
+  if (document.startViewTransition && viewChanged) {
     document.startViewTransition(applyDOM);
   } else {
-    state._prevView = state.view;
     applyDOM();
   }
 }
 
 function createLinkFromForm(form) {
   const data = new FormData(form);
+  const testId = String(data.get("professionId") || "");
   const link = createLinkObject({
-    professionId: String(data.get("professionId") || "recruiter"),
+    professionId: testId || "recruiter",
     recipientType: String(data.get("recipientType") || "Кандидат"),
     email: String(data.get("email") || ""),
     phone: String(data.get("phone") || ""),
@@ -496,7 +833,18 @@ function createLinkFromForm(form) {
     vacancy: String(data.get("vacancy") || ""),
     project: String(data.get("project") || "")
   });
+  // «Профиль оценки» — это реальный тест с бэкенда: ссылка пойдёт по его вопросам.
+  const test = (state.testsApi || []).find((t) => t.id === testId);
+  if (test) {
+    link.apiTestId = test.id;
+    link.professionTitle = test.title;
+  }
   state.links.unshift(link);
+  // Для кандидата заводим запись в бэкенде (появится во вкладке «Кандидаты»
+  // как «оценка отправлена»), id сохраняем на ссылке для последующего результата.
+  if (link.recipientType === "Кандидат" && (link.fullName || link.email)) {
+    syncCreateCandidate(link);
+  }
   if (link.recipientType === "Сотрудник" && link.fullName) {
     state.employees.unshift({
       id: `emp-${Date.now()}`,
@@ -519,6 +867,153 @@ function createLinkFromForm(form) {
   else setHash("#/app/links");
 }
 
+// Создаёт кандидата в бэкенде по данным ссылки, регистрирует ссылку-приглашение
+// (для метрики «Оценка отправлена») и сохраняет id на ссылке.
+async function syncCreateCandidate(link) {
+  try {
+    const created = await createCandidate({
+      last_name: link.lastName || null,
+      first_name: link.firstName || null,
+      patronymic: link.patronymic || null,
+      full_name: link.fullName || null,
+      email: link.email || null,
+      phone: link.phone || null,
+      source: "Оценочная ссылка",
+      selection_type: "Точечный подбор",
+      stage: "assessment_sent",
+      vacancy_title: link.vacancy || link.professionTitle || null
+    });
+    link.apiPersonId = created.id;
+    // Регистрируем ссылку-приглашение в бэкенде (считается в «Оценка отправлена»)
+    // и сохраняем токен — прохождение пойдёт по вопросам теста с бэка.
+    try {
+      const resp = await createLink({
+        test_id: link.apiTestId || null,
+        person_id: created.id,
+        recipient_type: "candidate"
+      });
+      link.apiToken = resp.token;
+      link.apiTestId = resp.test_id;
+    } catch (linkError) {
+      console.warn("Не удалось зарегистрировать ссылку в бэкенде:", linkError);
+    }
+    state.candidatesStatus = "idle";
+    state.linksStatus = "idle";
+    saveState();
+    if (state.view === "links") render();
+  } catch (error) {
+    console.warn("Не удалось создать кандидата в бэкенде:", error);
+  }
+}
+
+// Отправляет результат прохождения в бэкенд (создаёт кандидата, если его ещё нет).
+async function syncCandidateResult(link, person, result, answers = []) {
+  const payload = {
+    percent: result.percent,
+    score: result.score,
+    max_score: result.maxScore,
+    red_flags: result.redFlags,
+    recommendation_text: result.recommendation || null,
+    competencies: Object.entries(result.competencyScores || {}).map(([name, v]) => ({
+      name,
+      score: v.score,
+      max_score: v.maxScore
+    })),
+    answers
+  };
+  try {
+    let personId = link.apiPersonId;
+    if (!personId) {
+      const created = await createCandidate({
+        full_name: person.fullName || "Без имени",
+        email: person.email || null,
+        phone: person.phone || null,
+        city: person.city || null,
+        source: "Оценочная ссылка",
+        selection_type: "Точечный подбор",
+        stage: "assessment_sent",
+        vacancy_title: link.vacancy || link.professionTitle || null
+      });
+      personId = created.id;
+      link.apiPersonId = personId;
+    }
+    await recordCandidateResult(personId, payload);
+    // Сбросим кэш вкладки, чтобы при следующем заходе подтянулись свежие данные.
+    state.candidatesStatus = "idle";
+    saveState();
+  } catch (error) {
+    console.warn("Не удалось отправить результат в бэкенд:", error);
+  }
+}
+
+// Загрузка карточки с бэкенда: пробуем кандидата, затем сотрудника.
+async function loadCandidateCard(personId) {
+  let data = null;
+  try {
+    data = { ...(await fetchCandidate(personId)), _kind: "candidate" };
+  } catch (candidateError) {
+    try {
+      data = { ...(await fetchEmployee(personId)), _kind: "employee" };
+    } catch (employeeError) {
+      console.warn("Не удалось загрузить карточку:", employeeError);
+      data = { error: true };
+    }
+  }
+  if (state.modal && state.modal.type === "card" && state.modal.id === personId) {
+    state.cardData = data;
+  }
+  render();
+}
+
+// Загрузка реальных ответов кандидата с бэкенда для модалки «Ответы».
+async function loadCandidateAnswers(personId) {
+  try {
+    const data = await fetchCandidateAnswers(personId);
+    if (state.modal && state.modal.type === "answers" && state.modal.id === personId) {
+      state.answersData = data;
+    }
+  } catch (error) {
+    console.warn("Не удалось загрузить ответы:", error);
+    state.answersData = { error: true };
+  }
+  render();
+}
+
+// Смена этапа воронки кандидата через меню «три точки».
+async function changeCandidateStage(personId, stage) {
+  state.kebabMenu = null; // закрываем меню сразу
+  render();
+  if (!personId || !stage) return;
+  try {
+    await updateCandidate(personId, { stage });
+    await loadCandidatesFromApi(); // перечитываем список + KPI и перерисовываем
+  } catch (error) {
+    console.warn("Не удалось изменить этап кандидата:", error);
+  }
+}
+
+// Отправляет результат оценки сотрудника в бэкенд (обновляет fit на вкладке).
+async function syncEmployeeResult(link, result, answers = []) {
+  const payload = {
+    percent: result.percent,
+    score: result.score,
+    max_score: result.maxScore,
+    red_flags: result.redFlags,
+    recommendation_text: result.recommendation || null,
+    competencies: Object.entries(result.competencyScores || {}).map(([name, v]) => ({
+      name, score: v.score, max_score: v.maxScore
+    })),
+    answers
+  };
+  try {
+    await recordEmployeeResult(link.apiPersonId, payload);
+    state.employeesStatus = "idle"; // перечитать список сотрудников
+    saveState();
+  } catch (error) {
+    console.warn("Не удалось отправить результат сотрудника:", error);
+  }
+}
+
 function quickCreateLink(professionId = "recruiter") {
   const link = createLinkObject({ professionId, recipientType: "Кандидат", email: "" });
   state.links.unshift(link);
@@ -528,9 +1023,70 @@ function quickCreateLink(professionId = "recruiter") {
   else setHash("#/app/links");
 }
 
+// Загружает форму теста с бэка по токену ссылки (вопросы конкретного теста).
+async function loadAssessmentForm(apiToken) {
+  try {
+    state.candidate.form = await fetchAssessmentForm(apiToken);
+    state.candidate.formError = null;
+  } catch (error) {
+    console.warn("Не удалось загрузить тест с бэкенда:", error);
+    state.candidate.form = null;
+    state.candidate.formError = "Не удалось загрузить тест. Обновите страницу или попробуйте позже.";
+  }
+  render();
+}
+
+// Прохождение теста, заданного на бэке: собираем ответы по типам и отправляем.
+async function submitBackendAssessment(formEl, link) {
+  const form = state.candidate.form;
+  if (!form) return;
+  const data = new FormData(formEl);
+  const answers = form.questions.map((q) => {
+    const qid = q.question_version_id;
+    if (q.type === "single_choice") {
+      const v = data.get(qid);
+      return { question_version_id: qid, selected_option_ids: v ? [v] : [] };
+    }
+    if (q.type === "multiple_choice") {
+      return { question_version_id: qid, selected_option_ids: data.getAll(`m_${qid}`) };
+    }
+    if (q.type === "scale") {
+      const v = data.get(qid);
+      return { question_version_id: qid, scale_value: v ? Number(v) : null };
+    }
+    return { question_version_id: qid, answer_text: data.get(`o_${qid}`) || null };
+  });
+  const apiToken = state.candidate.apiToken || (link && link.apiToken);
+  if (!apiToken) return;
+  try {
+    await submitAssessment(apiToken, { answers });
+    if (link) {
+      link.status = "completed";
+      if (Array.isArray(link.history)) link.history.push(["завершена", new Date().toISOString()]);
+    }
+    // Бэк уже записал сессию и продвинул кандидата — обновим вкладки.
+    state.candidatesStatus = "idle";
+    state.employeesStatus = "idle";
+    state.linksStatus = "idle";
+  } catch (error) {
+    console.warn("Не удалось отправить ответы на бэкенд:", error);
+    alert("Не удалось отправить ответы. Проверьте, что все вопросы заполнены, и попробуйте снова.");
+    return;
+  }
+  state.candidate = { token: "", answers: {}, form: null, formToken: null, formError: null, apiToken: null };
+  saveState();
+  setHash("#/thanks");
+}
+
 function completeCandidateAssessment(form) {
   const token = state.candidate.token;
-  const link = state.links.find((item) => item.token === token);
+  const link = state.links.find((item) => item.token === token) || null;
+
+  // Тест с бэка — отправляем ответы на сервер (он считает баллы и закрывает воронку).
+  if (state.candidate.apiToken && state.candidate.form) {
+    submitBackendAssessment(form, link);
+    return;
+  }
   if (!link) return;
 
   const data = new FormData(form);
@@ -544,6 +1100,20 @@ function completeCandidateAssessment(form) {
 
   const assessmentQuestions = questionsForProfession(link.professionId);
   const result = calculateResult(assessmentQuestions, state.candidate.answers, competencyTitleById);
+  // Снимок ответов кандидата (вопрос + выбранный вариант + балл) для вкладки «Ответы».
+  const answersSnapshot = assessmentQuestions.map((q) => {
+    const idx = state.candidate.answers[q.id];
+    const opt = q.answers[idx];
+    const maxScore = Math.max(...q.answers.map((a) => a.score));
+    return {
+      question: q.text,
+      answer: opt ? opt.text : "— нет ответа —",
+      score: opt ? opt.score : 0,
+      max_score: maxScore,
+      correct: opt ? opt.score === maxScore : false,
+      red_flag: opt ? Boolean(opt.redFlag) : false
+    };
+  });
   const session = {
     id: `session-${Date.now()}`,
     linkId: link.id,
@@ -564,6 +1134,13 @@ function completeCandidateAssessment(form) {
   link.status = "completed";
   link.history.push(["завершена", new Date().toISOString()]);
   state.sessions.unshift(session);
+  // Синхронизируем результат с бэкендом по типу получателя.
+  const recipient = link.recipientType || link.assessmentType;
+  if (recipient === "Кандидат") {
+    syncCandidateResult(link, person, result, answersSnapshot);
+  } else if (recipient === "Сотрудник" && link.apiPersonId) {
+    syncEmployeeResult(link, result, answersSnapshot);
+  }
   state.candidate = { token: "", answers: {} };
   saveState();
   setHash("#/thanks");
@@ -640,6 +1217,8 @@ document.addEventListener("click", (event) => {
     quickCreateLink(professionId);
   }
   if (action === "open-assess-wizard") {
+    if (!state.testsApi) loadTests();
+    if (!state.employeesApi && state.employeesStatus !== "loading") loadEmployeesFromApi();
     state.modal = { type: "assess-wizard", step: 1, scope: null, assessType: null, selected: [], dept: null, profId: null, deadline: "", searchQ: "" };
     render();
     return;
@@ -650,7 +1229,7 @@ document.addEventListener("click", (event) => {
   }
   if (action === "print-report") window.print();
   if (action === "add-structure-member") {
-    state.modal = { type: "add-employee" };
+    state.modal = { type: "add-structure-member" };
     render();
   }
 
@@ -684,6 +1263,49 @@ document.addEventListener("click", (event) => {
     render();
   }
 
+  const stageAction = event.target.closest("[data-stage-action]");
+  if (stageAction) {
+    changeCandidateStage(stageAction.dataset.stageId, stageAction.dataset.stageAction);
+    return;
+  }
+
+  // Закрытие поповера действий по клику на фон.
+  if (event.target.closest("[data-kebab-close]")) {
+    state.kebabMenu = null;
+    render();
+    return;
+  }
+
+  // Открытие/закрытие меню «три точки» у кандидата.
+  const kebabBtn = event.target.closest("[data-kebab-id]");
+  if (kebabBtn) {
+    const id = kebabBtn.dataset.kebabId;
+    if (state.kebabMenu && state.kebabMenu.id === id) {
+      state.kebabMenu = null;
+    } else {
+      const rect = kebabBtn.getBoundingClientRect();
+      // y — верх кнопки: меню раскрывается вверх (см. transform в .elt-kebab-pop).
+      state.kebabMenu = { id, x: rect.right, y: rect.top - 4 };
+    }
+    render();
+    return;
+  }
+
+  // Конструктор тестов
+  const selectTest = event.target.closest("[data-select-test]")?.dataset.selectTest;
+  if (selectTest) { selectConstructorTest(selectTest); return; }
+  const delTest = event.target.closest("[data-delete-test]")?.dataset.deleteTest;
+  if (delTest) { deleteConstructorTest(delTest); return; }
+  const delQ = event.target.closest("[data-delete-question]");
+  if (delQ) { deleteConstructorQuestion(delQ.dataset.testId, delQ.dataset.deleteQuestion); return; }
+
+  // PDF-отчёт по кандидату — открываем в новой вкладке (генерит бэкенд).
+  const pdfBtn = event.target.closest("[data-pdf-id]");
+  if (pdfBtn) {
+    window.open(candidatePdfUrl(pdfBtn.dataset.pdfId), "_blank");
+    return;
+  }
+
   const openList = event.target.closest("[data-open-list]")?.dataset.openList;
   if (openList) {
     state.modal = { type: "list", target: openList };
@@ -693,13 +1315,18 @@ document.addEventListener("click", (event) => {
   const openCard = event.target.closest("[data-open-card]")?.dataset.openCard;
   if (openCard) {
     state.modal = { type: "card", id: openCard };
+    state.cardData = null;
     render();
+    // Кандидат (API) — грузим карточку с бэка; сотрудник (emp-) — из локального стейта.
+    if (!openCard.startsWith("emp-")) loadCandidateCard(openCard);
   }
 
   const openAnswers = event.target.closest("[data-open-answers]")?.dataset.openAnswers;
   if (openAnswers) {
     state.modal = { type: "answers", id: openAnswers };
+    state.answersData = null;
     render();
+    loadCandidateAnswers(openAnswers);
   }
 
   const openCompetency = event.target.closest("[data-open-competency]")?.dataset.openCompetency;
@@ -855,9 +1482,13 @@ document.addEventListener("submit", (event) => {
 
   if (event.target.matches("[data-candidate-form]")) {
     event.preventDefault();
-    const requiredQuestions = questionsForProfession(
-      state.links.find((item) => item.token === state.candidate.token)?.professionId || "recruiter"
-    );
+    const activeLink = state.links.find((item) => item.token === state.candidate.token);
+    // Тест с бэка: обязательные вопросы (radio) проверяет браузер через required.
+    if (state.candidate.apiToken && state.candidate.form) {
+      completeCandidateAssessment(event.target);
+      return;
+    }
+    const requiredQuestions = questionsForProfession(activeLink?.professionId || "recruiter");
     const answered = requiredQuestions.every((question) => state.candidate.answers[question.id] !== undefined);
     if (!answered) {
       alert("Ответьте на все вопросы перед завершением оценки.");
@@ -896,6 +1527,85 @@ document.addEventListener("submit", (event) => {
     state.modal = null;
     saveState();
     render();
+  }
+  // Конструктор: создать тест.
+  if (event.target.matches("[data-create-test-form]")) {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+    const title = String(fd.get("title") || "").trim();
+    if (!title) return;
+    createConstructorTest({
+      title,
+      category: String(fd.get("category") || "").trim() || null,
+      target_type: String(fd.get("target_type") || "candidate")
+    });
+    event.target.reset();
+    return;
+  }
+  // Конструктор: добавить вопрос.
+  if (event.target.matches("[data-add-question-form]")) {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+    const testId = event.target.dataset.testId;
+    const text = String(fd.get("text") || "").trim();
+    if (!text || !testId) return;
+    const type = String(fd.get("type") || "single_choice");
+    const payload = {
+      text,
+      type,
+      competency_name: String(fd.get("competency_name") || "").trim() || null
+    };
+    if (type === "single_choice" || type === "multiple_choice") {
+      const options = [];
+      for (let i = 1; i <= 4; i++) {
+        const ot = String(fd.get(`opt${i}`) || "").trim();
+        if (!ot) continue;
+        options.push({
+          text: ot,
+          score: Number(fd.get(`score${i}`) || 0),
+          is_correct: fd.get(`correct${i}`) === "on",
+          is_red_flag: fd.get(`flag${i}`) === "on"
+        });
+      }
+      payload.options = options;
+    } else if (type === "scale") {
+      payload.scale_min = Number(fd.get("scale_min") || 1);
+      payload.scale_max = Number(fd.get("scale_max") || 5);
+    } else if (type === "open") {
+      payload.max_score = Number(fd.get("max_score") || 5);
+      payload.ai_reference = String(fd.get("ai_reference") || "").trim() || null;
+      payload.ai_criteria = String(fd.get("ai_criteria") || "").trim() || null;
+    }
+    addConstructorQuestion(testId, payload);
+    event.target.reset();
+    return;
+  }
+  // Добавление в оргструктуру через бэкенд.
+  if (event.target.matches("[data-add-structure-form]")) {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+    const fullName = String(fd.get("full_name") || "").trim();
+    if (!fullName) return;
+    const payload = {
+      full_name: fullName,
+      position: String(fd.get("position") || "").trim() || null,
+      role: String(fd.get("role") || "employee"),
+      department_name: String(fd.get("department_name") || "").trim() || null,
+      manager_id: String(fd.get("manager_id") || "") || null,
+      project: String(fd.get("project") || "").trim() || null
+    };
+    state.modal = null;
+    render();
+    (async () => {
+      try {
+        await addStructureMember(payload);
+        state.structureStatus = "idle";  // перезагрузить дерево
+        state.employeesStatus = "idle";  // и список сотрудников
+        render();
+      } catch (error) {
+        console.warn("Не удалось добавить в структуру:", error);
+      }
+    })();
   }
 });
 

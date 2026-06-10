@@ -204,7 +204,7 @@ export function renderAppShell(state, content) {
             </button>
           </div>
         </header>
-        <main class="appContent">${content}${renderModal(state)}</main>
+        <main class="appContent">${content}${renderModal(state)}${renderKebabPopover(state)}</main>
       </div>
     </div>
   `;
@@ -254,12 +254,85 @@ export function renderPeople(state) {
 }
 
 export function renderCandidates(state) {
-  const candidates = state.sessions.filter((item) => item.person.assessmentType === "Кандидат");
-  const fit = candidates.filter((item) => item.result.percent >= 68);
+  // Демо-сид показываем ТОЛЬКО при явной ошибке API. Пока идёт загрузка —
+  // показываем API-режим с нулями, чтобы не мелькали демо-числа (133 и т.п.).
+  const EMPTY_STATS = {
+    total: 0, assessment_sent: 0, assessment_passed: 0, fit: 0, conditional: 0,
+    not_fit: 0, interview: 0, accepted: 0, stuck: 0, avg_percent: 0,
+    by_source: [], by_stage: [], by_vacancy: [], attention: []
+  };
+  const ready = Boolean(state.candidateStats && state.candidatesApi);
+  const failed = state.candidatesStatus === "error";
+  const usingApi = !failed; // API-режим, пока API не упал
+  const stats = ready ? state.candidateStats : EMPTY_STATS;
+  const candidates = ready
+    ? state.candidatesApi
+    : failed
+      ? state.sessions.filter((item) => item.person.assessmentType === "Кандидат")
+      : [];
+  const fit = candidates
+    .filter((item) => item.result.percent >= 68)
+    .sort((a, b) => b.result.percent - a.result.percent);
   const risky = candidates.filter((item) => item.result.percent < 55);
+
+  const subtitle = failed
+    ? "API недоступен — показаны демо-данные"
+    : ready
+      ? `Данные из API · ${stats.total} кандидатов`
+      : "Загрузка данных из API…";
+
+  const kpiCards = usingApi
+    ? [
+        { label: "Всего кандидатов", value: stats.total, caption: "в базе", status: "neutral", target: "Кандидаты:Кандидатов всего", iconName: "candidates" },
+        { label: "Оценка отправлена", value: stats.assessment_sent, caption: "сгенерировано ссылок", status: "medium", target: "Кандидаты:Оценка отправлена", iconName: "link" },
+        { label: "Оценку прошли", value: stats.assessment_passed, caption: "готовы отчеты", status: getConversionStatus(72), target: "Кандидаты:Оценка пройдена", iconName: "completed" },
+        { label: "Подходят", value: stats.fit, caption: "под профиль", status: "good", target: "Кандидаты:Подходят", iconName: "fit" },
+        { label: "Условно подходят", value: stats.conditional, caption: "нужна проверка", status: "medium", target: "Кандидаты:Условно подходят", iconName: "balance" },
+        { label: "Не подходят", value: stats.not_fit, caption: "низкий балл", status: "bad", target: "Кандидаты:Не подходит", iconName: "risk" },
+        { label: "На интервью", value: stats.interview, caption: "следующий этап", status: "good", target: "Кандидаты:Интервью", iconName: "interview" },
+        { label: "Приняты", value: stats.accepted, caption: "выход", status: "neutral", target: "Кандидаты:Принят", iconName: "completed" },
+        { label: "Зависли", value: stats.stuck, caption: "нет движения", status: "bad", target: "Кандидаты:Зависли", iconName: "active" }
+      ]
+    : [
+        { label: "Всего кандидатов", value: candidates.length + 128, caption: "+24 за период", status: "neutral", target: "Кандидаты:Кандидатов всего", iconName: "candidates" },
+        { label: "Оценка отправлена", value: state.links.filter((x) => x.recipientType === "Кандидат").length, caption: "активные ссылки", status: "medium", target: "Кандидаты:Оценка отправлена", iconName: "link" },
+        { label: "Оценку прошли", value: candidates.length, caption: "готовы отчеты", status: getConversionStatus(72), target: "Кандидаты:Оценка пройдена", iconName: "completed" },
+        { label: "Подходят", value: fit.length + 24, caption: "под профиль", status: "good", target: "Кандидаты:Подходят", iconName: "fit" },
+        { label: "Условно подходят", value: 11, caption: "нужна проверка", status: "medium", target: "Кандидаты:Условно подходят", iconName: "balance" },
+        { label: "Не подходят", value: risky.length + 9, caption: "низкий балл", status: "bad", target: "Кандидаты:Не подходит", iconName: "risk" },
+        { label: "На интервью", value: 21, caption: "следующий этап", status: "good", target: "Кандидаты:Интервью", iconName: "interview" },
+        { label: "Приняты", value: 4, caption: "выход", status: "neutral", target: "Кандидаты:Принят", iconName: "completed" },
+        { label: "Зависли", value: 12, caption: "нет движения", status: "bad", target: "Кандидаты:Зависли", iconName: "active" }
+      ];
+
+  const sourceItems = usingApi
+    ? stats.by_source.map((s) => [s.source, s.count])
+    : [["HeadHunter", 44], ["SuperJob", 24], ["Ручная", 18], ["API", 12], ["Telegram", 9]];
+
+  const funnelItems = usingApi
+    ? [
+        ["Всего", stats.total],
+        ["Оценку прошли", stats.assessment_passed],
+        ["Подходят", stats.fit],
+        ["Интервью", stats.interview],
+        ["Приняты", stats.accepted]
+      ].map(([label, value]) => ({ label, value, target: `Кандидаты:${label}` }))
+    : dashboardData(state, "Кандидаты").funnel.map(([label, value]) => ({ label, value, target: `Кандидаты:${label}` }));
+
+  const vacancyItems = usingApi && Array.isArray(stats.by_vacancy)
+    ? stats.by_vacancy.map((v) => [v.vacancy, v.fit])
+    : state.vacancies.map((item) => [item.title, item.fit]);
+
+  const attentionItems = usingApi && Array.isArray(stats.attention) && stats.attention.length
+    ? stats.attention
+    : [
+        { title: "12 кандидатов зависли", text: "Не прошли оценку после отправки ссылки.", status: "medium", target: "Кандидаты:Зависли" },
+        { title: "Оператор call-центра", text: "Только 28% кандидатов подходят под профиль.", status: "bad", target: "Кандидаты:Оператор call-центра" }
+      ];
+
   return DashboardPageLayout({
     title: "Кандидаты",
-    subtitle: "",
+    subtitle,
     meta: ["точечный подбор", "офис", "IT"],
     period: state.period,
     actions: [
@@ -269,63 +342,63 @@ export function renderCandidates(state) {
     ],
     filters: pageFilterConfig.candidates,
     activeFiltersMap: (state.activeFilters && state.activeFilters.candidates) || {},
-    kpiCards: [
-      { label: "Всего кандидатов", value: candidates.length + 128, caption: "+24 за период", status: "neutral", target: "Кандидаты:Кандидатов всего", iconName: "candidates" },
-      { label: "Оценка отправлена", value: state.links.filter((x) => x.recipientType === "Кандидат").length, caption: "активные ссылки", status: "medium", target: "Кандидаты:Оценка отправлена", iconName: "link" },
-      { label: "Оценку прошли", value: candidates.length, caption: "готовы отчеты", status: getConversionStatus(72), target: "Кандидаты:Оценка пройдена", iconName: "completed" },
-      { label: "Подходят", value: fit.length + 24, caption: "под профиль", status: "good", target: "Кандидаты:Подходят", iconName: "fit" },
-      { label: "Условно подходят", value: 11, caption: "нужна проверка", status: "medium", target: "Кандидаты:Условно подходят", iconName: "balance" },
-      { label: "Не подходят", value: risky.length + 9, caption: "низкий балл", status: "bad", target: "Кандидаты:Не подходит", iconName: "risk" },
-      { label: "На интервью", value: 21, caption: "следующий этап", status: "good", target: "Кандидаты:Интервью", iconName: "interview" },
-      { label: "Приняты", value: 4, caption: "выход", status: "neutral", target: "Кандидаты:Принят", iconName: "completed" },
-      { label: "Зависли", value: 12, caption: "нет движения", status: "bad", target: "Кандидаты:Зависли", iconName: "active" }
-    ],
+    kpiCards,
     charts: [
-      { title: "Воронка кандидатов", caption: "конверсия этапов", type: "funnel", items: dashboardData(state, "Кандидаты").funnel.map(([label, value]) => ({ label, value, target: `Кандидаты:${label}` })) },
-      { title: "Кандидаты по источникам", caption: "качество входа", items: [["HeadHunter", 44], ["SuperJob", 24], ["Ручная", 18], ["API", 12], ["Telegram", 9]] },
-      { title: "Распределение по вакансиям", caption: "подходящие", items: state.vacancies.map((item) => [item.title, item.fit]) },
-      { title: "Кого взять в работу сейчас", caption: "top fit", wide: true, items: fit.map((item) => [item.person.fullName, item.result.percent]), note: state.company.tariff === "TalentStudio" ? "AI рекомендует сначала брать кандидатов с высоким fit и низкими красными флагами." : "AI-рекомендации доступны на тарифе TalentStudio." }
+      { title: "Воронка кандидатов", caption: "конверсия этапов", type: "funnel", items: funnelItems },
+      { title: "Кандидаты по источникам", caption: "качество входа", items: sourceItems },
+      { title: "Распределение по вакансиям", caption: "подходящие", items: vacancyItems },
+      { title: "Кого взять в работу сейчас", caption: "top fit", wide: true, items: fit.map((item) => [item.person.fullName, item.result.percent, item.id, item.status]), note: state.company.tariff === "TalentStudio" ? "AI рекомендует сначала брать кандидатов с высоким fit и низкими красными флагами." : "AI-рекомендации доступны на тарифе TalentStudio." }
     ],
     heatmap: candidateHeatmap(state),
-    attentionItems: [
-      { title: "12 кандидатов зависли", text: "Не прошли оценку после отправки ссылки.", status: "medium", target: "Кандидаты:Зависли" },
-      { title: "Оператор call-центра", text: "Только 28% кандидатов подходят под профиль.", status: "bad", target: "Кандидаты:Оператор call-центра" }
-    ],
+    attentionItems,
     table: candidatesTableConfig(candidates)
   });
 }
 
+const EMPTY_EMP_STATS = {
+  total: 0, high_result: 0, medium_result: 0, low_result: 0, at_risk: 0,
+  burnout: 0, avg_satisfaction: 0, avg_fit: 0, by_department: [], by_risk: []
+};
+const RISK_LABELS_RU = { low: "Низкий риск", medium: "Средний риск", high: "Высокий риск" };
+
 export function renderEmployees(state) {
-  const employees = state.employees;
+  const ready = Boolean(state.employeeStats && state.employeesApi);
+  const failed = state.employeesStatus === "error";
+  const s = ready ? state.employeeStats : EMPTY_EMP_STATS;
+  const employees = ready ? state.employeesApi : [];
   const risky = employees.filter((item) => item.fit < 70 || item.turnoverRisk !== "низкий");
+
+  const subtitle = failed
+    ? "API недоступен — данные не загружены"
+    : ready
+      ? `Данные из API · ${s.total} сотрудников`
+      : "Загрузка данных из API…";
+
   return DashboardPageLayout({
     title: "Сотрудники",
-    subtitle: "Что происходит с действующими сотрудниками и кто требует внимания.",
+    subtitle,
     meta: ["оценка", "риски", "развитие"],
     period: state.period,
     actions: [{ label: "Создать оценку", primary: true, attrs: "data-action=\"open-assess-wizard\"" }],
     filters: pageFilterConfig.employees,
     activeFiltersMap: (state.activeFilters && state.activeFilters.employees) || {},
     kpiCards: [
-      { label: "Всего сотрудников", value: 70, caption: "в базе", status: "neutral", target: "Сотрудники:Сотрудников всего", iconName: "employees" },
-      { label: "В оценке", value: 16, caption: "активные", status: "neutral", target: "Сотрудники:В оценке", iconName: "active" },
-      { label: "Высокий результат", value: 28, caption: "выше 80%", status: "good", target: "Сотрудники:Высокий результат", iconName: "fit" },
-      { label: "Средний результат", value: 34, caption: "60-79%", status: "medium", target: "Сотрудники:Средний результат", iconName: "chart" },
-      { label: "Низкий результат", value: 8, caption: "ниже 60%", status: "bad", target: "Сотрудники:Низкий результат", iconName: "risk" },
-      { label: "В зоне риска", value: risky.length + 4, caption: "требуют внимания", status: "bad", target: "Сотрудники:В зоне риска", iconName: "risk" },
-      { label: "Выгорание", value: 5, caption: "признаки", status: "medium", target: "Сотрудники:Выгорание", iconName: "balance" },
-      { label: "Удовлетворенность", value: "74%", caption: "средняя", status: "medium", target: "Сотрудники:Удовлетворенность", iconName: "completed" }
+      { label: "Всего сотрудников", value: s.total, caption: "в базе", status: "neutral", target: "Сотрудники:Сотрудников всего", iconName: "employees" },
+      { label: "Высокий результат", value: s.high_result, caption: "80%+", status: "good", target: "Сотрудники:Высокий результат", iconName: "fit" },
+      { label: "Средний результат", value: s.medium_result, caption: "60–79%", status: "medium", target: "Сотрудники:Средний результат", iconName: "chart" },
+      { label: "Низкий результат", value: s.low_result, caption: "ниже 60%", status: "bad", target: "Сотрудники:Низкий результат", iconName: "risk" },
+      { label: "В зоне риска", value: s.at_risk, caption: "требуют внимания", status: "bad", target: "Сотрудники:В зоне риска", iconName: "risk" },
+      { label: "Выгорание", value: s.burnout, caption: "признаки", status: "medium", target: "Сотрудники:Выгорание", iconName: "balance" },
+      { label: "Средний балл", value: `${s.avg_fit}%`, caption: "соответствие", status: getFitStatus(s.avg_fit), target: "Сотрудники:Средний результат", iconName: "completed" },
+      { label: "Удовлетворенность", value: `${s.avg_satisfaction}%`, caption: "средняя", status: "medium", target: "Сотрудники:Удовлетворенность", iconName: "completed" }
     ],
     charts: [
-      { title: "Распределение по отделам", caption: "срез базы", items: state.departments.map((item) => [item.name, item.employees]) },
-      { title: "Риски сотрудников", caption: "приоритет", items: [["Выгорание", 5], ["Увольнение", 8], ["Низкая вовлеченность", 7], ["Адаптация", 3]], note: "В первую очередь стоит смотреть сотрудников с высоким риском увольнения и низкой понятностью задач." },
-      { title: "Performance / Potential", caption: "9-box", items: [["HiPo", 6], ["Стабильные", 18], ["Зона развития", 9], ["Зона риска", 4]] }
+      { title: "Распределение по отделам", caption: "срез базы", items: s.by_department.map((d) => [d.department, d.count]) },
+      { title: "Риски сотрудников", caption: "приоритет", items: s.by_risk.map((r) => [RISK_LABELS_RU[r.level] || r.level, r.count]), note: "В первую очередь смотрим сотрудников с высоким риском увольнения." }
     ],
-    heatmap: employeeHeatmap(state),
-    attentionItems: [
-      { title: "6 сотрудников в зоне риска", text: "Нужны разговоры с руководителями и ИПР.", status: "bad", target: "Сотрудники:В зоне риска" },
-      { title: "3 сотрудника указали зарплату", text: "Риск удержания на адаптации.", status: "medium", target: "Адаптация:Зарплата" }
-    ],
+    attentionItems: risky.length
+      ? [{ title: `${risky.length} сотрудников в зоне риска`, text: "Нужны разговоры с руководителями и ИПР.", status: "bad", target: "Сотрудники:В зоне риска" }]
+      : [],
     table: employeesTableConfig(employees)
   });
 }
@@ -346,26 +419,46 @@ export function renderStructure(state) {
     "Финансы": "Финансы"
   };
 
-  // CEO node (from company)
-  const ceo = { id: "ceo", fullName: "Алексей Козлов", position: "Генеральный директор", department: "Управление", role: "CEO", managerId: null };
+  // Узлы структуры строятся только из API (state.orgTree).
+  const allNodes = [];
+  if (state.orgTree && Array.isArray(state.orgTree.nodes)) {
+    const roleMap = { ceo: "CEO", head: "Head", employee: "Emp" };
+    const walk = (n) => {
+      allNodes.push({
+        id: n.id, fullName: n.full_name, position: n.position || "",
+        department: n.department || "", role: roleMap[n.role] || "Emp",
+        managerId: n.manager_id || null, fit: n.fit
+      });
+      (n.children || []).forEach(walk);
+    };
+    state.orgTree.nodes.forEach(walk);
+  }
 
-  // Heads from departments
-  const heads = state.departments.map((d, i) => ({
-    id: `head-${i}`,
-    fullName: d.head,
-    position: `Рук. ${deptShort[d.name] || d.name}`,
-    department: d.name,
-    role: "Head",
-    managerId: "ceo"
-  }));
+  // Пустое состояние / загрузка — без мок-данных.
+  if (!allNodes.length) {
+    const msg = state.structureStatus === "error"
+      ? "Структура недоступна — бэкенд не отвечает."
+      : state.structureStatus === "ready"
+        ? "В структуре пока нет сотрудников. Нажмите «+ Добавить», чтобы создать первого."
+        : "Загрузка структуры…";
+    return `
+      <div class="elt-dashboard">
+        <header class="elt-dash-header">
+          <div class="elt-dash-header-left">
+            <span class="elt-mini-label">СТРУКТУРА КОМПАНИИ</span>
+            <h1 class="elt-dash-title">Организационная структура</h1>
+            <p class="elt-dash-subtitle">${msg}</p>
+          </div>
+          <div class="elt-dash-header-actions">
+            <button class="elt-btn-primary" data-action="add-structure-member">+ Добавить</button>
+          </div>
+        </header>
+      </div>`;
+  }
 
-  // Employees
-  const emps = state.employees.map((e) => {
-    const head = heads.find(h => h.fullName === e.manager);
-    return { ...e, role: "Emp", managerId: head ? head.id : "ceo" };
-  });
-
-  const allNodes = [ceo, ...heads, ...emps];
+  const ceo = allNodes.find(n => n.role === "CEO") || allNodes[0];
+  const heads = allNodes.filter(n => n.role === "Head");
+  const emps = allNodes.filter(n => n.role === "Emp");
 
   function initials(name) {
     return name.split(" ").slice(0, 2).map(w => w[0]).join("");
@@ -432,8 +525,8 @@ export function renderStructure(state) {
     empsByHead[h.id] = emps.filter(e => e.managerId === h.id);
   });
 
-  const totalEmps = state.employees.length;
-  const totalDepts = state.departments.length;
+  const totalPeople = allNodes.length;
+  const totalDepts = state.orgTree ? state.orgTree.total_departments : state.departments.length;
 
   return `
     <div class="elt-dashboard">
@@ -441,7 +534,7 @@ export function renderStructure(state) {
         <div class="elt-dash-header-left">
           <span class="elt-mini-label">СТРУКТУРА КОМПАНИИ</span>
           <h1 class="elt-dash-title">Организационная структура</h1>
-          <p class="elt-dash-subtitle">${totalEmps + heads.length + 1} сотрудников · ${totalDepts} отдела · 1 уровень управления</p>
+          <p class="elt-dash-subtitle">${totalPeople} сотрудников · ${totalDepts} отдела · 1 уровень управления</p>
         </div>
         <div class="elt-dash-header-actions">
           <div class="oc-view-toggle">
@@ -462,22 +555,22 @@ export function renderStructure(state) {
           <div class="oc-selected-card" id="ocSelectedCard">
             <!-- Avatar upload area -->
             <div class="oc-sel-avatar-wrap">
-              <div class="oc-sel-avatar" id="ocSelAvatar" data-oc-avatar="ceo">
-                ${empPhoto('ceo') ? `<img class="oc-avatar-img" src="${empPhoto('ceo')}" alt="Алексей Козлов">` : 'АК'}
+              <div class="oc-sel-avatar" id="ocSelAvatar" data-oc-avatar="${ceo.id}">
+                ${empPhoto(ceo.id) ? `<img class="oc-avatar-img" src="${empPhoto(ceo.id)}" alt="${ceo.fullName}">` : initials(ceo.fullName)}
                 <div class="oc-avatar-upload-hint">📷</div>
               </div>
               <div class="oc-sel-avatar-info">
-                <div class="oc-sel-name">Алексей Козлов</div>
-                <div class="oc-sel-pos">Генеральный директор</div>
+                <div class="oc-sel-name">${ceo.fullName}</div>
+                <div class="oc-sel-pos">${ceo.position || "Генеральный директор"}</div>
                 <label class="oc-upload-label" for="ocAvatarInput">Загрузить фото</label>
                 <div class="oc-upload-hint">JPG, PNG, WebP · до 2 МБ · 400×400 px</div>
               </div>
             </div>
-            <input type="file" id="ocAvatarInput" accept="image/jpeg,image/png,image/webp" style="display:none" data-avatar-upload="ceo">
+            <input type="file" id="ocAvatarInput" accept="image/jpeg,image/png,image/webp" style="display:none" data-avatar-upload="${ceo.id}">
             <div class="oc-upload-error" id="ocAvatarError" style="display:none"></div>
-            <div class="oc-sel-row"><span>Отдел</span><b>Управление</b></div>
+            <div class="oc-sel-row"><span>Отдел</span><b>${ceo.department || "Управление"}</b></div>
             <div class="oc-sel-row"><span>Подчинённых</span><b>${heads.length} руководителя</b></div>
-            <div class="oc-sel-row"><span>Всего в команде</span><b>${totalEmps + heads.length + 1} чел.</b></div>
+            <div class="oc-sel-row"><span>Всего в команде</span><b>${totalPeople} чел.</b></div>
           </div>
         </div>
 
@@ -506,87 +599,101 @@ export function renderStructure(state) {
   `;
 }
 
-export function renderConstructor(state, professions) {
-  const competencies = {
-    corporate: ["Ориентация на результат", "Ответственность", "Клиентский фокус", "Командность", "Этичность", "Инициативность", "Гибкость", "Соблюдение стандартов"],
-    psychological: ["Стрессоустойчивость", "Обучаемость", "Саморегуляция", "Мотивация достижения", "Эмоциональная устойчивость", "Внимательность", "Достоверность", "Лояльность"],
-    professional: ["Подбор персонала", "Продажи", "Работа с CRM", "Аналитика данных", "Управление командой", "Планирование", "Переговоры", "Контроль качества", "Работа с документами", "Техническая экспертиза"]
+export function renderConstructor(state) {
+  const tests = state.constructorTests || [];
+  const sel = state.constructorTest;
+  const loading = state.constructorStatus === "loading" && !tests.length;
+  const typeLabel = { single_choice: "Один вариант", multiple_choice: "Несколько вариантов", open: "Открытый", scale: "Шкала" };
+
+  const testList = tests.length
+    ? tests.map((t) => `<button class="elt-profile-row${sel && sel.id === t.id ? " selected" : ""}" data-select-test="${t.id}"><b>${t.title}</b><span>${t.category || t.target_type} · ${t.questions_count} вопр.</span></button>`).join("")
+    : `<p class="elt-card-caption" style="padding:8px">${loading ? "Загрузка…" : "Тестов пока нет — создайте первый."}</p>`;
+
+  const questionCard = (q) => {
+    let detail = "";
+    if (q.type === "single_choice" || q.type === "multiple_choice") {
+      detail = `<ul class="ctr-opts">${q.options.map((o) => `<li><span>${o.text}</span><em>${o.score} б.${o.is_correct ? " ✓" : ""}${o.is_red_flag ? " ⚑" : ""}</em></li>`).join("")}</ul>`;
+    } else if (q.type === "scale") {
+      detail = `<p class="elt-card-caption">Шкала ${q.scale_min}–${q.scale_max}</p>`;
+    } else if (q.type === "open") {
+      detail = `<p class="elt-card-caption">Открытый · AI-оценка${q.ai_reference ? ` · эталон: ${q.ai_reference}` : ""}</p>`;
+    }
+    return `<div class="ctr-question">
+      <div class="ctr-q-head">
+        <span class="ctr-q-type">${typeLabel[q.type] || q.type}</span>
+        ${q.competency ? `<span class="ctr-q-comp">${q.competency}</span>` : ""}
+        <span class="ctr-q-max">макс ${q.max_score}</span>
+        <button class="ctr-q-del" data-test-id="${sel.id}" data-delete-question="${q.id}">✕</button>
+      </div>
+      <h4>${q.text}</h4>
+      ${detail}
+    </div>`;
   };
-  const compTag = (name) => `<button class="elt-comp-tag">${name}</button>`;
+
+  const right = sel ? `
+    <div class="elt-card">
+      <div class="elt-card-head">
+        <div><h2>${sel.title}</h2><span class="elt-card-caption">${sel.category || sel.target_type} · ${sel.questions_count} вопросов · макс ${sel.max_score} б.</span></div>
+        <button class="elt-btn-danger" data-delete-test="${sel.id}">Удалить тест</button>
+      </div>
+      <div class="ctr-questions">
+        ${sel.questions.length ? sel.questions.map(questionCard).join("") : '<p class="elt-card-caption" style="padding:8px">Вопросов нет. Добавьте первый ниже.</p>'}
+      </div>
+    </div>
+    <div class="elt-card">
+      <div class="elt-card-head"><h2>Добавить вопрос</h2><span class="elt-card-caption">динамически</span></div>
+      <form class="elt-form-grid" data-add-question-form data-test-id="${sel.id}">
+        <label class="elt-label elt-label-full">Текст вопроса<input class="elt-input" name="text" placeholder="Сформулируйте вопрос" required></label>
+        <label class="elt-label">Тип<select class="elt-select" name="type">
+          <option value="single_choice">Один вариант</option>
+          <option value="multiple_choice">Несколько вариантов</option>
+          <option value="scale">Шкала (1–5)</option>
+          <option value="open">Открытый (AI)</option>
+        </select></label>
+        <label class="elt-label">Компетенция<input class="elt-input" name="competency_name" placeholder="напр. Коммуникация"></label>
+        <div class="elt-label-full ctr-hint">Варианты — текст · балл · верный · red flag. Шкала — границы. Открытый — эталон/критерии для AI.</div>
+        ${[1, 2, 3, 4].map((i) => `<div class="elt-label-full ctr-opt-row">
+          <input class="elt-input" name="opt${i}" placeholder="Вариант ${i}">
+          <input class="elt-input ctr-score" name="score${i}" type="number" value="0" title="Балл">
+          <label class="ctr-chk"><input type="checkbox" name="correct${i}"> верный</label>
+          <label class="ctr-chk"><input type="checkbox" name="flag${i}"> red&nbsp;flag</label>
+        </div>`).join("")}
+        <label class="elt-label">Шкала: мин<input class="elt-input" name="scale_min" type="number" value="1"></label>
+        <label class="elt-label">Шкала: макс<input class="elt-input" name="scale_max" type="number" value="5"></label>
+        <label class="elt-label">Открытый: макс. балл<input class="elt-input" name="max_score" type="number" value="5"></label>
+        <label class="elt-label elt-label-full">Открытый: эталонный ответ<input class="elt-input" name="ai_reference" placeholder="Что считается хорошим ответом"></label>
+        <label class="elt-label elt-label-full">Открытый: критерии для AI<input class="elt-input" name="ai_criteria" placeholder="Критерии оценки"></label>
+        <div class="elt-label-full"><button class="elt-btn-primary" type="submit">+ Добавить вопрос</button></div>
+      </form>
+    </div>
+  ` : `<div class="elt-card"><p class="elt-card-caption" style="padding:24px">Выберите тест слева или создайте новый, чтобы добавлять вопросы.</p></div>`;
+
   return `
     <div class="elt-page-wrap">
       <div class="elt-page-header">
         <div class="elt-page-header-left">
           <span class="elt-mini-label">Конструктор</span>
-          <h1 class="elt-page-title">Конструктор профилей и компетенций</h1>
-          <p class="elt-page-subtitle">Опишите роль, AI предложит карту компетенций: корпоративные, психологические и профессиональные блоки.</p>
-        </div>
-        <div class="elt-page-actions">
-          <button class="elt-btn-primary">Сохранить профиль</button>
+          <h1 class="elt-page-title">Конструктор тестов</h1>
+          <p class="elt-page-subtitle">Создавайте тесты и добавляйте вопросы (один/несколько вариантов, шкала, открытый). Всё хранится в API.</p>
         </div>
       </div>
       <div class="elt-constructor-grid">
-        <div class="elt-constructor-main">
-          <div class="elt-card">
-            <div class="elt-card-head"><h2>Профиль роли</h2><span class="elt-card-caption">основные параметры</span></div>
-            <div class="elt-form-grid">
-              <label class="elt-label">Название роли<input class="elt-input" value="Руководитель отдела продаж"></label>
-              <label class="elt-label">Тип оценки<select class="elt-select"><option>Кандидат</option><option>Сотрудник</option><option>Группа</option><option>Ассессмент</option></select></label>
-              <label class="elt-label">Шкала ответов<select class="elt-select"><option>3 варианта</option><option>5-балльная</option><option>Да / нет</option></select></label>
-              <label class="elt-label">Вес достоверности<select class="elt-select"><option>15%</option><option>10%</option><option>20%</option></select></label>
-            </div>
-            <button class="elt-btn-secondary">Собрать профиль</button>
-          </div>
-          <div class="elt-card">
-            <div class="elt-card-head"><h2>Библиотека компетенций</h2><span class="elt-card-caption">все блоки</span></div>
-            <div class="elt-comp-section">
-              <div class="elt-comp-section-head"><span class="elt-comp-dot" style="background:#1E5BFF"></span><b>Корпоративные</b><small>25%</small></div>
-              <div class="elt-comp-tags">${competencies.corporate.map(compTag).join('')}</div>
-            </div>
-            <div class="elt-comp-section">
-              <div class="elt-comp-section-head"><span class="elt-comp-dot" style="background:#00E5D4"></span><b>Психологические</b><small>25%</small></div>
-              <div class="elt-comp-tags">${competencies.psychological.map(compTag).join('')}</div>
-            </div>
-            <div class="elt-comp-section">
-              <div class="elt-comp-section-head"><span class="elt-comp-dot" style="background:#22C55E"></span><b>Профессиональные</b><small>35%</small></div>
-              <div class="elt-comp-tags">${competencies.professional.map(compTag).join('')}</div>
-            </div>
-          </div>
-          <div class="elt-card">
-            <div class="elt-card-head"><h2>Добавить свои компетенции через Excel</h2><span class="elt-card-caption">на рассмотрение</span></div>
-            <div class="elt-import-flow">
-              <div class="elt-import-step"><span class="elt-import-num">1</span><div><b>Скачать шаблон</b><p>PDF объясняет поля: название, категория, описание, индикаторы, шкала.</p><button class="elt-btn-ghost">Скачать PDF-шаблон</button></div></div>
-              <div class="elt-import-step"><span class="elt-import-num">2</span><div><b>Заполнить Excel</b><p>Добавьте корпоративные, психологические или профессиональные компетенции.</p><label class="elt-file-label">Excel-файл<input type="file" accept=".xlsx,.xls"></label></div></div>
-              <div class="elt-import-step"><span class="elt-import-num">3</span><div><b>Отправить на рассмотрение</b><p>Заявка уйдет в отдел разработки. Срок: 1–30 рабочих дней.</p><button class="elt-btn-primary">Отправить компетенции</button></div></div>
-            </div>
-          </div>
-        </div>
         <div class="elt-constructor-sidebar">
-          <div class="elt-card elt-ai-panel">
-            <div class="elt-card-head"><span class="elt-ai-badge">AI</span><h2>AI-конструктор</h2></div>
-            <label class="elt-label">Чем занимается сотрудник
-              <textarea class="elt-textarea">Руководит отделом продаж, ставит планы, контролирует CRM, проводит планерки, обучает менеджеров.</textarea>
-            </label>
-            <button class="elt-btn-primary elt-btn-wide">Сгенерировать компетенции</button>
-            <div class="elt-ai-suggest">
-              <span class="elt-ai-suggest-label">AI предложит</span>
-              <div class="elt-comp-tags">
-                <button class="elt-comp-tag elt-comp-tag-ai">Управление результатом</button>
-                <button class="elt-comp-tag elt-comp-tag-ai">Планирование и контроль</button>
-                <button class="elt-comp-tag elt-comp-tag-ai">Лидерство</button>
-                <button class="elt-comp-tag elt-comp-tag-ai">Коммуникация</button>
-                <button class="elt-comp-tag elt-comp-tag-ai">Аналитика CRM</button>
-                <button class="elt-comp-tag elt-comp-tag-ai">Мотивация команды</button>
-              </div>
-            </div>
+          <div class="elt-card">
+            <div class="elt-card-head"><h2>Тесты</h2><span class="elt-card-caption">${tests.length}</span></div>
+            <div class="elt-profile-rows">${testList}</div>
           </div>
           <div class="elt-card">
-            <div class="elt-card-head"><h2>Готовые профили</h2><span class="elt-card-caption">${professions.length}</span></div>
-            <div class="elt-profile-rows">
-              ${professions.slice(0, 7).map((item) => `<button class="elt-profile-row" data-open-competency="${item.id}"><b>${item.title}</b><span>${item.category}</span></button>`).join('')}
-            </div>
+            <div class="elt-card-head"><h2>Создать тест</h2></div>
+            <form class="elt-form-grid" data-create-test-form>
+              <label class="elt-label elt-label-full">Название<input class="elt-input" name="title" placeholder="напр. Оценка менеджера" required></label>
+              <label class="elt-label">Категория<input class="elt-input" name="category" placeholder="Коммерция"></label>
+              <label class="elt-label">Для кого<select class="elt-select" name="target_type"><option value="candidate">Кандидат</option><option value="employee">Сотрудник</option><option value="group">Группа</option></select></label>
+              <div class="elt-label-full"><button class="elt-btn-primary" type="submit">+ Создать тест</button></div>
+            </form>
           </div>
         </div>
+        <div class="elt-constructor-main">${right}</div>
       </div>
     </div>
   `;
@@ -785,7 +892,11 @@ export function renderLinks(state, professions) {
           <div class="elt-card-head"><h2>Создать оценку</h2><span class="elt-card-caption">единичная оценка</span></div>
           <form class="elt-form-grid elt-form-grid-3" data-create-link-form>
             <label class="elt-label elt-label-full">Тип получателя<select class="elt-select" name="recipientType"><option>Кандидат</option><option>Сотрудник</option></select></label>
-            <label class="elt-label elt-label-full">Профиль оценки<select class="elt-select" name="professionId">${professions.map((profession) => `<option value="${profession.id}">${profession.title}</option>`).join('')}</select></label>
+            <label class="elt-label elt-label-full">Профиль оценки<select class="elt-select" name="professionId">${
+              Array.isArray(state.testsApi) && state.testsApi.length
+                ? state.testsApi.map((t) => `<option value="${t.id}">${t.title}${t.category ? ` · ${t.category}` : ""}</option>`).join('')
+                : `<option value="">Загрузка тестов…</option>`
+            }</select></label>
             <label class="elt-label">Фамилия<input class="elt-input" name="lastName" placeholder="Иванов"></label>
             <label class="elt-label">Имя<input class="elt-input" name="firstName" placeholder="Иван"></label>
             <label class="elt-label">Отчество<input class="elt-input" name="patronymic" placeholder="Иванович"></label>
@@ -801,12 +912,21 @@ export function renderLinks(state, professions) {
           </form>
         </div>
         <div class="elt-table-panel">
-          <div class="elt-table-head"><h2>Оценочные ссылки</h2><span class="elt-card-caption">${state.links.length} ссылок</span></div>
+          ${(() => {
+            const apiReady = state.linksStatus === "ready" && Array.isArray(state.linksApi);
+            const rows = apiReady ? state.linksApi : state.links;
+            const loading = state.linksStatus === "loading" && !state.linksApi;
+            const caption = loading ? "загрузка…" : `${rows.length} ссылок`;
+            const body = rows.length
+              ? rows.map((link) => `<tr><td>${link.fullName || link.recipientType}</td><td>${link.professionTitle}${link.percent != null ? ` · <b>${link.percent}%</b>` : ""}</td><td>${link.email || link.phone || "<span class='elt-warn-text'>нет контакта</span>"}</td><td><code class="elt-code">${location.origin}${location.pathname}#/assess/${link.token}</code>${link.warning ? `<small class="elt-warn-text">${link.warning}</small>` : ''}</td><td><span class="elt-status-badge elt-status-${link.status}">${statusText(link.status)}</span></td><td><div class="elt-row-actions">${link.status === "completed" ? "" : `<button class="elt-btn-ghost" data-open-assess="${link.token}">Открыть</button>`}<button class="elt-btn-ghost">Скопировать</button>${!link.fromApi && canCancel(link) ? `<button class="elt-btn-danger" data-cancel-link="${link.token}">Отменить</button>` : ''}</div></td></tr>`).join('')
+              : `<tr><td colspan="6" style="text-align:center;color:#94A3B8;padding:24px">${loading ? "Загрузка оценок…" : "Оценок пока нет. Создайте первую через форму слева."}</td></tr>`;
+            return `<div class="elt-table-head"><h2>Оценочные ссылки</h2><span class="elt-card-caption">${caption}</span></div>
           <div class="elt-table-wrap">
             <table class="elt-table"><thead><tr><th>Получатель</th><th>Профиль</th><th>Контакт</th><th>Ссылка</th><th>Статус</th><th></th></tr></thead><tbody>
-              ${state.links.map((link) => `<tr><td>${link.fullName || link.recipientType}</td><td>${link.professionTitle}</td><td>${link.email || link.phone || "<span class='elt-warn-text'>нет контакта</span>"}</td><td><code class="elt-code">${location.origin}${location.pathname}#/assess/${link.token}</code>${link.warning ? `<small class="elt-warn-text">${link.warning}</small>` : ''}</td><td><span class="elt-status-badge elt-status-${link.status}">${statusText(link.status)}</span></td><td><div class="elt-row-actions"><button class="elt-btn-ghost" data-open-assess="${link.token}">Открыть</button><button class="elt-btn-ghost">Скопировать</button>${canCancel(link) ? `<button class="elt-btn-danger" data-cancel-link="${link.token}">Отменить</button>` : ''}</div></td></tr>`).join('')}
+              ${body}
             </tbody></table>
-          </div>
+          </div>`;
+          })()}
         </div>
       </div>
     </div>
@@ -1186,10 +1306,47 @@ export function renderSettings(state) {
   `;
 }
 
-export function renderCandidateAssessment(link, profession, questions, answers, competencyTitleById) {
+function renderAssessQuestionApi(question, index, total) {
+  const head = `<div class="questionHead"><span>${question.competency || "Компетенция"}</span><b>${index + 1}/${total}</b></div>`;
+  const qid = question.question_version_id;
+  let body = "";
+  if (question.type === "single_choice") {
+    body = `<div class="answers">${question.options.map((o) => `<label class="answer"><input type="radio" required name="${qid}" value="${o.id}"><span>${o.text}</span></label>`).join("")}</div>`;
+  } else if (question.type === "multiple_choice") {
+    body = `<div class="answers"><p class="answersHint">Выберите все подходящие варианты</p>${question.options.map((o) => `<label class="answer"><input type="checkbox" name="m_${qid}" value="${o.id}"><span>${o.text}</span></label>`).join("")}</div>`;
+  } else if (question.type === "scale") {
+    const min = question.scale_min ?? 1;
+    const max = question.scale_max ?? 5;
+    const cells = [];
+    for (let v = min; v <= max; v++) {
+      cells.push(`<label class="scaleCell"><input type="radio" required name="${qid}" value="${v}"><span>${v}</span></label>`);
+    }
+    body = `<div class="scaleRow">${cells.join("")}</div>`;
+  } else {
+    body = `<textarea class="openAnswer" name="o_${qid}" rows="4" placeholder="Ваш ответ"></textarea>`;
+  }
+  return `<article class="questionCard"><div>${head}</div><h3>${question.text}</h3>${body}</article>`;
+}
+
+export function renderCandidateAssessment(link, profession, questions, answers, competencyTitleById, apiForm, formError) {
   if (!link) return `<div class="candidatePage"><div class="candidateCard"><h1>Ссылка недействительна</h1><p>Ссылка отменена, истекла или не найдена.</p><a class="blueButton" href="#/">На главную</a></div></div>`;
+
+  // Тест с бэка: отрисовываем реальные вопросы конкретного теста (все типы).
+  if (apiForm !== undefined) {
+    const title = (apiForm && apiForm.title) || link.professionTitle || "Оценка";
+    const header = `<header class="candidateHeader"><img src="/assets/eltera_logo_horizontal_on_light.svg" alt="Eltera"></header>`;
+    if (formError) {
+      return `<div class="candidatePage">${header}<main class="candidateCard"><h1>${title}</h1><p>${formError}</p><a class="blueButton" href="#/">На главную</a></main></div>`;
+    }
+    if (!apiForm) {
+      return `<div class="candidatePage">${header}<main class="candidateCard"><h1>${title}</h1><p>Загружаем тест…</p></main></div>`;
+    }
+    const total = apiForm.questions.length;
+    return `<div class="candidatePage">${header}<main class="candidateCard"><span class="miniLabel">${link.recipientType || link.assessmentType || "Кандидат"} · ${apiForm.title}</span><h1>${apiForm.title}</h1><p>${apiForm.summary || "Заполните данные и ответьте на вопросы. Компания получит отчет после завершения оценки."}</p><form class="candidateForm" data-candidate-form><label>ФИО<input name="fullName" required value="${link.fullName || ""}" placeholder="Иванов Иван"></label><label>Телефон<input name="phone" value="${link.phone || ""}" placeholder="+7..."></label><label>Email<input name="email" value="${link.email || ""}" placeholder="name@example.com"></label><label>Город<input name="city" placeholder="Москва"></label><label class="checkboxLine"><input type="checkbox" required><span>Согласен на обработку персональных данных</span></label><div class="questionList compact">${apiForm.questions.map((q, i) => renderAssessQuestionApi(q, i, total)).join("")}</div><button class="blueButton wide" type="submit">Завершить оценку</button></form></main></div>`;
+  }
+
   return `
-    <div class="candidatePage"><header class="candidateHeader"><img src="/assets/eltera_logo_horizontal_on_light.svg" alt="Eltera"></header><main class="candidateCard"><span class="miniLabel">${link.recipientType}</span><h1>${profession.title}</h1><p>Заполните данные и ответьте на вопросы. Компания получит отчет после завершения оценки.</p><form class="candidateForm" data-candidate-form><label>ФИО<input name="fullName" required value="${link.fullName || ""}" placeholder="Иванов Иван"></label><label>Телефон<input name="phone" value="${link.phone || ""}" placeholder="+7..."></label><label>Email<input name="email" value="${link.email || ""}" placeholder="name@example.com"></label><label>Город<input name="city" placeholder="Москва"></label><label class="checkboxLine"><input type="checkbox" required><span>Согласен на обработку персональных данных</span></label><div class="questionList compact">${questions.map((question, index) => `<article class="questionCard"><div class="questionHead"><span>${competencyTitleById[question.competencyId] || question.competencyId}</span><b>${index + 1}/${questions.length}</b></div><h3>${question.text}</h3><div class="answers">${question.answers.map((answer, answerIndex) => `<label class="answer"><input type="radio" required name="${question.id}" value="${answerIndex}" ${answers[question.id] === answerIndex ? "checked" : ""}><span>${answer.text}</span></label>`).join("")}</div></article>`).join("")}</div><button class="blueButton wide" type="submit">Завершить оценку</button></form></main></div>
+    <div class="candidatePage"><header class="candidateHeader"><img src="/assets/eltera_logo_horizontal_on_light.svg" alt="Eltera"></header><main class="candidateCard"><span class="miniLabel">${link.recipientType} · ${link.professionTitle || profession.title}</span><h1>${link.professionTitle || profession.title}</h1><p>Заполните данные и ответьте на вопросы. Компания получит отчет после завершения оценки.</p><form class="candidateForm" data-candidate-form><label>ФИО<input name="fullName" required value="${link.fullName || ""}" placeholder="Иванов Иван"></label><label>Телефон<input name="phone" value="${link.phone || ""}" placeholder="+7..."></label><label>Email<input name="email" value="${link.email || ""}" placeholder="name@example.com"></label><label>Город<input name="city" placeholder="Москва"></label><label class="checkboxLine"><input type="checkbox" required><span>Согласен на обработку персональных данных</span></label><div class="questionList compact">${questions.map((question, index) => `<article class="questionCard"><div class="questionHead"><span>${competencyTitleById[question.competencyId] || question.competencyId}</span><b>${index + 1}/${questions.length}</b></div><h3>${question.text}</h3><div class="answers">${question.answers.map((answer, answerIndex) => `<label class="answer"><input type="radio" required name="${question.id}" value="${answerIndex}" ${answers[question.id] === answerIndex ? "checked" : ""}><span>${answer.text}</span></label>`).join("")}</div></article>`).join("")}</div><button class="blueButton wide" type="submit">Завершить оценку</button></form></main></div>
   `;
 }
 
@@ -1206,13 +1363,69 @@ function renderModal(state) {
     const icons = { 'Кандидаты': '👤', 'Сотрудники': '🏢', 'Вакансии': '📋', 'Отчеты': '📊' };
     return `<div class="modalBackdrop"><div class="modal modalWide">${mHead(`${scope}: ${metricName}`, icons[scope] || '📊')}<div class="modal-inner">${renderPeopleTable(people, scope)}</div></div></div>`;
   }
+  if (state.modal?.type === "add-structure-member") {
+    const people = [];
+    const depts = new Set();
+    if (state.orgTree && Array.isArray(state.orgTree.nodes)) {
+      const walk = (n) => {
+        people.push({ id: n.id, name: n.full_name });
+        if (n.department) depts.add(n.department);
+        (n.children || []).forEach(walk);
+      };
+      state.orgTree.nodes.forEach(walk);
+    }
+    const managerOptions = ['<option value="">— не назначен —</option>',
+      ...people.map((p) => `<option value="${p.id}">${p.name}</option>`)].join("");
+    const deptOptions = [...depts].map((d) => `<option value="${d}">`).join("");
+    return `<div class="modalBackdrop"><form class="modal" data-add-structure-form>
+      ${mHead('Добавить в структуру', '👤')}
+      <div class="modal-inner">
+        <p class="modal-subtitle">Новый сотрудник или руководитель будет добавлен в оргструктуру.</p>
+        <div class="elt-form-grid">
+          <label class="elt-label">ФИО<input class="elt-input" name="full_name" placeholder="Иван Иванов" required></label>
+          <label class="elt-label">Должность<input class="elt-input" name="position" placeholder="Менеджер по продажам"></label>
+          <label class="elt-label">Роль<select class="elt-select" name="role"><option value="employee">Сотрудник</option><option value="head">Руководитель отдела</option></select></label>
+          <label class="elt-label">Отдел<input class="elt-input" name="department_name" list="oc-depts" placeholder="Название отдела"><datalist id="oc-depts">${deptOptions}</datalist></label>
+          <label class="elt-label">Руководитель<select class="elt-select" name="manager_id">${managerOptions}</select></label>
+          <label class="elt-label">Проект<input class="elt-input" name="project" placeholder="Общий контур"></label>
+        </div>
+        <button class="blueButton" type="submit" style="margin-top:8px;width:100%">Добавить</button>
+      </div>
+    </form></div>`;
+  }
   if (state.modal?.type === "card") {
-    const item = findPerson(state, state.modal.id);
-    return `<div class="modalBackdrop"><div class="modal">${mHead('Карточка участника', '👤')}<div class="modal-inner">${personCard(item)}</div></div></div>`;
+    // Сотрудник (emp-) — старая локальная карточка; кандидат — карточка из API.
+    if (state.modal.id?.startsWith("emp-")) {
+      const item = findPerson(state, state.modal.id);
+      return `<div class="modalBackdrop"><div class="modal">${mHead('Карточка участника', '👤')}<div class="modal-inner">${personCard(item)}</div></div></div>`;
+    }
+    let body;
+    let cardTitle = "Карточка кандидата";
+    if (!state.cardData) body = `<p class="modal-subtitle">Загрузка карточки…</p>`;
+    else if (state.cardData.error) body = `<p class="modal-subtitle">Не удалось загрузить карточку (бэкенд недоступен).</p>`;
+    else if (state.cardData._kind === "employee") { body = employeeCardApi(state.cardData); cardTitle = "Карточка сотрудника"; }
+    else body = candidateCard(state.cardData);
+    return `<div class="modalBackdrop"><div class="modal">${mHead(cardTitle, '👤')}<div class="modal-inner">${body}</div></div></div>`;
   }
   if (state.modal?.type === "answers") {
-    const item = findPerson(state, state.modal.id);
-    return `<div class="modalBackdrop"><div class="modal modalWide">${mHead('Ответы участника', '📝')}<div class="modal-inner"><p class="modal-subtitle">${personName(item)} · ${item?.professionTitle || item?.position || 'оценка'}</p><div class="answersPreview">${["Берет ответственность за результат", "Уточняет ожидания руководителя", "Фиксирует договоренности", "Просит обратную связь", "Видит риски до дедлайна"].map((text, index) => `<div><span>${index + 1}</span><b>${text}</b><em>${index % 2 ? 'Средний уровень проявления' : 'Сильное проявление'}</em></div>`).join('')}</div></div></div></div>`;
+    const data = state.answersData;
+    let body;
+    if (!data) {
+      body = `<p class="modal-subtitle">Загрузка ответов…</p>`;
+    } else if (data.error) {
+      body = `<p class="modal-subtitle">Не удалось загрузить ответы (бэкенд недоступен).</p>`;
+    } else if (!data.answers || !data.answers.length) {
+      body = `<p class="modal-subtitle">${data.candidate || ""}${data.test_title ? " · " + data.test_title : ""}</p>
+        <p class="modal-subtitle">Ответы по этому кандидату не сохранены.</p>`;
+    } else {
+      body = `<p class="modal-subtitle">${data.candidate || ""}${data.test_title ? " · " + data.test_title : ""} · ${data.percent}%</p>
+        <div class="answersPreview">${data.answers.map((a, i) => {
+          const color = a.red_flag ? "#DC2626" : a.correct === true ? "#16A34A" : a.correct === false ? "#DC2626" : "";
+          const score = a.max_score ? ` · ${a.score}/${a.max_score}` : "";
+          return `<div><span>${i + 1}</span><b>${a.question}</b><em style="${color ? `color:${color}` : ""}">${a.answer || "—"}${score}</em></div>`;
+        }).join("")}</div>`;
+    }
+    return `<div class="modalBackdrop"><div class="modal modalWide">${mHead('Ответы кандидата', '📝')}<div class="modal-inner">${body}</div></div></div>`;
   }
   if (state.modal?.type === "competency") {
     const profile = assessmentProfile(state.modal.id);
@@ -1408,12 +1621,16 @@ function renderPeopleTable(people, scope = "Кандидаты") {
     if (n >= 55) return 'modal-score-medium';
     return 'modal-score-bad';
   };
+  const empScope = ["Сотрудники", "Адаптация", "Оценка 360", "Performance Review"].includes(scope);
   return `<table><thead><tr><th>ФИО</th><th>Вакансия / должность</th><th>Балл</th><th>Соответствие</th><th>Дата</th><th>Действия</th></tr></thead><tbody>${people.map((item) => {
     const score = item.result?.percent || item.fit || 0;
     const stage = item.stage || item.recommendation || '';
     const date = item.completedAt ? new Date(item.completedAt).toLocaleDateString('ru-RU') : (item.startDate || '—');
     const isEmp = item.id?.startsWith('emp-');
-    return `<tr><td class="modal-td-name">${personName(item)}</td><td class="modal-td-role">${item.vacancy || item.position || item.professionTitle || '—'}</td><td><span class="modal-score ${scoreColor(score)}">${score}%</span></td><td><span class="modal-badge ${stageColor(stage)}">${stage}</span></td><td class="modal-td-date">${date}</td><td><div class="rowActions">${!isEmp ? `<button class="button subtle" data-report-id="${item.id}">PDF</button>` : `<button class="button subtle" data-open-card="${item.id}">PDF</button>`}<button class="button subtle" data-open-card="${item.id}">Карточка</button><button class="button subtle" data-open-answers="${item.id}">Ответы</button></div></td></tr>`;
+    const actions = empScope
+      ? `<button class="button subtle" data-open-card="${item.id}">Карточка</button>`
+      : `${item.status === "completed" ? `<button class="button subtle" data-pdf-id="${item.id}">PDF</button>` : ""}<button class="button subtle" data-open-card="${item.id}">Карточка</button><button class="button subtle" data-open-answers="${item.id}">Ответы</button>${!isEmp ? CandidateKebab(item.id) : ''}`;
+    return `<tr><td class="modal-td-name">${personName(item)}</td><td class="modal-td-role">${item.vacancy || item.position || item.professionTitle || '—'}</td><td><span class="modal-score ${scoreColor(score)}">${score}%</span></td><td><span class="modal-badge ${stageColor(stage)}">${stage}</span></td><td class="modal-td-date">${date}</td><td><div class="rowActions">${actions}</div></td></tr>`;
   }).join('') || `<tr><td colspan="6" style="text-align:center;padding:24px;color:rgba(230,242,255,.35)">Нет данных для выбранного фильтра.</td></tr>`}</tbody></table>`;
 }
 
@@ -1501,6 +1718,26 @@ function attentionItems(state) {
 }
 
 function candidateHeatmap(state) {
+  // Данные с бэкенда: вакансии × источники (средний балл прошедших тест).
+  if (state.candidateHeatmap && state.candidateHeatmap.columns) {
+    const hm = state.candidateHeatmap;
+    return {
+      title: "Качество кандидатов по вакансиям и источникам",
+      columns: hm.columns,
+      rows: hm.rows.map((row) => ({
+        label: row.vacancy,
+        cells: row.cells.map((cell) => ({
+          value: cell.scored ? `${cell.avg_percent}%` : "—",
+          caption: cell.scored
+            ? `${cell.scored} из ${cell.count} прошли`
+            : `${cell.count} кандидатов`,
+          status: cell.scored ? getFitStatus(cell.avg_percent) : "neutral",
+          target: `Кандидаты:${row.vacancy} ${cell.source}`
+        }))
+      }))
+    };
+  }
+
   const sources = ["HeadHunter", "Avito", "Telegram", "API", "Ручная", "Импорт"];
   return {
     title: "Качество кандидатов по вакансиям и источникам",
@@ -1602,14 +1839,33 @@ function candidatesTableConfig(candidates) {
       StatusBadge(item.result.redFlags ? "средний" : "низкий", item.result.redFlags ? "medium" : "good"),
       new Date(item.completedAt).toLocaleDateString("ru-RU"),
       "Рекрутер",
-      ActionButtonGroup([
+      `<div class="rowActionsWrap">${ActionButtonGroup([
         { label: "Карточка", attrs: `data-open-card="${item.id}"` },
-        { label: "PDF", attrs: `data-report-id="${item.id}"` },
-        { label: "Ответы", attrs: `data-open-answers="${item.id}"` },
-        { label: "Интервью", attrs: `data-open-card="${item.id}"` }
-      ])
+        ...(item.status === "completed" ? [{ label: "PDF", attrs: `data-pdf-id="${item.id}"` }] : []),
+        { label: "Ответы", attrs: `data-open-answers="${item.id}"` }
+      ])}${CandidateKebab(item.id)}</div>`
     ])
   };
+}
+
+// Кнопка «три точки» у кандидата — открывает поповер с быстрыми действиями.
+function CandidateKebab(id) {
+  return `<button class="elt-kebab-btn" type="button" data-kebab-id="${id}" aria-label="Действия">⋮</button>`;
+}
+
+// Поповер быстрых действий (рендерится на уровне приложения, чтобы не обрезался
+// таблицей). Координаты берутся из позиции кнопки при клике.
+function renderKebabPopover(state) {
+  if (!state.kebabMenu) return "";
+  const { id, x, y } = state.kebabMenu;
+  const act = (stage, label) =>
+    `<button type="button" data-stage-id="${id}" data-stage-action="${stage}">${label}</button>`;
+  return `<div class="elt-kebab-backdrop" data-kebab-close></div>
+    <div class="elt-kebab-pop" style="left:${x}px;top:${y}px">
+      ${act("interview", "На интервью")}
+      ${act("accepted", "Принять")}
+      ${act("not_fit", "Отклонить")}
+    </div>`;
 }
 
 function employeesTableConfig(employees) {
@@ -1626,9 +1882,7 @@ function employeesTableConfig(employees) {
       StatusBadge(item.turnoverRisk, item.turnoverRisk === "низкий" ? "good" : item.turnoverRisk === "средний" ? "medium" : "bad"),
       item.recommendation,
       ActionButtonGroup([
-        { label: "Карточка", attrs: `data-open-card="${item.id}"` },
-        { label: "PDF", attrs: `data-open-card="${item.id}"` },
-        { label: "Ответы", attrs: `data-open-answers="${item.id}"` }
+        { label: "Карточка", attrs: `data-open-card="${item.id}"` }
       ])
     ])
   };
@@ -1713,14 +1967,34 @@ function miniBars(items) {
 
 function peopleForModal(state, scope, metricName) {
   if (scope === "Сотрудники" || scope === "Адаптация" || scope === "Оценка 360" || scope === "Performance Review") {
-    const people = employeesToPeople(state.employees);
-    if (metricName.includes("риск") || metricName.includes("Выгорание") || metricName.includes("В зоне")) return people.filter((item) => item.fit < 72);
-    return people;
+    const emps = state.employeesApi || [];
+    if (metricName.includes("Высокий")) return emps.filter((e) => e.fit >= 80);
+    if (metricName.includes("Средний")) return emps.filter((e) => e.fit >= 60 && e.fit < 80);
+    if (metricName.includes("Низкий")) return emps.filter((e) => e.fit < 60);
+    if (metricName.includes("Выгорание")) return emps.filter((e) => e.burnout && !["—", "нет", ""].includes(String(e.burnout).toLowerCase()));
+    if (metricName.includes("риск") || metricName.includes("В зоне")) return emps.filter((e) => e.turnoverRisk !== "низкий" || e.fit < 70);
+    return emps;
   }
-  const candidates = state.sessions.filter((x) => x.person.assessmentType === "Кандидат");
-  if (metricName.includes("Подход")) return candidates.filter((item) => item.result.percent >= 68);
-  if (metricName.includes("Не подход")) return candidates.filter((item) => item.result.percent < 55);
-  if (metricName.includes("Интервью")) return candidates.filter((item) => item.stage === "Интервью" || item.result.percent >= 68);
+  // Кандидаты: при наличии данных из API фильтруем их, иначе — демо-сид.
+  const usingApi = Boolean(state.candidateStats && state.candidatesApi);
+  const candidates = usingApi
+    ? state.candidatesApi
+    : state.sessions.filter((x) => x.person.assessmentType === "Кандидат");
+  const passed = (x) => x.status === "completed";
+  const pct = (x) => (x.result ? x.result.percent : 0);
+
+  // Категории совпадают с определениями KPI-карточек (см. renderCandidates).
+  if (metricName.includes("всего") || metricName.includes("Всего")) return candidates;
+  // «Оценка отправлена» = всем кандидатам отправлена оценка (по числу ссылок).
+  if (metricName.includes("отправлен")) return candidates;
+  if (metricName.includes("пройден")) return candidates.filter(passed);
+  if (metricName.includes("Условно")) return candidates.filter((x) => passed(x) && pct(x) >= 55 && pct(x) < 68);
+  if (metricName.includes("Не подход")) return candidates.filter((x) => passed(x) && pct(x) < 55);
+  if (metricName.includes("Подход")) return candidates.filter((x) => passed(x) && pct(x) >= 68);
+  if (metricName.includes("Интервью")) return candidates.filter((x) => x.stage === "Интервью");
+  if (metricName.includes("Принят")) return candidates.filter((x) => x.stage === "Принят");
+  // «Зависли» = кандидаты без завершённой оценки (не прошли тест).
+  if (metricName.includes("Завис")) return candidates.filter((x) => !passed(x));
   return candidates;
 }
 
@@ -1730,6 +2004,48 @@ function findPerson(state, id) {
 
 function personName(item) {
   return item?.person?.fullName || item?.fullName || "Участник";
+}
+
+function employeeCardApi(d) {
+  const riskRu = { low: "низкий", medium: "средний", high: "повышенный" };
+  const fitColor = (d.fit ?? 0) >= 80 ? "#16A34A" : (d.fit ?? 0) >= 60 ? "#F59E0B" : "#DC2626";
+  return `<div class="personCard">
+    <b>${d.full_name}</b>
+    <span>${d.position || "Сотрудник"}${d.department ? " · " + d.department : ""}</span>
+    <dl>
+      <dt>Соответствие</dt><dd style="color:${fitColor};font-weight:600">${d.fit ?? 0}%</dd>
+      <dt>Руководитель</dt><dd>${d.manager || "—"}</dd>
+      <dt>Проект</dt><dd>${d.project || "—"}</dd>
+      <dt>Риск увольнения</dt><dd>${riskRu[d.turnover_risk] || d.turnover_risk || "—"}</dd>
+      <dt>Выгорание</dt><dd>${d.burnout || "—"}</dd>
+      <dt>Удовлетворённость</dt><dd>${d.satisfaction != null ? d.satisfaction + "%" : "—"}</dd>
+      <dt>Рекомендация</dt><dd>${d.recommendation || "—"}</dd>
+    </dl>
+  </div>`;
+}
+
+function candidateCard(d) {
+  const a = d.assessment;
+  const percent = a ? a.percent : 0;
+  const risk = Math.max(0, 100 - percent);
+  const passed = a && (a.status === "scored" || a.status === "reviewed" || a.status === "submitted");
+  const recommend = passed ? percent >= 55 : null;
+  const recColor = recommend === null ? "#64748B" : recommend ? "#16A34A" : "#DC2626";
+  const recText = recommend === null
+    ? "Тест ещё не пройден"
+    : recommend ? "Рекомендуем рассмотреть" : "Не рекомендуем рассмотреть";
+  const fitColor = percent >= 68 ? "#16A34A" : percent >= 55 ? "#F59E0B" : "#DC2626";
+  return `<div class="personCard">
+    <b>${d.full_name}</b>
+    <span>${d.vacancy_title || "Кандидат"}</span>
+    <dl>
+      <dt>Соответствие</dt><dd style="color:${fitColor};font-weight:600">${percent}%</dd>
+      <dt>Риск (не справится)</dt><dd>${risk}%</dd>
+      <dt>Город</dt><dd>${d.city || "—"}</dd>
+      <dt>Источник</dt><dd>${d.source || "—"}</dd>
+      <dt>Рекомендация</dt><dd style="color:${recColor};font-weight:600">${recText}</dd>
+    </dl>
+  </div>`;
 }
 
 function personCard(item) {
@@ -2067,9 +2383,15 @@ function renderAssessmentWizard(state) {
   const deadline = w.deadline || "";
   const searchQ = w.searchQ || "";
 
-  const employees = state.employees || [];
-  const departments = state.departments || [];
-  const professions = (state.professions || []);
+  // Данные мастера — из API: сотрудники, отделы (срез по сотрудникам), тесты-профили.
+  const employees = state.employeesApi || [];
+  const deptCounts = {};
+  employees.forEach((e) => {
+    const d = e.department || "Без отдела";
+    deptCounts[d] = (deptCounts[d] || 0) + 1;
+  });
+  const departments = Object.entries(deptCounts).map(([name, count]) => ({ name, employees: count }));
+  const professions = (state.testsApi || []).map((t) => ({ id: t.id, title: t.title, category: t.category || "тест" }));
   const isTalentStudio = state.company?.tariff === "TalentStudio";
 
   // ── Step indicator ──────────────────────────────────────────────────────────

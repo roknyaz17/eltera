@@ -3,6 +3,7 @@
  * Handles all interactions for the multi-step assessment creation wizard.
  * Depends on: state (ref), render (fn), saveState (fn)
  */
+import { createLink } from "../data/api.js";
 
 export function initWizardController({ getState, setState, render, saveState }) {
 
@@ -15,7 +16,7 @@ export function initWizardController({ getState, setState, render, saveState }) 
   }
 
   function handleSend360(w, state) {
-    const emps = state.employees || [];
+    const emps = state.employeesApi || [];
     const targets = emps.filter(e => w.selected.includes(e.id));
     const r360 = w.roles360 || { self: true, manager: false, peers: 0, reports: 0 };
     const roleNames = [];
@@ -54,7 +55,7 @@ export function initWizardController({ getState, setState, render, saveState }) 
   }
 
   function handleSendReview(w, state) {
-    const emps = state.employees || [];
+    const emps = state.employeesApi || [];
     const targets = w.scope === "dept"
       ? emps.filter(e => e.department === w.dept)
       : emps.filter(e => w.selected.includes(e.id));
@@ -98,35 +99,52 @@ export function initWizardController({ getState, setState, render, saveState }) 
     showToast(`Performance Review запущен: ${newLinks.length} чел.`);
   }
 
-  function handleSendStandard(w, state) {
-    const employees = state.employees || [];
+  async function handleSendStandard(w, state) {
+    const employees = state.employeesApi || [];
     const targets = w.scope === "dept"
       ? employees.filter(e => e.department === w.dept)
       : employees.filter(e => w.selected.includes(e.id));
-    const profession = (state.professions || []).find(p => p.id === w.profId);
+    if (!targets.length || !w.profId) {
+      showToast("Выберите сотрудников и профиль оценки", "info");
+      return;
+    }
+    const test = (state.testsApi || []).find(t => t.id === w.profId);
+    const professionId = (test && test.key) || "recruiter";
     const now = new Date();
-    const newLinks = targets.map(emp => ({
+    // Локальные ссылки — чтобы сотрудник прошёл тест; apiPersonId связывает с бэком.
+    const localLinks = targets.map((emp, i) => ({
+      id: `link-${Date.now()}-${i}`,
       token: Math.random().toString(36).slice(2, 10),
-      fullName: emp.fullName,
+      professionId,
+      professionTitle: (test && test.title) || "Оценка",
+      recipientType: "Сотрудник",
+      assessmentType: "Сотрудник",
+      fullName: emp.full_name,
       email: emp.email || "",
-      phone: emp.phone || "",
-      professionId: w.profId,
-      professionTitle: profession?.title || "Оценка",
-      recipientType: "employee",
-      status: "sent",
+      status: "pending",
+      history: [["создана", now.toISOString()]],
       createdAt: now.toISOString(),
-      deadline: w.deadline,
-      employeeId: emp.id
+      apiPersonId: emp.id
     }));
-    setState(s => ({
-      ...s,
-      links: [...(s.links || []), ...newLinks],
-      company: { ...s.company, assessmentBalance: Math.max(0, (s.company.assessmentBalance || 0) - newLinks.length) },
-      modal: null
+    // Регистрируем оценку (ссылку-приглашение) в бэкенде и связываем токен с
+    // локальной ссылкой — чтобы прохождение шло по вопросам именно этого теста.
+    await Promise.all(targets.map(async (emp, i) => {
+      try {
+        const resp = await createLink({
+          test_id: w.profId, person_id: emp.id, recipient_type: "employee"
+        });
+        localLinks[i].apiToken = resp.token;
+        localLinks[i].apiTestId = resp.test_id;
+      } catch (error) {
+        console.warn("Не удалось создать ссылку в бэкенде:", error);
+      }
     }));
+    setState(s => ({ ...s, links: [...localLinks, ...(s.links || [])], linksStatus: "idle", modal: null }));
     saveState();
-    render();
-    showToast(`Оценка отправлена: ${newLinks.length} ссылок`);
+    // Переходим в «Оценки», где можно открыть ссылку и пройти тест.
+    if (location.hash === "#/app/links") render();
+    else location.hash = "#/app/links";
+    showToast(`Оценка создана для ${targets.length} сотрудник(ов). Ссылки — в разделе «Оценки».`);
   }
 
   // ── Click handler ──────────────────────────────────────────────────────────
