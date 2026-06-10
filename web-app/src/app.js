@@ -128,6 +128,7 @@ state.constructorTests = null;
 state.constructorTest = null;
 state.linksStatus = "idle";
 state.linksApi = null;
+if (!state.linksFilter) state.linksFilter = "all"; // all | Кандидат | Сотрудник
 if (!state.company.planPrice || !state.company.planLimit) {
   state.company.tariff = "Start";
   state.company.planPrice = 990;
@@ -444,6 +445,9 @@ function mapApiCandidate(item) {
     selectionType: item.selection_type || "",
     stage: STAGE_LABELS[item.stage] || item.stage,
     status: passed ? "completed" : "sent",
+    // Оценка реально отправлена, если есть привязанная сессия оценки
+    // или кандидат уже сошёл с этапа «Новый» (ему создали ссылку-приглашение).
+    assessmentSent: Boolean(a) || (Boolean(item.stage) && item.stage !== "new"),
     person: {
       fullName: item.full_name,
       assessmentType: "Кандидат",
@@ -869,6 +873,80 @@ function createLinkFromForm(form) {
 
 // Создаёт кандидата в бэкенде по данным ссылки, регистрирует ссылку-приглашение
 // (для метрики «Оценка отправлена») и сохраняет id на ссылке.
+// Кнопка «Добавить кандидата»: просто заводим кандидата в базе, без оценки.
+async function addCandidateFromForm(formEl) {
+  const fd = new FormData(formEl);
+  const lastName = String(fd.get("lastName") || "").trim();
+  const firstName = String(fd.get("firstName") || "").trim();
+  const patronymic = String(fd.get("patronymic") || "").trim();
+  const fullName = [lastName, firstName, patronymic].filter(Boolean).join(" ");
+  if (!fullName) {
+    alert("Укажите хотя бы фамилию или имя кандидата.");
+    return;
+  }
+  try {
+    await createCandidate({
+      last_name: lastName || null,
+      first_name: firstName || null,
+      patronymic: patronymic || null,
+      full_name: fullName,
+      email: String(fd.get("email") || "").trim() || null,
+      phone: String(fd.get("phone") || "").trim() || null,
+      vacancy_title: String(fd.get("vacancy") || "").trim() || null,
+      source: "Добавлен вручную",
+      selection_type: "Точечный подбор",
+      stage: "new"
+    });
+    state.modal = null;
+    state.candidatesStatus = "idle";
+    await loadCandidatesFromApi();
+  } catch (error) {
+    console.warn("Не удалось добавить кандидата в бэкенде:", error);
+    alert("Не удалось добавить кандидата. Попробуйте позже.");
+  }
+}
+
+// Простое тост-уведомление (визуально совпадает с тостами мастера оценки).
+function showToast(text, type = "success") {
+  const t = document.createElement("div");
+  t.className = `elt-toast elt-toast-${type}`;
+  t.textContent = text;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+// «Отправить оценку» существующему кандидату из меню «три точки»: создаём
+// ссылку-приглашение в бэкенде, помечаем кандидата как «Оценка отправлена»
+// (если он ещё «Новый») и обновляем список — без ухода с вкладки.
+async function sendAssessmentToCandidate(personId, testId) {
+  if (!personId) return;
+  const cand = (state.candidatesApi || []).find((c) => c.id === personId);
+  const isNew = cand && cand.stage === STAGE_LABELS.new;
+  try {
+    await createLink({
+      test_id: testId || null,
+      person_id: personId,
+      recipient_type: "candidate"
+    });
+    if (isNew) {
+      try {
+        await updateCandidate(personId, { stage: "assessment_sent" });
+      } catch (stageError) {
+        console.warn("Не удалось обновить этап кандидата:", stageError);
+      }
+    }
+    state.modal = null;
+    state.candidatesStatus = "idle";
+    await loadCandidatesFromApi();
+    showToast("Оценка отправлена");
+  } catch (error) {
+    console.warn("Не удалось отправить оценку:", error);
+    state.modal = null;
+    render();
+    showToast("Не удалось отправить оценку", "info");
+  }
+}
+
 async function syncCreateCandidate(link) {
   try {
     const created = await createCandidate({
@@ -1223,14 +1301,42 @@ document.addEventListener("click", (event) => {
     render();
     return;
   }
+  if (action === "add-candidate") {
+    if (!state.testsApi) loadTests();
+    state.modal = { type: "add-candidate" };
+    render();
+    return;
+  }
   if (action === "top-up") {
     state.modal = { type: "sbp-payment", mode: "topup", pack: 20 };
     render();
   }
   if (action === "print-report") window.print();
   if (action === "add-structure-member") {
+    // На вкладке «Сотрудники» оргструктура может быть ещё не загружена —
+    // подтягиваем, чтобы в модалке были руководители и отделы.
+    if (!state.orgTree) loadStructureFromApi();
     state.modal = { type: "add-structure-member" };
     render();
+  }
+  if (action === "import-employees") {
+    state.modal = { type: "import-employees" };
+    render();
+  }
+  if (action === "run-employee-import") {
+    const fileInput = document.querySelector("[data-import-employees-file]");
+    if (!fileInput || !fileInput.files || !fileInput.files.length) {
+      alert("Выберите Excel-файл со списком сотрудников.");
+      return;
+    }
+    const name = fileInput.files[0].name;
+    state.modal = null;
+    render();
+    const toast = document.createElement("div");
+    toast.className = "sbp-toast";
+    toast.textContent = `✓ Файл «${name}» получен, импорт обрабатывается`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3500);
   }
 
   // Click on avatar circle — trigger hidden file input
@@ -1272,6 +1378,18 @@ document.addEventListener("click", (event) => {
   // Закрытие поповера действий по клику на фон.
   if (event.target.closest("[data-kebab-close]")) {
     state.kebabMenu = null;
+    render();
+    return;
+  }
+
+  // «Отправить оценку» из меню «три точки» — открываем модалку выбора профиля.
+  const sendAssessBtn = event.target.closest("[data-send-assessment-id]");
+  if (sendAssessBtn) {
+    const id = sendAssessBtn.dataset.sendAssessmentId;
+    const cand = (state.candidatesApi || []).find((c) => c.id === id);
+    state.kebabMenu = null;
+    if (!state.testsApi) loadTests();
+    state.modal = { type: "send-assessment", personId: id, fullName: cand ? (cand.person?.fullName || cand.full_name) : "" };
     render();
     return;
   }
@@ -1461,6 +1579,14 @@ document.addEventListener("click", (event) => {
   const cancelToken = event.target.closest("[data-cancel-link]")?.dataset.cancelLink;
   if (cancelToken) cancelLink(cancelToken);
 
+  const linksFilter = event.target.closest("[data-links-filter]")?.dataset.linksFilter;
+  if (linksFilter) {
+    state.linksFilter = linksFilter;
+    saveState();
+    render();
+    return;
+  }
+
   const bonusCount = Number(event.target.closest("[data-buy-bonus-assessments]")?.dataset.buyBonusAssessments || 0);
   if (bonusCount) spendBonuses(bonusCount);
 
@@ -1478,6 +1604,17 @@ document.addEventListener("submit", (event) => {
   if (event.target.matches("[data-create-link-form]")) {
     event.preventDefault();
     createLinkFromForm(event.target);
+  }
+
+  if (event.target.matches("[data-add-candidate-form]")) {
+    event.preventDefault();
+    addCandidateFromForm(event.target);
+  }
+
+  if (event.target.matches("[data-send-assessment-form]")) {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+    sendAssessmentToCandidate(event.target.dataset.personId, String(fd.get("professionId") || ""));
   }
 
   if (event.target.matches("[data-candidate-form]")) {

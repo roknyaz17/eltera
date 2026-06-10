@@ -277,6 +277,8 @@ async def build_form(session: AsyncSession, token: str) -> AssessmentForm:
             )
         )
 
+    person = await session.get(Person, link.person_id) if link.person_id else None
+
     return AssessmentForm(
         token=token,
         test_id=link.test_id,
@@ -284,6 +286,9 @@ async def build_form(session: AsyncSession, token: str) -> AssessmentForm:
         title=test.title if test else "Тест",
         summary=test.summary if test else None,
         status=link.status,
+        full_name=person.full_name if person else None,
+        email=link.recipient_email or (person.email if person else None),
+        phone=link.recipient_phone or (person.phone if person else None),
         questions=questions,
     )
 

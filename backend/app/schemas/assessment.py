@@ -87,6 +87,10 @@ class AssessmentForm(BaseModel):
     title: str
     summary: str | None = None
     status: LinkStatus
+    # Данные участника, привязанного к ссылке — чтобы предзаполнить форму.
+    full_name: str | None = None
+    email: str | None = None
+    phone: str | None = None
     questions: list[FormQuestion]
 
 

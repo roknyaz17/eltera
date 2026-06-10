@@ -336,7 +336,7 @@ export function renderCandidates(state) {
     meta: ["точечный подбор", "офис", "IT"],
     period: state.period,
     actions: [
-      { label: "Добавить кандидата" },
+      { label: "Добавить кандидата", attrs: "data-action=\"add-candidate\"" },
       { label: "Импорт" },
       { label: "Создать ссылку", primary: true, attrs: "data-action=\"create-link\"" }
     ],
@@ -379,7 +379,11 @@ export function renderEmployees(state) {
     subtitle,
     meta: ["оценка", "риски", "развитие"],
     period: state.period,
-    actions: [{ label: "Создать оценку", primary: true, attrs: "data-action=\"open-assess-wizard\"" }],
+    actions: [
+      { label: "Импорт", attrs: "data-action=\"import-employees\"" },
+      { label: "Добавить сотрудника", attrs: "data-action=\"add-structure-member\"" },
+      { label: "Создать оценку", primary: true, attrs: "data-action=\"open-assess-wizard\"" }
+    ],
     filters: pageFilterConfig.employees,
     activeFiltersMap: (state.activeFilters && state.activeFilters.employees) || {},
     kpiCards: [
@@ -880,49 +884,26 @@ export function renderLinks(state, professions) {
         </div>
       </div>
       <div class="elt-links-grid">
-        <div class="elt-card">
-          <div class="elt-card-head"><h2>Загрузка сотрудников через Excel</h2><span class="elt-card-caption">массовое создание оценок</span></div>
-          <div class="elt-import-flow">
-            <div class="elt-import-step"><span class="elt-import-num">1</span><div><b>Скачать Excel-шаблон</b><p>ФИО, телефон, email, должность, отдел, руководитель, проект, тип и профиль оценки.</p><a class="elt-btn-ghost" href="/assets/eltera-employees-import-template.xlsx" download>Скачать шаблон</a></div></div>
-            <div class="elt-import-step"><span class="elt-import-num">2</span><div><b>Загрузить сотрудников</b><p>После загрузки сотрудники будут доступны для оценки.</p><label class="elt-file-label">Excel-файл<input type="file" accept=".xlsx,.xls"></label></div></div>
-            <div class="elt-import-step"><span class="elt-import-num">3</span><div><b>Создать оценки</b><p>Выберите профиль и отправьте оценки всем сотрудникам из файла или отдельным отделам.</p><button class="elt-btn-primary">Создать оценки по списку</button></div></div>
-          </div>
-        </div>
-        <div class="elt-card">
-          <div class="elt-card-head"><h2>Создать оценку</h2><span class="elt-card-caption">единичная оценка</span></div>
-          <form class="elt-form-grid elt-form-grid-3" data-create-link-form>
-            <label class="elt-label elt-label-full">Тип получателя<select class="elt-select" name="recipientType"><option>Кандидат</option><option>Сотрудник</option></select></label>
-            <label class="elt-label elt-label-full">Профиль оценки<select class="elt-select" name="professionId">${
-              Array.isArray(state.testsApi) && state.testsApi.length
-                ? state.testsApi.map((t) => `<option value="${t.id}">${t.title}${t.category ? ` · ${t.category}` : ""}</option>`).join('')
-                : `<option value="">Загрузка тестов…</option>`
-            }</select></label>
-            <label class="elt-label">Фамилия<input class="elt-input" name="lastName" placeholder="Иванов"></label>
-            <label class="elt-label">Имя<input class="elt-input" name="firstName" placeholder="Иван"></label>
-            <label class="elt-label">Отчество<input class="elt-input" name="patronymic" placeholder="Иванович"></label>
-            <label class="elt-label">Телефон<input class="elt-input" name="phone" placeholder="+7..."></label>
-            <label class="elt-label">Email<input class="elt-input" name="email" placeholder="candidate@example.com"></label>
-            <label class="elt-label">Должность<input class="elt-input" name="position" placeholder="Менеджер"></label>
-            <label class="elt-label">Компания<input class="elt-input" name="company" value="${state.company.name}"></label>
-            <label class="elt-label">Отдел<input class="elt-input" name="department" placeholder="Отдел продаж"></label>
-            <label class="elt-label">Вакансия<input class="elt-input" name="vacancy" placeholder="Менеджер по продажам"></label>
-            <label class="elt-label">Проект<input class="elt-input" name="project" placeholder="Проект A"></label>
-            <div class="elt-form-warning elt-label-full">Если не указан email или телефон, ссылка будет создана, но не будет автоматически отправлена.</div>
-            <div class="elt-label-full"><button class="elt-btn-primary" type="submit">Создать ссылку</button></div>
-          </form>
-        </div>
         <div class="elt-table-panel">
           ${(() => {
             const apiReady = state.linksStatus === "ready" && Array.isArray(state.linksApi);
-            const rows = apiReady ? state.linksApi : state.links;
+            const allRows = apiReady ? state.linksApi : state.links;
             const loading = state.linksStatus === "loading" && !state.linksApi;
+            const filter = state.linksFilter || "all";
+            // Тип получателя нормализуем: API отдаёт «Сотрудник/Кандидат», локальные
+            // ссылки мастера могут использовать английский "employee".
+            const typeOf = (link) => (link.recipientType === "Сотрудник" || link.recipientType === "employee") ? "Сотрудник" : "Кандидат";
+            const rows = filter === "all" ? allRows : allRows.filter((link) => typeOf(link) === filter);
             const caption = loading ? "загрузка…" : `${rows.length} ссылок`;
+            const filterBtn = (value, label) => `<button class="${filter === value ? "active" : ""}" data-links-filter="${value}">${label}</button>`;
+            const filterBar = `<div class="filterBar compact" style="padding-top:12px;padding-left:16px">${filterBtn("all", "Все")}${filterBtn("Кандидат", "Только кандидаты")}${filterBtn("Сотрудник", "Только сотрудники")}</div>`;
             const body = rows.length
-              ? rows.map((link) => `<tr><td>${link.fullName || link.recipientType}</td><td>${link.professionTitle}${link.percent != null ? ` · <b>${link.percent}%</b>` : ""}</td><td>${link.email || link.phone || "<span class='elt-warn-text'>нет контакта</span>"}</td><td><code class="elt-code">${location.origin}${location.pathname}#/assess/${link.token}</code>${link.warning ? `<small class="elt-warn-text">${link.warning}</small>` : ''}</td><td><span class="elt-status-badge elt-status-${link.status}">${statusText(link.status)}</span></td><td><div class="elt-row-actions">${link.status === "completed" ? "" : `<button class="elt-btn-ghost" data-open-assess="${link.token}">Открыть</button>`}<button class="elt-btn-ghost">Скопировать</button>${!link.fromApi && canCancel(link) ? `<button class="elt-btn-danger" data-cancel-link="${link.token}">Отменить</button>` : ''}</div></td></tr>`).join('')
-              : `<tr><td colspan="6" style="text-align:center;color:#94A3B8;padding:24px">${loading ? "Загрузка оценок…" : "Оценок пока нет. Создайте первую через форму слева."}</td></tr>`;
+              ? rows.map((link) => `<tr><td>${link.fullName || typeOf(link)}</td><td><span class="elt-status-badge ${typeOf(link) === "Сотрудник" ? "status-medium" : "status-neutral"}">${typeOf(link)}</span></td><td>${link.professionTitle}${link.percent != null ? ` · <b>${link.percent}%</b>` : ""}</td><td>${link.email || link.phone || "<span class='elt-warn-text'>нет контакта</span>"}</td><td><code class="elt-code">${location.origin}${location.pathname}#/assess/${link.token}</code>${link.warning ? `<small class="elt-warn-text">${link.warning}</small>` : ''}</td><td><span class="elt-status-badge elt-status-${link.status}">${statusText(link.status)}</span></td><td><div class="elt-row-actions">${link.status === "completed" ? "" : `<button class="elt-btn-ghost" data-open-assess="${link.token}">Открыть</button>`}<button class="elt-btn-ghost">Скопировать</button>${!link.fromApi && canCancel(link) ? `<button class="elt-btn-danger" data-cancel-link="${link.token}">Отменить</button>` : ''}</div></td></tr>`).join('')
+              : `<tr><td colspan="7" style="text-align:center;color:#94A3B8;padding:24px">${loading ? "Загрузка оценок…" : allRows.length ? "Нет оценок для выбранного фильтра." : "Оценок пока нет. Создайте оценку кнопкой «Создать оценку»."}</td></tr>`;
             return `<div class="elt-table-head"><h2>Оценочные ссылки</h2><span class="elt-card-caption">${caption}</span></div>
+          ${filterBar}
           <div class="elt-table-wrap">
-            <table class="elt-table"><thead><tr><th>Получатель</th><th>Профиль</th><th>Контакт</th><th>Ссылка</th><th>Статус</th><th></th></tr></thead><tbody>
+            <table class="elt-table"><thead><tr><th>Получатель</th><th>Тип</th><th>Профиль</th><th>Контакт</th><th>Ссылка</th><th>Статус</th><th></th></tr></thead><tbody>
               ${body}
             </tbody></table>
           </div>`;
@@ -1342,7 +1323,7 @@ export function renderCandidateAssessment(link, profession, questions, answers, 
       return `<div class="candidatePage">${header}<main class="candidateCard"><h1>${title}</h1><p>Загружаем тест…</p></main></div>`;
     }
     const total = apiForm.questions.length;
-    return `<div class="candidatePage">${header}<main class="candidateCard"><span class="miniLabel">${link.recipientType || link.assessmentType || "Кандидат"} · ${apiForm.title}</span><h1>${apiForm.title}</h1><p>${apiForm.summary || "Заполните данные и ответьте на вопросы. Компания получит отчет после завершения оценки."}</p><form class="candidateForm" data-candidate-form><label>ФИО<input name="fullName" required value="${link.fullName || ""}" placeholder="Иванов Иван"></label><label>Телефон<input name="phone" value="${link.phone || ""}" placeholder="+7..."></label><label>Email<input name="email" value="${link.email || ""}" placeholder="name@example.com"></label><label>Город<input name="city" placeholder="Москва"></label><label class="checkboxLine"><input type="checkbox" required><span>Согласен на обработку персональных данных</span></label><div class="questionList compact">${apiForm.questions.map((q, i) => renderAssessQuestionApi(q, i, total)).join("")}</div><button class="blueButton wide" type="submit">Завершить оценку</button></form></main></div>`;
+    return `<div class="candidatePage">${header}<main class="candidateCard"><span class="miniLabel">${link.recipientType || link.assessmentType || "Кандидат"} · ${apiForm.title}</span><h1>${apiForm.title}</h1><p>${apiForm.summary || "Заполните данные и ответьте на вопросы. Компания получит отчет после завершения оценки."}</p><form class="candidateForm" data-candidate-form><label>ФИО<input name="fullName" required value="${apiForm.full_name || link.fullName || ""}" placeholder="Иванов Иван"></label><label>Телефон<input name="phone" value="${apiForm.phone || link.phone || ""}" placeholder="+7..."></label><label>Email<input name="email" value="${apiForm.email || link.email || ""}" placeholder="name@example.com"></label><label>Город<input name="city" placeholder="Москва"></label><label class="checkboxLine"><input type="checkbox" required><span>Согласен на обработку персональных данных</span></label><div class="questionList compact">${apiForm.questions.map((q, i) => renderAssessQuestionApi(q, i, total)).join("")}</div><button class="blueButton wide" type="submit">Завершить оценку</button></form></main></div>`;
   }
 
   return `
@@ -1392,6 +1373,19 @@ function renderModal(state) {
         <button class="blueButton" type="submit" style="margin-top:8px;width:100%">Добавить</button>
       </div>
     </form></div>`;
+  }
+  if (state.modal?.type === "import-employees") {
+    return `<div class="modalBackdrop"><div class="modal modalWide">
+      ${mHead('Импорт сотрудников', '📥')}
+      <div class="modal-inner">
+        <p class="modal-subtitle">Массовое добавление сотрудников из Excel: ФИО, должность, отдел, руководитель, проект.</p>
+        <div class="elt-import-flow">
+          <div class="elt-import-step"><span class="elt-import-num">1</span><div><b>Скачать Excel-шаблон</b><p>Колонки: ФИО, должность, отдел, руководитель, проект.</p><a class="elt-btn-ghost" href="/assets/eltera-employees-import-template.xlsx" download>Скачать шаблон</a></div></div>
+          <div class="elt-import-step"><span class="elt-import-num">2</span><div><b>Заполнить и загрузить</b><p>Выберите заполненный файл со списком сотрудников.</p><label class="elt-file-label">Excel-файл<input type="file" accept=".xlsx,.xls" data-import-employees-file></label></div></div>
+          <div class="elt-import-step"><span class="elt-import-num">3</span><div><b>Импортировать</b><p>Сотрудники появятся в списке и станут доступны для оценки.</p><button class="elt-btn-primary" data-action="run-employee-import">Импортировать</button></div></div>
+        </div>
+      </div>
+    </div></div>`;
   }
   if (state.modal?.type === "card") {
     // Сотрудник (emp-) — старая локальная карточка; кандидат — карточка из API.
@@ -1461,6 +1455,46 @@ function renderModal(state) {
           <label class="elt-label">Проект<input class="elt-input" name="project" placeholder="Общий контур"></label>
         </div>
         <button class="blueButton" type="submit" style="margin-top:8px;width:100%">Добавить сотрудника</button>
+      </div>
+    </form></div>`;
+  }
+
+  if (state.modal?.type === "add-candidate") {
+    const profileOptions = Array.isArray(state.testsApi) && state.testsApi.length
+      ? state.testsApi.map((t) => `<option value="${t.id}">${t.title}${t.category ? ` · ${t.category}` : ""}</option>`).join('')
+      : `<option value="">Загрузка тестов…</option>`;
+    return `<div class="modalBackdrop"><form class="modal modalWide" data-add-candidate-form>
+      ${mHead('Добавить кандидата', '👤')}
+      <div class="modal-inner">
+        <p class="modal-subtitle">Кандидат будет добавлен в базу без создания оценки. Оценку можно отправить позже.</p>
+        <div class="elt-form-grid elt-form-grid-3">
+          <label class="elt-label elt-label-full">Профиль оценки<select class="elt-select" name="professionId">${profileOptions}</select></label>
+          <label class="elt-label">Фамилия<input class="elt-input" name="lastName" placeholder="Иванов"></label>
+          <label class="elt-label">Имя<input class="elt-input" name="firstName" placeholder="Иван"></label>
+          <label class="elt-label">Отчество<input class="elt-input" name="patronymic" placeholder="Иванович"></label>
+          <label class="elt-label">Телефон<input class="elt-input" name="phone" placeholder="+7..."></label>
+          <label class="elt-label">Email<input class="elt-input" name="email" placeholder="candidate@example.com"></label>
+          <label class="elt-label">Вакансия<input class="elt-input" name="vacancy" placeholder="Менеджер по продажам"></label>
+        </div>
+        <div class="elt-label-full"><button class="elt-btn-primary" type="submit" style="width:100%">Добавить кандидата</button></div>
+      </div>
+    </form></div>`;
+  }
+
+  if (state.modal?.type === "send-assessment") {
+    const { personId, fullName } = state.modal;
+    const profileOptions = Array.isArray(state.testsApi) && state.testsApi.length
+      ? state.testsApi.map((t) => `<option value="${t.id}">${t.title}${t.category ? ` · ${t.category}` : ""}</option>`).join('')
+      : `<option value="">Загрузка тестов…</option>`;
+    const ready = Array.isArray(state.testsApi) && state.testsApi.length;
+    return `<div class="modalBackdrop"><form class="modal" data-send-assessment-form data-person-id="${personId}">
+      ${mHead('Отправить оценку', '📨')}
+      <div class="modal-inner">
+        <p class="modal-subtitle">Кандидату <b>${fullName || "—"}</b> будет создана оценочная ссылка по выбранному профилю.</p>
+        <div class="elt-form-grid">
+          <label class="elt-label elt-label-full">Профиль оценки<select class="elt-select" name="professionId" ${ready ? "" : "disabled"}>${profileOptions}</select></label>
+        </div>
+        <button class="elt-btn-primary" type="submit" style="margin-top:8px;width:100%" ${ready ? "" : "disabled"}>Отправить оценку</button>
       </div>
     </form></div>`;
   }
@@ -1608,29 +1642,28 @@ function dashboardData(state, filter) {
 }
 
 function renderPeopleTable(people, scope = "Кандидаты") {
-  const stageColor = (s) => {
-    if (!s) return '';
+  // Единая категория статуса для строки: и балл, и бейдж соответствия
+  // всегда красятся в один цвет, зависящий от статуса кандидата.
+  const stageStatus = (s) => {
+    if (!s) return 'neutral';
     const sl = s.toLowerCase();
-    if (sl.includes('подход') || sl.includes('интервью') || sl.includes('оффер') || sl.includes('норма')) return 'modal-badge-good';
-    if (sl.includes('не подход') || sl.includes('риск') || sl.includes('отказ')) return 'modal-badge-bad';
-    return 'modal-badge-neutral';
-  };
-  const scoreColor = (v) => {
-    const n = Number(v);
-    if (n >= 75) return 'modal-score-good';
-    if (n >= 55) return 'modal-score-medium';
-    return 'modal-score-bad';
+    if (sl.includes('не подход') || sl.includes('риск') || sl.includes('отказ') || sl.includes('низк')) return 'bad';
+    if (sl.includes('условно')) return 'medium';
+    if (sl.includes('принят') || sl.includes('оффер') || sl.includes('подход') || sl.includes('норма')) return 'good';
+    if (sl.includes('интервью') || sl.includes('отправлен') || sl.includes('работе')) return 'neutral';
+    return 'neutral';
   };
   const empScope = ["Сотрудники", "Адаптация", "Оценка 360", "Performance Review"].includes(scope);
   return `<table><thead><tr><th>ФИО</th><th>Вакансия / должность</th><th>Балл</th><th>Соответствие</th><th>Дата</th><th>Действия</th></tr></thead><tbody>${people.map((item) => {
     const score = item.result?.percent || item.fit || 0;
     const stage = item.stage || item.recommendation || '';
+    const cat = stageStatus(stage);
     const date = item.completedAt ? new Date(item.completedAt).toLocaleDateString('ru-RU') : (item.startDate || '—');
     const isEmp = item.id?.startsWith('emp-');
     const actions = empScope
       ? `<button class="button subtle" data-open-card="${item.id}">Карточка</button>`
       : `${item.status === "completed" ? `<button class="button subtle" data-pdf-id="${item.id}">PDF</button>` : ""}<button class="button subtle" data-open-card="${item.id}">Карточка</button><button class="button subtle" data-open-answers="${item.id}">Ответы</button>${!isEmp ? CandidateKebab(item.id) : ''}`;
-    return `<tr><td class="modal-td-name">${personName(item)}</td><td class="modal-td-role">${item.vacancy || item.position || item.professionTitle || '—'}</td><td><span class="modal-score ${scoreColor(score)}">${score}%</span></td><td><span class="modal-badge ${stageColor(stage)}">${stage}</span></td><td class="modal-td-date">${date}</td><td><div class="rowActions">${actions}</div></td></tr>`;
+    return `<tr><td class="modal-td-name">${personName(item)}</td><td class="modal-td-role">${item.vacancy || item.position || item.professionTitle || '—'}</td><td><span class="modal-score modal-score-${cat}">${score}%</span></td><td><span class="modal-badge modal-badge-${cat}">${stage}</span></td><td class="modal-td-date">${date}</td><td><div class="rowActions">${actions}</div></td></tr>`;
   }).join('') || `<tr><td colspan="6" style="text-align:center;padding:24px;color:rgba(230,242,255,.35)">Нет данных для выбранного фильтра.</td></tr>`}</tbody></table>`;
 }
 
@@ -1834,7 +1867,11 @@ function candidatesTableConfig(candidates) {
       item.vacancy,
       StatusBadge(sourceTag(item.source), "neutral"),
       StatusBadge(item.stage, statusForLabel(item.stage, item.result.percent)),
-      `${item.status === "completed" ? "пройдена" : "отправлена"} · ${item.result.percent}`,
+      item.status === "completed"
+        ? `пройдена · ${item.result.percent}`
+        : item.assessmentSent
+          ? `отправлена · ${item.result.percent}`
+          : "не отправлена",
       StatusBadge(`${item.result.percent}%`, getFitStatus(item.result.percent)),
       StatusBadge(item.result.redFlags ? "средний" : "низкий", item.result.redFlags ? "medium" : "good"),
       new Date(item.completedAt).toLocaleDateString("ru-RU"),
@@ -1862,6 +1899,8 @@ function renderKebabPopover(state) {
     `<button type="button" data-stage-id="${id}" data-stage-action="${stage}">${label}</button>`;
   return `<div class="elt-kebab-backdrop" data-kebab-close></div>
     <div class="elt-kebab-pop" style="left:${x}px;top:${y}px">
+      <button type="button" data-send-assessment-id="${id}">Отправить оценку</button>
+      <div class="elt-kebab-sep"></div>
       ${act("interview", "На интервью")}
       ${act("accepted", "Принять")}
       ${act("not_fit", "Отклонить")}
