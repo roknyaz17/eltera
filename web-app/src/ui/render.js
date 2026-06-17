@@ -76,13 +76,21 @@ export function renderLanding(tariffs) {
         <div class="lv3-hero-content">
           <div class="lv3-hero-left">
             <div class="lv3-pill lv3-fade" style="--d:.05s">✦ Одна из первых AI-платформ оценки персонала в России</div>
-            <h1 class="lv3-fade" style="--d:.12s">Самая простая <span class="lv3-grad">оценка кандидатов и сотрудников</span></h1>
-            <p class="lv3-fade" style="--d:.22s">Гибкая и понятная система оценки: компетенции, кейсы, 360, вовлечённость, пульс-опросы, Performance Review и готовые отчёты для управленческих решений.</p>
-            <div class="lv3-hero-btns lv3-fade" style="--d:.32s">
+            <h1 class="lv3-fade" style="--d:.12s">Самая простая <span class="lv3-grad">AI-оценка кандидатов и сотрудников</span></h1>
+            <p class="lv3-fade" style="--d:.22s">Оценивайте компетенции, потенциал, риски, вовлечённость и развитие людей в одном визуальном кабинете: от найма до управленческих решений.</p>
+            <ul class="lv3-hero-features lv3-fade" style="--d:.28s">
+              <li><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" fill="#00E5D4" fill-opacity="0.15"/><path d="M4 7l2 2 4-4" stroke="#00E5D4" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Понятная оценка компетенций</li>
+              <li><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" fill="#00E5D4" fill-opacity="0.15"/><path d="M4 7l2 2 4-4" stroke="#00E5D4" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Готовые профили профессий</li>
+              <li><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" fill="#00E5D4" fill-opacity="0.15"/><path d="M4 7l2 2 4-4" stroke="#00E5D4" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Кейсы и конструктор компетенций</li>
+              <li><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" fill="#00E5D4" fill-opacity="0.15"/><path d="M4 7l2 2 4-4" stroke="#00E5D4" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Оценка 360 и групповые опросы</li>
+              <li><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" fill="#00E5D4" fill-opacity="0.15"/><path d="M4 7l2 2 4-4" stroke="#00E5D4" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Пульс-опросы и вовлечённость</li>
+              <li><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" fill="#00E5D4" fill-opacity="0.15"/><path d="M4 7l2 2 4-4" stroke="#00E5D4" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Визуальные отчёты для HRD и собственника</li>
+            </ul>
+            <div class="lv3-hero-btns lv3-fade" style="--d:.38s">
               <button class="lv3-btn-primary lv3-btn-lg" data-route="login">Попробовать за 990 ₽ →</button>
-              <button class="lv3-btn-ghost lv3-btn-lg" data-demo-assessment>Пройти демо-оценку</button>
+              <button class="lv3-btn-ghost lv3-btn-lg" data-route="login">Подключить</button>
             </div>
-            <div class="lv3-hero-meta lv3-fade" style="--d:.40s">1 месяц доступа · 20 оценок · Кандидаты и сотрудники в одном тарифе</div>
+            <div class="lv3-hero-meta lv3-fade" style="--d:.46s">Разберётесь за 5 минут · Первая оценка за 1 минуту · Без инструкций и долгого обучения</div>
           </div>
           <div class="lv3-hero-right lv3-fade" style="--d:.18s">
             <div class="lv3-live-card" id="lv3LiveCard">
@@ -251,19 +259,19 @@ export function renderLanding(tariffs) {
           <div class="lv3-ai-right">
             <div class="lv3-accordion" id="lv3Accordion">
               <div class="lv3-acc-item active" data-acc="0">
-                <div class="lv3-acc-head"><span class="lv3-acc-icon">🎯</span><span>Профиль компетенций</span><svg class="lv3-acc-arrow" width="16" height="16" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+                <div class="lv3-acc-head"><span class="lv3-acc-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#00E5D4" stroke-width="1.2"/><circle cx="8" cy="8" r="3" fill="#00E5D4" fill-opacity="0.4"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2" stroke="#00E5D4" stroke-width="1.2" stroke-linecap="round"/></svg></span><span>Профиль компетенций</span><svg class="lv3-acc-arrow" width="16" height="16" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
                 <div class="lv3-acc-body">Визуальный radar с процентами по каждой компетенции. Сразу видно сильные стороны и зоны развития.</div>
               </div>
               <div class="lv3-acc-item" data-acc="1">
-                <div class="lv3-acc-head"><span class="lv3-acc-icon">🚩</span><span>Красные флаги и риски</span><svg class="lv3-acc-arrow" width="16" height="16" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+                <div class="lv3-acc-head"><span class="lv3-acc-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v7" stroke="#FF6B6B" stroke-width="1.4" stroke-linecap="round"/><circle cx="8" cy="13" r="1.2" fill="#FF6B6B"/><path d="M3 2h10L11 7H5L3 2z" stroke="#FF6B6B" stroke-width="1.2" fill="#FF6B6B" fill-opacity="0.15"/></svg></span><span>Красные флаги и риски</span><svg class="lv3-acc-arrow" width="16" height="16" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
                 <div class="lv3-acc-body">AI выделяет тревожные сигналы и зоны внимания. Вы видите риски до принятия решения.</div>
               </div>
               <div class="lv3-acc-item" data-acc="2">
-                <div class="lv3-acc-head"><span class="lv3-acc-icon">✅</span><span>Рекомендация по кандидату</span><svg class="lv3-acc-arrow" width="16" height="16" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+                <div class="lv3-acc-head"><span class="lv3-acc-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#00E5D4" stroke-width="1.2"/><path d="M5 8l2 2 4-4" stroke="#00E5D4" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Рекомендация по кандидату</span><svg class="lv3-acc-arrow" width="16" height="16" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
                 <div class="lv3-acc-body">Приглашать / наблюдать / не рекомендовать — с обоснованием и конкретными аргументами.</div>
               </div>
               <div class="lv3-acc-item" data-acc="3">
-                <div class="lv3-acc-head"><span class="lv3-acc-icon">📈</span><span>ИПР — план развития</span><svg class="lv3-acc-arrow" width="16" height="16" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+                <div class="lv3-acc-head"><span class="lv3-acc-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 12l4-4 3 3 5-7" stroke="#1E5BFF" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="14" cy="4" r="1.5" fill="#1E5BFF"/></svg></span><span>ИПР — план развития</span><svg class="lv3-acc-arrow" width="16" height="16" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
                 <div class="lv3-acc-body">Индивидуальный план развития с конкретными шагами, целями и сроками для каждого сотрудника.</div>
               </div>
             </div>
@@ -274,12 +282,12 @@ export function renderLanding(tariffs) {
       <!-- WHAT CAN BE ASSESSED -->
       <section class="lv3-section" id="lv3-assess" data-reveal>
         <div class="lv3-section-head">
-          <h2>Что можно оценивать на платформе</h2>
-          <p>Комплексная система оценки для всех этапов работы с людьми — от найма до развития</p>
+          <h2>Комплексная оценка людей: <span class="lv3-grad">от найма до развития</span></h2>
+          <p>Все инструменты для работы с кандидатами и сотрудниками в одной платформе</p>
         </div>
         <div class="lv3-assess-grid">
           <div class="lv3-assess-card">
-            <div class="lv3-assess-icon">🤝</div>
+            <div class="lv3-assess-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="7" r="3" stroke="#00E5D4" stroke-width="1.4"/><circle cx="15" cy="7" r="3" stroke="#1E5BFF" stroke-width="1.4"/><path d="M3 20c0-3.314 2.686-6 6-6h6c3.314 0 6 2.686 6 6" stroke="#00E5D4" stroke-width="1.4" stroke-linecap="round"/></svg></div>
             <h4>Корпоративная культура и вовлечённость</h4>
             <ul>
               <li>Групповые опросы</li>
@@ -291,7 +299,7 @@ export function renderLanding(tariffs) {
             </ul>
           </div>
           <div class="lv3-assess-card">
-            <div class="lv3-assess-icon">⚠️</div>
+            <div class="lv3-assess-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 3L2 20h20L12 3z" stroke="#FFB347" stroke-width="1.4" stroke-linejoin="round"/><path d="M12 10v5" stroke="#FFB347" stroke-width="1.4" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="#FFB347"/></svg></div>
             <h4>Риски текучести и увольнения</h4>
             <ul>
               <li>Exit-интервью</li>
@@ -302,7 +310,7 @@ export function renderLanding(tariffs) {
             </ul>
           </div>
           <div class="lv3-assess-card">
-            <div class="lv3-assess-icon">📊</div>
+            <div class="lv3-assess-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="12" width="4" height="9" rx="1" fill="#1E5BFF" fill-opacity="0.3" stroke="#1E5BFF" stroke-width="1.2"/><rect x="10" y="7" width="4" height="14" rx="1" fill="#1E5BFF" fill-opacity="0.5" stroke="#1E5BFF" stroke-width="1.2"/><rect x="17" y="3" width="4" height="18" rx="1" fill="#00E5D4" fill-opacity="0.5" stroke="#00E5D4" stroke-width="1.2"/></svg></div>
             <h4>Оценка и развитие персонала</h4>
             <ul>
               <li>Индивидуальная оценка руководителя</li>
@@ -314,7 +322,7 @@ export function renderLanding(tariffs) {
             </ul>
           </div>
           <div class="lv3-assess-card">
-            <div class="lv3-assess-icon">🔍</div>
+            <div class="lv3-assess-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#00E5D4" stroke-width="1.4"/><path d="M16.5 16.5l4 4" stroke="#00E5D4" stroke-width="1.4" stroke-linecap="round"/><path d="M8 11h6M11 8v6" stroke="#00E5D4" stroke-width="1.2" stroke-linecap="round"/></svg></div>
             <h4>Поиск и подбор</h4>
             <ul>
               <li>Оценка кандидатов</li>
@@ -327,9 +335,9 @@ export function renderLanding(tariffs) {
           </div>
         </div>
         <div class="lv3-assess-stats">
-          <div class="lv3-astat"><b>50+</b><span>готовых профилей должностей</span></div>
-          <div class="lv3-astat"><b>100+</b><span>методик оценки</span></div>
-          <div class="lv3-astat"><b>∞</b><span>Конструктор компетенций</span></div>
+          <div class="lv3-astat"><b>120+</b><span>готовых профилей должностей</span></div>
+          <div class="lv3-astat"><b>1000+</b><span>методик оценки</span></div>
+          <div class="lv3-astat"><b>∞</b><span>Гибкий конструктор компетенций</span></div>
         </div>
       </section>
 
@@ -369,12 +377,20 @@ export function renderLanding(tariffs) {
           <p>Готовые отчёты для каждого сценария оценки</p>
         </div>
         <div class="lv3-reports-grid">
-          ${["Отчёт по оценке кандидата|Профиль компетенций, красные флаги, рекомендация по найму","Отчёт по оценке сотрудника|Сильные стороны, зоны развития, ИПР","Групповой отчёт|Сравнение команды по компетенциям и рискам","Пульс-опрос|Быстрый срез настроения и вовлечённости команды","Оценка 360|Обратная связь от коллег, руководителя и подчинённых","Оценка вовлечённости|eNPS, удовлетворённость, факторы удержания","Отчёт по рискам текучести|Зоны выгорания, факторы ухода, рекомендации","ИПР сотрудника|Индивидуальный план развития с целями и сроками"].map(r=>{
-            const [title,desc]=r.split('|');
+          ${[
+            {t:"Отчёт по оценке кандидата",d:"Профиль компетенций, красные флаги, рекомендация по найму",c:"#00E5D4"},
+            {t:"Отчёт по оценке сотрудника",d:"Сильные стороны, зоны развития, ИПР",c:"#1E5BFF"},
+            {t:"Групповой отчёт",d:"Сравнение команды по компетенциям и рискам",c:"#7B61FF"},
+            {t:"Оценка 360",d:"Обратная связь от коллег, руководителя и подчинённых",c:"#00E5D4"},
+            {t:"Оценка вовлечённости",d:"eNPS, удовлетворённость, факторы удержания",c:"#1E5BFF"},
+            {t:"Пульс-опрос",d:"Быстрый срез настроения и вовлечённости команды",c:"#00E5D4"},
+            {t:"Отчёт по рискам текучести",d:"Зоны выгорания, факторы ухода, рекомендации",c:"#FFB347"},
+            {t:"ИПР сотрудника",d:"Индивидуальный план развития с целями и сроками",c:"#1E5BFF"}
+          ].map(r=>{
             return `<div class="lv3-report-card">
               <div class="lv3-rc-top">
-                <div class="lv3-rc-icon">📄</div>
-                <div><h4>${title}</h4><p>${desc}</p></div>
+                <div class="lv3-rc-icon" style="color:${r.c};background:${r.c}18"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 3h8l4 4v10a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.3"/><path d="M13 3v5h4" stroke="currentColor" stroke-width="1.3"/><path d="M7 10h6M7 13h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></div>
+                <div><h4>${r.t}</h4><p>${r.d}</p></div>
               </div>
               <button class="lv3-btn-ghost lv3-btn-sm" data-route="login">Смотреть пример</button>
             </div>`;

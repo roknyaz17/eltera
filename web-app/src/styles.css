@@ -8008,3 +8008,80 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   .lv3-footer-cols { grid-template-columns: 1fr; }
   .lv3-live-card { padding: 14px; }
 }
+
+/* === HERO FEATURES LIST === */
+.lv3-hero-features {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+}
+.lv3-hero-features li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: #a0b4cc;
+  line-height: 1.4;
+}
+.lv3-hero-features li svg {
+  flex-shrink: 0;
+}
+
+/* === REPORT CARD ICON === */
+.lv3-rc-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 20px;
+}
+
+/* === ASSESS ICON === */
+.lv3-assess-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(0,229,212,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+/* === HERO BACKGROUND GRID === */
+.lv3-hero-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.lv3-hero-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(ellipse 60% 50% at 70% 40%, rgba(0,229,212,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 40% at 20% 60%, rgba(30,91,255,0.08) 0%, transparent 60%);
+}
+.lv3-hero-grid {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 0%, transparent 70%);
+}
+
+@media (max-width: 600px) {
+  .lv3-hero-features {
+    grid-template-columns: 1fr;
+  }
+}
