@@ -473,6 +473,208 @@ p { line-height: 1.6; }
   color: #B8C5DA;
 }
 
+/* ─── Landing v2 — Hero Entrance Animations ──────────────────────────────── */
+@keyframes heroFadeUp {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.heroEntrance {
+  opacity: 0;
+  animation: heroFadeUp .65s cubic-bezier(.22,.68,0,1.2) forwards;
+}
+
+/* Pulse dot */
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .3; }
+}
+.heroPulseDot {
+  color: var(--cyan);
+  font-size: 13px;
+  font-weight: 700;
+  animation: pulseDot 1.6s ease-in-out infinite;
+}
+
+/* Hero stats row */
+.heroStats {
+  display: flex;
+  gap: 24px;
+  margin: 18px 0 4px;
+  flex-wrap: wrap;
+}
+.heroStat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.heroStat b {
+  color: #fff;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.heroStat span {
+  color: var(--mutedDark);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Mini chart area */
+.heroMiniChart {
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0,229,212,.04);
+  border: 1px solid rgba(0,229,212,.12);
+}
+
+/* ─── Ticker ──────────────────────────────────────────────────────────────── */
+.heroTicker {
+  overflow: hidden;
+  border-block: 1px solid rgba(51,65,85,.4);
+  background: rgba(15,23,42,.28);
+  padding: 14px 0;
+  white-space: nowrap;
+}
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.heroTickerInner {
+  display: inline-flex;
+  gap: 0;
+  animation: ticker 22s linear infinite;
+}
+.heroTickerInner span {
+  display: inline-block;
+  padding: 0 32px;
+  color: #8899BB;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  border-right: 1px solid rgba(51,65,85,.5);
+}
+
+/* ─── For Whom Grid ───────────────────────────────────────────────────────── */
+.forWhomGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 14px;
+  margin-top: 8px;
+}
+.forWhomCard {
+  border-radius: 12px;
+  padding: 22px;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  transition: border-color .2s, box-shadow .2s;
+}
+.forWhomCard--active {
+  border-color: rgba(0,229,212,.45) !important;
+  box-shadow: 0 0 40px rgba(0,229,212,.08);
+}
+.forWhomIcon {
+  font-size: 28px;
+  line-height: 1;
+}
+.forWhomCard h3 {
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0;
+}
+.forWhomCard p {
+  color: #B8C5DA;
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 0;
+}
+.forWhomList {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  color: var(--cyan);
+  font-size: 13px;
+  font-weight: 600;
+  display: grid;
+  gap: 4px;
+}
+
+/* ─── Platform Stats ──────────────────────────────────────────────────────── */
+.platformStats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: 14px;
+  margin-top: 28px;
+  padding: 20px;
+  border: 1px solid var(--lineDark);
+  border-radius: 12px;
+  background: rgba(30,41,59,.36);
+}
+.platformStat {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.platformStat b {
+  color: var(--cyan);
+  font-size: 26px;
+  font-weight: 800;
+}
+.platformStat span {
+  color: #8899BB;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ─── AI Section ──────────────────────────────────────────────────────────── */
+.aiSection {
+  background: radial-gradient(ellipse at 60% 50%, rgba(30,91,255,.08), transparent 60%);
+}
+.aiSectionInner {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+  gap: 44px;
+  align-items: start;
+}
+.aiFeatures {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.aiFeature {
+  padding: 16px;
+  border: 1px solid var(--lineDark);
+  border-radius: 10px;
+  background: rgba(30,41,59,.42);
+  display: grid;
+  gap: 6px;
+}
+.aiFeatureIcon {
+  font-size: 22px;
+  line-height: 1;
+}
+.aiFeature b {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+.aiFeature p {
+  color: #8899BB;
+  font-size: 13px;
+  margin: 0;
+  line-height: 1.45;
+}
+
+/* ─── Hero v2 responsive ──────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .forWhomGrid { grid-template-columns: 1fr; }
+  .platformStats { grid-template-columns: repeat(2, 1fr); }
+  .aiSectionInner { grid-template-columns: 1fr; }
+  .aiFeatures { grid-template-columns: 1fr; }
+}
+
 .authPage {
   min-height: 100vh;
   display: grid;
@@ -4336,10 +4538,11 @@ small {
 }
 
 .elt-logo-img {
-  height: 32px;
+  height: 36px;
   width: auto;
   display: block;
-  max-width: 160px;
+  max-width: 180px;
+  object-fit: contain;
 }
 
 .elt-sidenav {

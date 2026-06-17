@@ -19,51 +19,133 @@ export function renderLanding(tariffs) {
   return `
     <div class="landing">
       <header class="landingHeader">
-        <a class="landingLogo" href="#/"><img src="/assets/eltera_logo_horizontal_on_dark.png" alt="Eltera Assessment Intelligence"></a>
+        <a class="landingLogo" href="#/"><img src="/assets/eltera_logo_horizontal_on_dark.png" alt="Eltera Assessment Intelligence" style="height:40px;width:auto;"></a>
         <nav class="landingNav"><a href="#how">Как работает</a><a href="#products">Продукты</a><a href="#reports">Отчеты</a><a href="#tariffs">Тарифы</a></nav>
         <div class="landingActions"><button class="ghostOnDark" data-route="login">Войти</button><button class="blueButton" data-route="login">Попробовать за 990 ₽</button></div>
       </header>
       <main>
-        <section class="hero">
+        <section class="hero hero--v2">
           <div class="heroCopy">
-            <div class="pill">AI assessment platform</div>
-            <h1>AI-платформа для оценки кандидатов и сотрудников</h1>
-            <p>Эльтера помогает быстрее принимать кадровые решения: готовые профили ролей, оценочные ссылки, HR-отчеты, красные флаги и рекомендации для интервью или развития.</p>
-            <div class="heroButtons"><button class="blueButton large" data-route="login">Попробовать за 990 ₽</button><button class="ghostOnDark large" data-demo-assessment>Пройти демо-оценку</button></div>
-            <span class="underCta">1 месяц доступа · 20 оценок · кандидаты и сотрудники в одном тарифе</span>
+            <div class="pill heroEntrance" style="animation-delay:.05s">✦ AI assessment platform · Россия</div>
+            <h1 class="heroEntrance" style="animation-delay:.12s">Самая простая оценка кандидатов и сотрудников</h1>
+            <p class="heroEntrance" style="animation-delay:.22s">Гибкая и понятная система оценки: компетенции, кейсы, 360, вовлечённость, пульс-опросы, Performance Review и готовые отчёты для управленческих решений.</p>
+            <div class="heroStats heroEntrance" style="animation-delay:.30s">
+              <div class="heroStat"><b>3 000+</b><span>профессий</span></div>
+              <div class="heroStat"><b>639</b><span>вопросов по компетенциям</span></div>
+              <div class="heroStat"><b>60+</b><span>должностей</span></div>
+            </div>
+            <div class="heroButtons heroEntrance" style="animation-delay:.38s">
+              <button class="blueButton large" data-route="login">Попробовать за 990 ₽</button>
+              <button class="ghostOnDark large" data-demo-assessment>Пройти демо-оценку</button>
+            </div>
+            <span class="underCta heroEntrance" style="animation-delay:.46s">Разберётесь за 5 минут · Первая оценка за 1 минуту · Без инструкций и долгого обучения</span>
           </div>
-          <div class="heroPanel">
+          <div class="heroPanel heroEntrance" style="animation-delay:.18s">
             <div class="panelGlow"></div>
-            <div class="heroCard glass">
-              <div class="cardLine"><span>Потенциал эффекта</span><b>AI-анализ</b></div>
-              ${metric("Снизить ошибки найма", "до 40%", 82)}
-              ${metric("Меньше ручной работы с опросами", "до x10", 91)}
-              ${metric("Сократить текучесть", "до 20%", 64)}
-              ${metric("Готовность к роли", "76%", 76)}
-              <div class="aiNote">Рекомендация: приглашать дальше, но проверить обработку возражений и дисциплину ведения воронки.</div>
+            <div class="heroCard glass" id="heroLiveCard">
+              <div class="cardLine">
+                <span id="heroCardLabel">Оценка кандидата · Live</span>
+                <b class="heroPulseDot">● AI-анализ</b>
+              </div>
+              <div id="heroMetrics">
+                ${metric("Коммуникация", "87%", 87)}
+                ${metric("Стрессоустойчивость", "72%", 72)}
+                ${metric("Ответственность", "91%", 91)}
+                ${metric("Обучаемость", "65%", 65)}
+              </div>
+              <div class="heroMiniChart" id="heroMiniChart">
+                <svg viewBox="0 0 200 80" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:80px;">
+                  <defs>
+                    <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#00E5D4" stop-opacity="0.35"/>
+                      <stop offset="100%" stop-color="#00E5D4" stop-opacity="0"/>
+                    </linearGradient>
+                  </defs>
+                  <path d="M0,60 C20,55 40,40 60,42 C80,44 100,30 120,28 C140,26 160,35 180,20 L200,18 L200,80 L0,80 Z" fill="url(#chartGrad)"/>
+                  <path d="M0,60 C20,55 40,40 60,42 C80,44 100,30 120,28 C140,26 160,35 180,20 L200,18" stroke="#00E5D4" stroke-width="2" fill="none" stroke-linecap="round"/>
+                  <circle cx="200" cy="18" r="4" fill="#00E5D4"/>
+                </svg>
+              </div>
+              <div class="aiNote" id="heroAiNote">AI: Кандидат показывает высокую ответственность и коммуникацию. Рекомендую пригласить на интервью.</div>
             </div>
           </div>
         </section>
-        <section class="trusted"><span>Для точечного подбора, офисных и IT-ролей</span><div>HRD · рекрутеры · руководители · собственники · кадровые агентства · команды продаж · back office · IT</div></section>
-        <section class="landingSection" id="products">
-          <div class="sectionIntro dark"><span>Продукты</span><h2>Оценка людей в одной системе</h2><p>Не делим кандидатов и сотрудников: все люди проходят оценку через понятный flow, а компания получает отчет для решения.</p></div>
-          <div class="productGrid">
-            ${product("Оценка кандидатов и сотрудников", "Готовые профили профессий, вопросы, кейсы, красные флаги и итоговая рекомендация.")}
-            ${product("Оценка 360", "Только TalentStudio: самооценка, руководитель, коллеги, подчиненные.")}
-            ${product("Пульс-опросы и вовлеченность", "Диагностика настроения, удержания, выгорания и рисков команд.")}
-            ${product("Performance review", "Оценка результативности, потенциала, развития и управленческих решений.")}
+
+        <section class="heroTicker">
+          <div class="heroTickerInner">
+            <span>Ритейл</span><span>IT</span><span>Банки</span><span>Производство</span><span>Логистика</span><span>Сервис</span><span>Контакт-центры</span><span>Девелопмент</span><span>Страхование</span><span>Фармацевтика</span><span>Агропром</span><span>Телеком</span>
+            <span>Ритейл</span><span>IT</span><span>Банки</span><span>Производство</span><span>Логистика</span><span>Сервис</span><span>Контакт-центры</span><span>Девелопмент</span><span>Страхование</span><span>Фармацевтика</span><span>Агропром</span><span>Телеком</span>
           </div>
         </section>
+
+        <section class="landingSection" id="for-whom">
+          <div class="sectionIntro dark"><span>Для кого</span><h2>Платформа для тех, кто принимает решения о людях</h2></div>
+          <div class="forWhomGrid">
+            <div class="forWhomCard glass forWhomCard--active">
+              <div class="forWhomIcon">👔</div>
+              <h3>Собственники бизнеса</h3>
+              <p>Видите реальное состояние команды, принимаете решения о ротации, удержании и развитии на основе данных — не ощущений.</p>
+              <ul class="forWhomList"><li>Оценить сотрудников</li><li>Снизить текучесть</li><li>Увидеть риски в команде</li></ul>
+            </div>
+            <div class="forWhomCard glass">
+              <div class="forWhomIcon">📊</div>
+              <h3>HR-директора и HR-отделы</h3>
+              <p>Автоматизируете оценку, получаете готовые отчёты, экономите время на ручной работе и принимаете обоснованные кадровые решения.</p>
+              <ul class="forWhomList"><li>Автоматизировать оценку</li><li>Получать PDF-отчёты</li><li>Сравнивать кандидатов</li></ul>
+            </div>
+            <div class="forWhomCard glass">
+              <div class="forWhomIcon">🎯</div>
+              <h3>Руководители подразделений</h3>
+              <p>Понимаете потенциал каждого сотрудника, видите кто готов к росту, а кто в зоне риска. Строите команду осознанно.</p>
+              <ul class="forWhomList"><li>Оценить потенциал</li><li>Построить ИПР</li><li>Выявить лидеров</li></ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="landingSection" id="products">
+          <div class="sectionIntro dark"><span>Продукты</span><h2>Оценка людей в одной системе</h2><p>Не делим кандидатов и сотрудников: все люди проходят оценку через понятный flow, а компания получает отчёт для решения.</p></div>
+          <div class="productGrid">
+            ${product("Оценка кандидатов и сотрудников", "Готовые профили профессий, вопросы, кейсы, красные флаги и итоговая рекомендация.")}
+            ${product("Оценка 360", "Только TalentStudio: самооценка, руководитель, коллеги, подчинённые.")}
+            ${product("Пульс-опросы и вовлечённость", "Диагностика настроения, удержания, выгорания и рисков команд.")}
+            ${product("Performance Review", "Оценка результативности, потенциала, развития и управленческих решений.")}
+          </div>
+          <div class="platformStats">
+            <div class="platformStat"><b>3 000+</b><span>профессий в базе</span></div>
+            <div class="platformStat"><b>639</b><span>вопросов на основе методик ЕС</span></div>
+            <div class="platformStat"><b>60+</b><span>готовых должностей</span></div>
+            <div class="platformStat"><b>100+</b><span>методик оценки</span></div>
+          </div>
+        </section>
+
+        <section class="landingSection aiSection" id="ai">
+          <div class="aiSectionInner">
+            <div class="sectionIntro dark"><span>AI-оценка</span><h2>AI анализирует — вы принимаете решение</h2><p>AI анализирует ответы, компетенции, кейсы и поведенческие маркеры, формирует понятный отчёт: сильные стороны, зоны риска, красные флаги, рекомендацию и ИПР.</p><p style="color:#8899BB;font-size:14px;margin-top:8px;">Важно: AI помогает структурировать оценку и подсветить риски, но финальное решение остаётся за человеком.</p></div>
+            <div class="aiFeatures">
+              <div class="aiFeature"><span class="aiFeatureIcon">🎯</span><b>Профиль компетенций</b><p>Визуальный radar с процентами по каждой компетенции</p></div>
+              <div class="aiFeature"><span class="aiFeatureIcon">🚩</span><b>Красные флаги и риски</b><p>AI выделяет тревожные сигналы и зоны внимания</p></div>
+              <div class="aiFeature"><span class="aiFeatureIcon">✅</span><b>Рекомендация по кандидату</b><p>Приглашать / наблюдать / не рекомендовать с обоснованием</p></div>
+              <div class="aiFeature"><span class="aiFeatureIcon">📈</span><b>ИПР — план развития</b><p>Индивидуальный план с конкретными шагами для роста</p></div>
+            </div>
+          </div>
+        </section>
+
         <section class="landingSection twoCols" id="how">
-          <div class="sectionIntro dark"><span>Как работает</span><h2>От ссылки до управленческого решения</h2><p>HR выбирает профиль, отправляет ссылку, кандидат или сотрудник проходит оценку, отчет появляется в кабинете и скачивается в PDF.</p></div>
-          <div class="stepsGlass">${step("01", "Выбрать профиль", "Офисные, IT, руководители, массовый и точечный подбор.")}${step("02", "Отправить ссылку", "Оценка открывается без регистрации, внутренний отчет скрыт от участника.")}${step("03", "Получить отчет", "HR видит проценты, компетенции, риски, ответы, историю и PDF.")}</div>
+          <div class="sectionIntro dark"><span>Как работает</span><h2>От ссылки до управленческого решения</h2><p>HR выбирает профиль, отправляет ссылку, кандидат или сотрудник проходит оценку, отчёт появляется в кабинете и скачивается в PDF.</p></div>
+          <div class="stepsGlass">${step("01", "Выбрать профиль", "3 000+ профессий: офисные, IT, руководители, массовый и точечный подбор.")}${step("02", "Отправить ссылку", "Оценка открывается без регистрации. Внутренний отчёт скрыт от участника.")}${step("03", "Получить отчёт", "HR видит проценты, компетенции, риски, ответы, историю и PDF.")}</div>
         </section>
+
         <section class="landingSection" id="reports">
-          <div class="reportPreview glass"><div><span class="miniLabel">HR-отчет</span><h2>Понятно для HRD, руководителя и собственника</h2><p>Отчет показывает итоговое решение, профиль компетенций, красные флаги, сильные стороны, риски и рекомендации для следующего интервью.</p></div><div class="reportMini"><strong>76%</strong><span>приглашать дальше</span><div class="miniBars"><i style="width:86%"></i><i style="width:72%"></i><i style="width:58%"></i></div></div></div>
+          <div class="reportPreview glass"><div><span class="miniLabel">HR-отчёт</span><h2>Понятно для HRD, руководителя и собственника</h2><p>Отчёт показывает итоговое решение, профиль компетенций, красные флаги, сильные стороны, риски и рекомендации для следующего интервью.</p></div><div class="reportMini"><strong>76%</strong><span>приглашать дальше</span><div class="miniBars"><i style="width:86%"></i><i style="width:72%"></i><i style="width:58%"></i></div></div></div>
         </section>
-        <section class="landingSection" id="tariffs"><div class="sectionIntro dark"><span>Тарифы</span><h2>AI-рекомендации, отчеты и аналитика по тарифам</h2></div><div class="tariffGrid landingTariffs">${tariffs.map(renderTariffCard).join("")}</div></section>
+
+        <section class="landingSection" id="tariffs"><div class="sectionIntro dark"><span>Тарифы</span><h2>AI-рекомендации, отчёты и аналитика по тарифам</h2></div><div class="tariffGrid landingTariffs">${tariffs.map(renderTariffCard).join("")}</div></section>
       </main>
-      <footer class="landingFooter"><img src="/assets/eltera_logo_horizontal_on_dark.png" alt="Eltera"><div><a href="#/login">Войти</a><a href="#tariffs">Тарифы</a><a href="#reports">Отчеты</a><a href="#/app/referrals">Реферальная программа</a></div></footer>
+      <footer class="landingFooter">
+        <img src="/assets/eltera_logo_horizontal_on_dark.png" alt="Eltera" style="height:36px;width:auto;">
+        <div><a href="#/login">Войти</a><a href="#tariffs">Тарифы</a><a href="#reports">Отчёты</a><a href="#/app/referrals">Реферальная программа</a></div>
+        <span style="color:#4A5568;font-size:13px;">© 2026 Eltera. Все права защищены.</span>
+      </footer>
     </div>
   `;
 }

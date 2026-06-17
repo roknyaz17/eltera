@@ -35,6 +35,7 @@ export function initAuthController({ getState, setState, render, saveState, setH
       setState(s => ({ ...s, authenticated: true }));
       saveState();
       setHash("#/app/dashboard");
+      render();
       return;
     }
 
@@ -58,6 +59,7 @@ export function initAuthController({ getState, setState, render, saveState, setH
       }));
       saveState();
       setHash("#/app/dashboard");
+      render();
       return;
     }
   });

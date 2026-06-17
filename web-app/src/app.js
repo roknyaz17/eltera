@@ -680,6 +680,7 @@ function render() {
   if (route.route === "landing") {
     document.body.className = "landingBody";
     app.innerHTML = renderLanding(tariffs);
+    initHeroLiveCard();
     return;
   }
 
@@ -1838,3 +1839,106 @@ initAiController({ getState, setState, saveState });
 
 window.addEventListener("hashchange", render);
 render();
+
+// ─── Hero Live Card Animation ─────────────────────────────────────────────────
+function initHeroLiveCard() {
+  const scenarios = [
+    {
+      label: "Оценка кандидата · Live",
+      metrics: [
+        { title: "Коммуникация", value: "87%", width: 87 },
+        { title: "Стрессоустойчивость", value: "72%", width: 72 },
+        { title: "Ответственность", value: "91%", width: 91 },
+        { title: "Обучаемость", value: "65%", width: 65 }
+      ],
+      note: "AI: Высокая ответственность и коммуникация. Рекомендую пригласить на интервью."
+    },
+    {
+      label: "Оценка сотрудника · Live",
+      metrics: [
+        { title: "Лидерство", value: "78%", width: 78 },
+        { title: "Инициативность", value: "84%", width: 84 },
+        { title: "Командная работа", value: "69%", width: 69 },
+        { title: "Результативность", value: "88%", width: 88 }
+      ],
+      note: "AI: Сотрудник показывает высокую результативность. Готов к повышению."
+    },
+    {
+      label: "Пульс-опрос команды · Live",
+      metrics: [
+        { title: "Вовлечённость", value: "73%", width: 73 },
+        { title: "Удовлетворённость", value: "61%", width: 61 },
+        { title: "Риск выгорания", value: "38%", width: 38 },
+        { title: "Лояльность", value: "82%", width: 82 }
+      ],
+      note: "AI: Риск выгорания в норме. Рекомендую провести 1-on-1 с 2 сотрудниками."
+    },
+    {
+      label: "Performance Review · Live",
+      metrics: [
+        { title: "Достижение целей", value: "92%", width: 92 },
+        { title: "Потенциал роста", value: "76%", width: 76 },
+        { title: "Управленческий стиль", value: "68%", width: 68 },
+        { title: "Соответствие роли", value: "85%", width: 85 }
+      ],
+      note: "AI: Высокий потенциал. Включить в кадровый резерв на позицию руководителя."
+    }
+  ];
+
+  let idx = 0;
+  let timer = null;
+
+  function updateCard() {
+    const card = document.getElementById('heroLiveCard');
+    if (!card) { clearInterval(timer); return; }
+
+    const s = scenarios[idx % scenarios.length];
+    idx++;
+
+    const labelEl = document.getElementById('heroCardLabel');
+    const metricsEl = document.getElementById('heroMetrics');
+    const noteEl = document.getElementById('heroAiNote');
+
+    if (!labelEl || !metricsEl || !noteEl) return;
+
+    // Fade out
+    card.style.transition = 'opacity .3s';
+    card.style.opacity = '0.4';
+
+    setTimeout(() => {
+      labelEl.textContent = s.label;
+      metricsEl.innerHTML = s.metrics.map(m =>
+        `<div class="metric"><div><span>${m.title}</span><b>${m.value}</b></div><i><em style="width:0%"></em></i></div>`
+      ).join('');
+      noteEl.textContent = 'AI: ' + s.note.replace('AI: ', '');
+
+      card.style.opacity = '1';
+
+      // Animate bars
+      setTimeout(() => {
+        const bars = metricsEl.querySelectorAll('.metric em');
+        bars.forEach((bar, i) => {
+          setTimeout(() => {
+            bar.style.transition = 'width .7s cubic-bezier(.22,.68,0,1.1)';
+            bar.style.width = s.metrics[i].width + '%';
+          }, i * 80);
+        });
+      }, 50);
+    }, 300);
+  }
+
+  // Initial bar animation
+  setTimeout(() => {
+    const bars = document.querySelectorAll('#heroMetrics .metric em');
+    const widths = [87, 72, 91, 65];
+    bars.forEach((bar, i) => {
+      setTimeout(() => {
+        bar.style.transition = 'width .7s cubic-bezier(.22,.68,0,1.1)';
+        bar.style.width = widths[i] + '%';
+      }, 600 + i * 100);
+    });
+  }, 100);
+
+  // Cycle every 4 seconds
+  timer = setInterval(updateCard, 4000);
+}
