@@ -7615,7 +7615,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   backdrop-filter: blur(16px);
   border-bottom: 1px solid rgba(255,255,255,0.06);
 }
-.lv3-logo img { display: block; height: 36px; width: auto; }
+.lv3-logo img { display: block; height: 52px; width: auto; }
 .lv3-navlinks { display: flex; align-items: center; gap: 4px; flex: 1; }
 .lv3-navlinks > a { color: #8899BB; text-decoration: none; font-size: 14px; font-weight: 500; padding: 6px 12px; border-radius: 8px; transition: color .2s, background .2s; }
 .lv3-navlinks > a:hover { color: #E6F2FF; background: rgba(255,255,255,0.05); }
@@ -8001,7 +8001,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 
 @media (max-width: 480px) {
   .lv3-nav { padding: 0 16px; height: 56px; }
-  .lv3-logo img { height: 36px !important; }
+  .lv3-logo img { height: 44px !important; }
   .lv3-hero { padding: 72px 16px 40px; }
   .lv3-hero-left h1 { font-size: 24px; }
   .lv3-section { padding: 40px 16px; }
