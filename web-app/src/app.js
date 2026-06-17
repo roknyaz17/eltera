@@ -681,6 +681,7 @@ function render() {
     document.body.className = "landingBody";
     app.innerHTML = renderLanding(tariffs);
     initHeroLiveCard();
+    initLv3Landing();
     return;
   }
 
@@ -1941,4 +1942,161 @@ function initHeroLiveCard() {
 
   // Cycle every 4 seconds
   timer = setInterval(updateCard, 4000);
+}
+
+function initLv3Landing() {
+  // TABS
+  const tabBtns = document.querySelectorAll('.lv3-tab-btn');
+  const tabPanels = document.querySelectorAll('.lv3-tab-panel');
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = btn.dataset.lv3Tab;
+      tabBtns.forEach(b => b.classList.remove('active'));
+      tabPanels.forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      const panel = document.querySelector(`.lv3-tab-panel[data-lv3-panel="${idx}"]`);
+      if (panel) panel.classList.add('active');
+    });
+  });
+
+  // ACCORDION
+  const accItems = document.querySelectorAll('.lv3-acc-item');
+  accItems.forEach(item => {
+    const head = item.querySelector('.lv3-acc-head');
+    if (head) {
+      head.addEventListener('click', () => {
+        const isActive = item.classList.contains('active');
+        accItems.forEach(i => i.classList.remove('active'));
+        if (!isActive) item.classList.add('active');
+      });
+    }
+  });
+
+  // BILLING TOGGLE
+  const billingBtns = document.querySelectorAll('.lv3-billing-btn');
+  billingBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      billingBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  // LIVE CARD V3
+  const scenarios = [
+    {
+      label: "Оценка кандидата · Live",
+      metrics: [
+        { name: "Коммуникация", val: 87, grad: "linear-gradient(90deg,#1E5BFF,#00E5D4)" },
+        { name: "Стрессоустойчивость", val: 72, grad: "linear-gradient(90deg,#7B61FF,#1E5BFF)" },
+        { name: "Ответственность", val: 91, grad: "linear-gradient(90deg,#00E5D4,#1E5BFF)" },
+        { name: "Обучаемость", val: 65, grad: "linear-gradient(90deg,#1E5BFF,#7B61FF)" }
+      ],
+      note: "Высокая ответственность и коммуникация. Рекомендую пригласить на интервью."
+    },
+    {
+      label: "Оценка сотрудника · Live",
+      metrics: [
+        { name: "Лидерство", val: 78, grad: "linear-gradient(90deg,#1E5BFF,#00E5D4)" },
+        { name: "Инициативность", val: 84, grad: "linear-gradient(90deg,#00E5D4,#7B61FF)" },
+        { name: "Командная работа", val: 69, grad: "linear-gradient(90deg,#7B61FF,#1E5BFF)" },
+        { name: "Результативность", val: 88, grad: "linear-gradient(90deg,#1E5BFF,#00E5D4)" }
+      ],
+      note: "Сотрудник показывает высокую результативность. Готов к повышению."
+    },
+    {
+      label: "Пульс-опрос команды · Live",
+      metrics: [
+        { name: "Вовлечённость", val: 73, grad: "linear-gradient(90deg,#00E5D4,#1E5BFF)" },
+        { name: "Удовлетворённость", val: 61, grad: "linear-gradient(90deg,#1E5BFF,#7B61FF)" },
+        { name: "Риск выгорания", val: 38, grad: "linear-gradient(90deg,#F59E0B,#F87171)" },
+        { name: "Лояльность", val: 82, grad: "linear-gradient(90deg,#1E5BFF,#00E5D4)" }
+      ],
+      note: "Риск выгорания в норме. Рекомендую провести 1-on-1 с 2 сотрудниками."
+    },
+    {
+      label: "Performance Review · Live",
+      metrics: [
+        { name: "Достижение целей", val: 92, grad: "linear-gradient(90deg,#00E5D4,#1E5BFF)" },
+        { name: "Потенциал роста", val: 76, grad: "linear-gradient(90deg,#1E5BFF,#7B61FF)" },
+        { name: "Управленческий стиль", val: 68, grad: "linear-gradient(90deg,#7B61FF,#1E5BFF)" },
+        { name: "Соответствие роли", val: 85, grad: "linear-gradient(90deg,#1E5BFF,#00E5D4)" }
+      ],
+      note: "Высокий потенциал. Включить в кадровый резерв на позицию руководителя."
+    }
+  ];
+
+  let lv3Idx = 0;
+  let lv3Timer = null;
+
+  function setLv3Metrics(s) {
+    const m1v = document.getElementById('lv3m1v');
+    const m2v = document.getElementById('lv3m2v');
+    const m3v = document.getElementById('lv3m3v');
+    const m4v = document.getElementById('lv3m4v');
+    const m1b = document.getElementById('lv3m1b');
+    const m2b = document.getElementById('lv3m2b');
+    const m3b = document.getElementById('lv3m3b');
+    const m4b = document.getElementById('lv3m4b');
+    const labelEl = document.getElementById('lv3CardLabel');
+    const noteEl = document.getElementById('lv3AiNoteText');
+
+    if (!m1v) return;
+
+    if (labelEl) labelEl.textContent = s.label;
+    if (noteEl) noteEl.textContent = 'AI: ' + s.note;
+
+    // Update metric names
+    const metricSpans = document.querySelectorAll('#lv3Metrics .lv3-metric-top span');
+    metricSpans.forEach((span, i) => { if (s.metrics[i]) span.textContent = s.metrics[i].name; });
+
+    // Animate values and bars
+    [[m1v, m1b, 0], [m2v, m2b, 1], [m3v, m3b, 2], [m4v, m4b, 3]].forEach(([vEl, bEl, i]) => {
+      if (!vEl || !s.metrics[i]) return;
+      vEl.textContent = s.metrics[i].val + '%';
+      if (bEl) {
+        bEl.style.transition = 'none';
+        bEl.style.width = '0%';
+        bEl.style.background = s.metrics[i].grad;
+        setTimeout(() => {
+          bEl.style.transition = 'width .8s cubic-bezier(.22,.68,0,1.1)';
+          bEl.style.width = s.metrics[i].val + '%';
+        }, 50 + i * 80);
+      }
+    });
+  }
+
+  function updateLv3Card() {
+    const card = document.getElementById('lv3LiveCard');
+    if (!card) { clearInterval(lv3Timer); return; }
+    const s = scenarios[lv3Idx % scenarios.length];
+    lv3Idx++;
+    card.style.transition = 'opacity .3s';
+    card.style.opacity = '0.4';
+    setTimeout(() => {
+      setLv3Metrics(s);
+      card.style.opacity = '1';
+    }, 300);
+  }
+
+  // Initial animation
+  setTimeout(() => {
+    setLv3Metrics(scenarios[0]);
+    lv3Idx = 1;
+  }, 400);
+
+  lv3Timer = setInterval(updateLv3Card, 4000);
+
+  // NAV scroll effect
+  const nav = document.getElementById('lv3Nav');
+  if (nav) {
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 40) {
+        nav.style.background = 'rgba(10,15,30,0.98)';
+        nav.style.boxShadow = '0 4px 24px rgba(0,0,0,0.3)';
+      } else {
+        nav.style.background = 'rgba(10,15,30,0.92)';
+        nav.style.boxShadow = 'none';
+      }
+    }, { passive: true });
+  }
 }

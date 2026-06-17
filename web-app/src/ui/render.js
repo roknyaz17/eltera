@@ -17,134 +17,446 @@ import { renderPremiumDashboard } from "./dashboard-premium.js";
 
 export function renderLanding(tariffs) {
   return `
-    <div class="landing">
-      <header class="landingHeader">
-        <a class="landingLogo" href="#/"><img src="/assets/eltera_logo_horizontal_on_dark.png" alt="Eltera Assessment Intelligence" style="height:40px;width:auto;"></a>
-        <nav class="landingNav"><a href="#how">Как работает</a><a href="#products">Продукты</a><a href="#reports">Отчеты</a><a href="#tariffs">Тарифы</a></nav>
-        <div class="landingActions"><button class="ghostOnDark" data-route="login">Войти</button><button class="blueButton" data-route="login">Попробовать за 990 ₽</button></div>
-      </header>
-      <main>
-        <section class="hero hero--v2">
-          <div class="heroCopy">
-            <div class="pill heroEntrance" style="animation-delay:.05s">✦ AI assessment platform · Россия</div>
-            <h1 class="heroEntrance" style="animation-delay:.12s">Самая простая оценка кандидатов и сотрудников</h1>
-            <p class="heroEntrance" style="animation-delay:.22s">Гибкая и понятная система оценки: компетенции, кейсы, 360, вовлечённость, пульс-опросы, Performance Review и готовые отчёты для управленческих решений.</p>
-            <div class="heroStats heroEntrance" style="animation-delay:.30s">
-              <div class="heroStat"><b>3 000+</b><span>профессий</span></div>
-              <div class="heroStat"><b>639</b><span>вопросов по компетенциям</span></div>
-              <div class="heroStat"><b>60+</b><span>должностей</span></div>
+    <div class="landing landing--v3">
+      <!-- NAVBAR -->
+      <header class="lv3-nav" id="lv3Nav">
+        <a class="lv3-logo" href="#/">
+          <img src="/public/assets/eltera_logo_horizontal_on_dark.png?v=10" alt="Eltera" style="height:44px;width:auto;object-fit:contain;display:block;">
+        </a>
+        <nav class="lv3-navlinks">
+          <a href="#lv3-how">Как работает</a>
+          <div class="lv3-dropdown">
+            <button class="lv3-dropbtn">Продукты <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></button>
+            <div class="lv3-dropmenu">
+              <a href="#lv3-assess">Оценка кандидатов и сотрудников</a>
+              <a href="#lv3-360">Оценка 360</a>
+              <a href="#lv3-engage">Оценка вовлечённости</a>
+              <a href="#lv3-pulse">Пульс-опросы</a>
+              <a href="#lv3-perf">Performance review</a>
             </div>
-            <div class="heroButtons heroEntrance" style="animation-delay:.38s">
-              <button class="blueButton large" data-route="login">Попробовать за 990 ₽</button>
-              <button class="ghostOnDark large" data-demo-assessment>Пройти демо-оценку</button>
-            </div>
-            <span class="underCta heroEntrance" style="animation-delay:.46s">Разберётесь за 5 минут · Первая оценка за 1 минуту · Без инструкций и долгого обучения</span>
           </div>
-          <div class="heroPanel heroEntrance" style="animation-delay:.18s">
-            <div class="panelGlow"></div>
-            <div class="heroCard glass" id="heroLiveCard">
-              <div class="cardLine">
-                <span id="heroCardLabel">Оценка кандидата · Live</span>
-                <b class="heroPulseDot">● AI-анализ</b>
+          <a href="#lv3-cases">Кейсы</a>
+          <a href="#lv3-reports">Отчёты</a>
+          <a href="#lv3-pricing">Тарифы</a>
+          <a href="#lv3-implement">Внедрение</a>
+        </nav>
+        <div class="lv3-navactions">
+          <button class="lv3-btn-ghost" data-route="login">Войти</button>
+          <button class="lv3-btn-demo" data-demo-assessment>Пройти демо-оценку</button>
+          <button class="lv3-btn-primary" data-route="login">Попробовать за 990 ₽</button>
+        </div>
+      </header>
+
+      <!-- HERO -->
+      <section class="lv3-hero" id="lv3-hero">
+        <div class="lv3-hero-bg">
+          <div class="lv3-hero-orb lv3-hero-orb--1"></div>
+          <div class="lv3-hero-orb lv3-hero-orb--2"></div>
+          <div class="lv3-hero-grid"></div>
+        </div>
+        <div class="lv3-hero-content">
+          <div class="lv3-hero-left">
+            <div class="lv3-pill lv3-fade" style="--d:.05s">✦ Одна из первых AI-платформ оценки персонала в России</div>
+            <h1 class="lv3-fade" style="--d:.12s">Самая простая <span class="lv3-grad">оценка кандидатов и сотрудников</span></h1>
+            <p class="lv3-fade" style="--d:.22s">Гибкая и понятная система оценки: компетенции, кейсы, 360, вовлечённость, пульс-опросы, Performance Review и готовые отчёты для управленческих решений.</p>
+            <div class="lv3-hero-btns lv3-fade" style="--d:.32s">
+              <button class="lv3-btn-primary lv3-btn-lg" data-route="login">Попробовать за 990 ₽ →</button>
+              <button class="lv3-btn-ghost lv3-btn-lg" data-demo-assessment>Пройти демо-оценку</button>
+            </div>
+            <div class="lv3-hero-meta lv3-fade" style="--d:.40s">1 месяц доступа · 20 оценок · Кандидаты и сотрудники в одном тарифе</div>
+          </div>
+          <div class="lv3-hero-right lv3-fade" style="--d:.18s">
+            <div class="lv3-live-card" id="lv3LiveCard">
+              <div class="lv3-live-header">
+                <span id="lv3CardLabel">AI-анализ · в реальном времени</span>
+                <span class="lv3-live-dot"><span class="lv3-pulse"></span>Live</span>
               </div>
-              <div id="heroMetrics">
-                ${metric("Коммуникация", "87%", 87)}
-                ${metric("Стрессоустойчивость", "72%", 72)}
-                ${metric("Ответственность", "91%", 91)}
-                ${metric("Обучаемость", "65%", 65)}
+              <div class="lv3-metrics" id="lv3Metrics">
+                <div class="lv3-metric">
+                  <div class="lv3-metric-top"><span>Коммуникация</span><b id="lv3m1v">87%</b></div>
+                  <div class="lv3-bar"><div class="lv3-bar-fill" id="lv3m1b" style="width:87%;background:linear-gradient(90deg,#1E5BFF,#00E5D4)"></div></div>
+                </div>
+                <div class="lv3-metric">
+                  <div class="lv3-metric-top"><span>Стрессоустойчивость</span><b id="lv3m2v">72%</b></div>
+                  <div class="lv3-bar"><div class="lv3-bar-fill" id="lv3m2b" style="width:72%;background:linear-gradient(90deg,#7B61FF,#1E5BFF)"></div></div>
+                </div>
+                <div class="lv3-metric">
+                  <div class="lv3-metric-top"><span>Ответственность</span><b id="lv3m3v">91%</b></div>
+                  <div class="lv3-bar"><div class="lv3-bar-fill" id="lv3m3b" style="width:91%;background:linear-gradient(90deg,#00E5D4,#1E5BFF)"></div></div>
+                </div>
+                <div class="lv3-metric">
+                  <div class="lv3-metric-top"><span>Обучаемость</span><b id="lv3m4v">65%</b></div>
+                  <div class="lv3-bar"><div class="lv3-bar-fill" id="lv3m4b" style="width:65%;background:linear-gradient(90deg,#1E5BFF,#7B61FF)"></div></div>
+                </div>
               </div>
-              <div class="heroMiniChart" id="heroMiniChart">
-                <svg viewBox="0 0 200 80" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:80px;">
+              <div class="lv3-chart-wrap">
+                <svg viewBox="0 0 260 70" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:70px;">
                   <defs>
-                    <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stop-color="#00E5D4" stop-opacity="0.35"/>
+                    <linearGradient id="lv3cg" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#00E5D4" stop-opacity="0.3"/>
                       <stop offset="100%" stop-color="#00E5D4" stop-opacity="0"/>
                     </linearGradient>
                   </defs>
-                  <path d="M0,60 C20,55 40,40 60,42 C80,44 100,30 120,28 C140,26 160,35 180,20 L200,18 L200,80 L0,80 Z" fill="url(#chartGrad)"/>
-                  <path d="M0,60 C20,55 40,40 60,42 C80,44 100,30 120,28 C140,26 160,35 180,20 L200,18" stroke="#00E5D4" stroke-width="2" fill="none" stroke-linecap="round"/>
-                  <circle cx="200" cy="18" r="4" fill="#00E5D4"/>
+                  <path d="M0,55 C30,50 55,38 80,35 C105,32 130,22 155,18 C180,14 210,25 235,15 L260,10 L260,70 L0,70 Z" fill="url(#lv3cg)"/>
+                  <path d="M0,55 C30,50 55,38 80,35 C105,32 130,22 155,18 C180,14 210,25 235,15 L260,10" stroke="#00E5D4" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                  <circle cx="260" cy="10" r="3.5" fill="#00E5D4"/>
+                  <circle cx="260" cy="10" r="7" fill="#00E5D4" fill-opacity="0.2" class="lv3-chart-pulse"/>
                 </svg>
               </div>
-              <div class="aiNote" id="heroAiNote">AI: Кандидат показывает высокую ответственность и коммуникацию. Рекомендую пригласить на интервью.</div>
+              <div class="lv3-ai-note" id="lv3AiNote">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#00E5D4" stroke-width="1.2"/><path d="M7 4v3.5l2 1.5" stroke="#00E5D4" stroke-width="1.2" stroke-linecap="round"/></svg>
+                <span id="lv3AiNoteText">AI: Высокая ответственность и коммуникация. Рекомендую пригласить на интервью.</span>
+              </div>
+            </div>
+            <div class="lv3-hero-stats">
+              <div class="lv3-hstat"><b>↓ до 40%</b><span>ошибок найма</span></div>
+              <div class="lv3-hstat"><b>+85%</b><span>точнее оценка</span></div>
+              <div class="lv3-hstat"><b>3 000+</b><span>профессий</span></div>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section class="heroTicker">
-          <div class="heroTickerInner">
-            <span>Ритейл</span><span>IT</span><span>Банки</span><span>Производство</span><span>Логистика</span><span>Сервис</span><span>Контакт-центры</span><span>Девелопмент</span><span>Страхование</span><span>Фармацевтика</span><span>Агропром</span><span>Телеком</span>
-            <span>Ритейл</span><span>IT</span><span>Банки</span><span>Производство</span><span>Логистика</span><span>Сервис</span><span>Контакт-центры</span><span>Девелопмент</span><span>Страхование</span><span>Фармацевтика</span><span>Агропром</span><span>Телеком</span>
+      <!-- TICKER -->
+      <div class="lv3-ticker">
+        <div class="lv3-ticker-label">ДЛЯ КОМАНД ИЗ СФЕР</div>
+        <div class="lv3-ticker-track">
+          <div class="lv3-ticker-inner">
+            ${["Ритейл","IT","Банки","Производство","Логистика","Сервис","Контакт-центры","Девелопмент","Страхование","Фармацевтика","Агропром","Телеком"].map(s=>`<span>${s}</span>`).join("")}
+            ${["Ритейл","IT","Банки","Производство","Логистика","Сервис","Контакт-центры","Девелопмент","Страхование","Фармацевтика","Агропром","Телеком"].map(s=>`<span>${s}</span>`).join("")}
           </div>
-        </section>
+        </div>
+      </div>
 
-        <section class="landingSection" id="for-whom">
-          <div class="sectionIntro dark"><span>Для кого</span><h2>Платформа для тех, кто принимает решения о людях</h2></div>
-          <div class="forWhomGrid">
-            <div class="forWhomCard glass forWhomCard--active">
-              <div class="forWhomIcon">👔</div>
-              <h3>Собственники бизнеса</h3>
-              <p>Видите реальное состояние команды, принимаете решения о ротации, удержании и развитии на основе данных — не ощущений.</p>
-              <ul class="forWhomList"><li>Оценить сотрудников</li><li>Снизить текучесть</li><li>Увидеть риски в команде</li></ul>
+      <!-- FOR WHOM -->
+      <section class="lv3-section" id="lv3-for-whom">
+        <div class="lv3-section-head">
+          <h2>Для кого платформа</h2>
+          <p>Eltera помогает разным ролям принимать решения на основе данных</p>
+        </div>
+        <div class="lv3-tabs">
+          <div class="lv3-tab-btns">
+            <button class="lv3-tab-btn active" data-lv3-tab="0">Собственники бизнеса</button>
+            <button class="lv3-tab-btn" data-lv3-tab="1">HR-директора и HR-отделы</button>
+            <button class="lv3-tab-btn" data-lv3-tab="2">Руководители подразделений</button>
+          </div>
+          <div class="lv3-tab-panels">
+            <div class="lv3-tab-panel active" data-lv3-panel="0">
+              <div class="lv3-tab-content">
+                <div class="lv3-tab-text">
+                  <h3>Собственники бизнеса</h3>
+                  <p>Для собственников, которые хотят понимать реальное состояние команды, оценивать сотрудников, принимать решения о развитии, ротации, удержании или расставании с людьми.</p>
+                  <div class="lv3-tasks-label">ЗАДАЧИ</div>
+                  <ul class="lv3-tasks">
+                    <li>Оценить сотрудников</li>
+                    <li>Провести ротацию кадров</li>
+                    <li>Снизить текучесть</li>
+                    <li>Увидеть риски в команде</li>
+                    <li>Принимать решения на данных</li>
+                  </ul>
+                </div>
+                <div class="lv3-tab-visual">
+                  <div class="lv3-mini-report">
+                    <div class="lv3-mr-head"><span class="lv3-mr-badge">Отчёт собственника</span></div>
+                    <div class="lv3-mr-row"><span>Команда в норме</span><b class="lv3-green">12 чел.</b></div>
+                    <div class="lv3-mr-row"><span>Зона риска</span><b class="lv3-amber">3 чел.</b></div>
+                    <div class="lv3-mr-row"><span>Текучесть (прогноз)</span><b class="lv3-red">↓ 18%</b></div>
+                    <div class="lv3-mr-row"><span>Средний fit к роли</span><b class="lv3-teal">79%</b></div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="forWhomCard glass">
-              <div class="forWhomIcon">📊</div>
-              <h3>HR-директора и HR-отделы</h3>
-              <p>Автоматизируете оценку, получаете готовые отчёты, экономите время на ручной работе и принимаете обоснованные кадровые решения.</p>
-              <ul class="forWhomList"><li>Автоматизировать оценку</li><li>Получать PDF-отчёты</li><li>Сравнивать кандидатов</li></ul>
+            <div class="lv3-tab-panel" data-lv3-panel="1">
+              <div class="lv3-tab-content">
+                <div class="lv3-tab-text">
+                  <h3>HR-директора и HR-отделы</h3>
+                  <p>Автоматизируете оценку, получаете готовые отчёты, экономите время на ручной работе и принимаете обоснованные кадровые решения.</p>
+                  <div class="lv3-tasks-label">ЗАДАЧИ</div>
+                  <ul class="lv3-tasks">
+                    <li>Автоматизировать оценку</li>
+                    <li>Получать PDF-отчёты</li>
+                    <li>Сравнивать кандидатов</li>
+                    <li>Меньше ручной работы</li>
+                    <li>Снизить текучесть персонала</li>
+                  </ul>
+                </div>
+                <div class="lv3-tab-visual">
+                  <div class="lv3-mini-report">
+                    <div class="lv3-mr-head"><span class="lv3-mr-badge">HR-дашборд</span></div>
+                    <div class="lv3-mr-row"><span>Отправлено оценок</span><b class="lv3-teal">47</b></div>
+                    <div class="lv3-mr-row"><span>Завершено</span><b class="lv3-green">38</b></div>
+                    <div class="lv3-mr-row"><span>Конверсия</span><b class="lv3-teal">81%</b></div>
+                    <div class="lv3-mr-row"><span>Экономия времени</span><b class="lv3-green">↑ 60%</b></div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="forWhomCard glass">
-              <div class="forWhomIcon">🎯</div>
-              <h3>Руководители подразделений</h3>
-              <p>Понимаете потенциал каждого сотрудника, видите кто готов к росту, а кто в зоне риска. Строите команду осознанно.</p>
-              <ul class="forWhomList"><li>Оценить потенциал</li><li>Построить ИПР</li><li>Выявить лидеров</li></ul>
+            <div class="lv3-tab-panel" data-lv3-panel="2">
+              <div class="lv3-tab-content">
+                <div class="lv3-tab-text">
+                  <h3>Руководители подразделений</h3>
+                  <p>Понимаете потенциал каждого сотрудника, видите кто готов к росту, а кто в зоне риска. Строите команду осознанно.</p>
+                  <div class="lv3-tasks-label">ЗАДАЧИ</div>
+                  <ul class="lv3-tasks">
+                    <li>Оценить потенциал сотрудников</li>
+                    <li>Построить ИПР</li>
+                    <li>Выявить лидеров</li>
+                    <li>Снизить риски команды</li>
+                    <li>Performance Review</li>
+                  </ul>
+                </div>
+                <div class="lv3-tab-visual">
+                  <div class="lv3-mini-report">
+                    <div class="lv3-mr-head"><span class="lv3-mr-badge">9-box команды</span></div>
+                    <div class="lv3-mr-row"><span>Высокий потенциал</span><b class="lv3-green">4 чел.</b></div>
+                    <div class="lv3-mr-row"><span>Кадровый резерв</span><b class="lv3-teal">3 чел.</b></div>
+                    <div class="lv3-mr-row"><span>Требуют внимания</span><b class="lv3-amber">2 чел.</b></div>
+                    <div class="lv3-mr-row"><span>ИПР составлено</span><b class="lv3-teal">7 чел.</b></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section class="landingSection" id="products">
-          <div class="sectionIntro dark"><span>Продукты</span><h2>Оценка людей в одной системе</h2><p>Не делим кандидатов и сотрудников: все люди проходят оценку через понятный flow, а компания получает отчёт для решения.</p></div>
-          <div class="productGrid">
-            ${product("Оценка кандидатов и сотрудников", "Готовые профили профессий, вопросы, кейсы, красные флаги и итоговая рекомендация.")}
-            ${product("Оценка 360", "Только TalentStudio: самооценка, руководитель, коллеги, подчинённые.")}
-            ${product("Пульс-опросы и вовлечённость", "Диагностика настроения, удержания, выгорания и рисков команд.")}
-            ${product("Performance Review", "Оценка результативности, потенциала, развития и управленческих решений.")}
+      <!-- AI SECTION -->
+      <section class="lv3-section lv3-ai-section" id="lv3-ai">
+        <div class="lv3-ai-inner">
+          <div class="lv3-ai-left">
+            <div class="lv3-section-tag">AI-оценка</div>
+            <h2>AI анализирует, вы <span class="lv3-grad">принимаете решение</span></h2>
+            <p>AI анализирует ответы, компетенции, кейсы и поведенческие маркеры, а затем формирует понятный отчёт: сильные стороны, зоны риска, красные флаги, рекомендацию и индивидуальный план развития.</p>
+            <div class="lv3-ai-note-box">Важно: AI помогает структурировать оценку и подсветить риски, но финальное решение остаётся за человеком.</div>
           </div>
-          <div class="platformStats">
-            <div class="platformStat"><b>3 000+</b><span>профессий в базе</span></div>
-            <div class="platformStat"><b>639</b><span>вопросов на основе методик ЕС</span></div>
-            <div class="platformStat"><b>60+</b><span>готовых должностей</span></div>
-            <div class="platformStat"><b>100+</b><span>методик оценки</span></div>
-          </div>
-        </section>
-
-        <section class="landingSection aiSection" id="ai">
-          <div class="aiSectionInner">
-            <div class="sectionIntro dark"><span>AI-оценка</span><h2>AI анализирует — вы принимаете решение</h2><p>AI анализирует ответы, компетенции, кейсы и поведенческие маркеры, формирует понятный отчёт: сильные стороны, зоны риска, красные флаги, рекомендацию и ИПР.</p><p style="color:#8899BB;font-size:14px;margin-top:8px;">Важно: AI помогает структурировать оценку и подсветить риски, но финальное решение остаётся за человеком.</p></div>
-            <div class="aiFeatures">
-              <div class="aiFeature"><span class="aiFeatureIcon">🎯</span><b>Профиль компетенций</b><p>Визуальный radar с процентами по каждой компетенции</p></div>
-              <div class="aiFeature"><span class="aiFeatureIcon">🚩</span><b>Красные флаги и риски</b><p>AI выделяет тревожные сигналы и зоны внимания</p></div>
-              <div class="aiFeature"><span class="aiFeatureIcon">✅</span><b>Рекомендация по кандидату</b><p>Приглашать / наблюдать / не рекомендовать с обоснованием</p></div>
-              <div class="aiFeature"><span class="aiFeatureIcon">📈</span><b>ИПР — план развития</b><p>Индивидуальный план с конкретными шагами для роста</p></div>
+          <div class="lv3-ai-right">
+            <div class="lv3-accordion" id="lv3Accordion">
+              <div class="lv3-acc-item active" data-acc="0">
+                <div class="lv3-acc-head"><span class="lv3-acc-icon">🎯</span><span>Профиль компетенций</span><svg class="lv3-acc-arrow" width="16" height="16" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+                <div class="lv3-acc-body">Визуальный radar с процентами по каждой компетенции. Сразу видно сильные стороны и зоны развития.</div>
+              </div>
+              <div class="lv3-acc-item" data-acc="1">
+                <div class="lv3-acc-head"><span class="lv3-acc-icon">🚩</span><span>Красные флаги и риски</span><svg class="lv3-acc-arrow" width="16" height="16" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+                <div class="lv3-acc-body">AI выделяет тревожные сигналы и зоны внимания. Вы видите риски до принятия решения.</div>
+              </div>
+              <div class="lv3-acc-item" data-acc="2">
+                <div class="lv3-acc-head"><span class="lv3-acc-icon">✅</span><span>Рекомендация по кандидату</span><svg class="lv3-acc-arrow" width="16" height="16" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+                <div class="lv3-acc-body">Приглашать / наблюдать / не рекомендовать — с обоснованием и конкретными аргументами.</div>
+              </div>
+              <div class="lv3-acc-item" data-acc="3">
+                <div class="lv3-acc-head"><span class="lv3-acc-icon">📈</span><span>ИПР — план развития</span><svg class="lv3-acc-arrow" width="16" height="16" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+                <div class="lv3-acc-body">Индивидуальный план развития с конкретными шагами, целями и сроками для каждого сотрудника.</div>
+              </div>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section class="landingSection twoCols" id="how">
-          <div class="sectionIntro dark"><span>Как работает</span><h2>От ссылки до управленческого решения</h2><p>HR выбирает профиль, отправляет ссылку, кандидат или сотрудник проходит оценку, отчёт появляется в кабинете и скачивается в PDF.</p></div>
-          <div class="stepsGlass">${step("01", "Выбрать профиль", "3 000+ профессий: офисные, IT, руководители, массовый и точечный подбор.")}${step("02", "Отправить ссылку", "Оценка открывается без регистрации. Внутренний отчёт скрыт от участника.")}${step("03", "Получить отчёт", "HR видит проценты, компетенции, риски, ответы, историю и PDF.")}</div>
-        </section>
+      <!-- WHAT CAN BE ASSESSED -->
+      <section class="lv3-section" id="lv3-assess">
+        <div class="lv3-section-head">
+          <h2>Что можно оценивать на платформе</h2>
+          <p>Комплексная система оценки для всех этапов работы с людьми — от найма до развития</p>
+        </div>
+        <div class="lv3-assess-grid">
+          <div class="lv3-assess-card">
+            <div class="lv3-assess-icon">🤝</div>
+            <h4>Корпоративная культура и вовлечённость</h4>
+            <ul>
+              <li>Групповые опросы</li>
+              <li>Опросы вовлечённости</li>
+              <li>Пульс-опросы</li>
+              <li>Оценка ценностей</li>
+              <li>Оценка факторов удержания</li>
+              <li>Оценка удовлетворённости и лояльности</li>
+            </ul>
+          </div>
+          <div class="lv3-assess-card">
+            <div class="lv3-assess-icon">⚠️</div>
+            <h4>Риски текучести и увольнения</h4>
+            <ul>
+              <li>Exit-интервью</li>
+              <li>Оценка репутационных рисков</li>
+              <li>Отчёт по рискам текучести</li>
+              <li>Факторы ухода</li>
+              <li>Зоны выгорания</li>
+            </ul>
+          </div>
+          <div class="lv3-assess-card">
+            <div class="lv3-assess-icon">📊</div>
+            <h4>Оценка и развитие персонала</h4>
+            <ul>
+              <li>Индивидуальная оценка руководителя</li>
+              <li>Оценка 360</li>
+              <li>Оценка потенциала</li>
+              <li>Performance review</li>
+              <li>Индивидуальный план развития (ИПР)</li>
+              <li>Автоматические мониторинги</li>
+            </ul>
+          </div>
+          <div class="lv3-assess-card">
+            <div class="lv3-assess-icon">🔍</div>
+            <h4>Поиск и подбор</h4>
+            <ul>
+              <li>Оценка кандидатов</li>
+              <li>Сравнение кандидатов</li>
+              <li>Готовые профили должностей</li>
+              <li>Оценка soft skills</li>
+              <li>Оценка мотивации</li>
+              <li>Контроль рисков найма</li>
+            </ul>
+          </div>
+        </div>
+        <div class="lv3-assess-stats">
+          <div class="lv3-astat"><b>50+</b><span>готовых профилей должностей</span></div>
+          <div class="lv3-astat"><b>100+</b><span>методик оценки</span></div>
+          <div class="lv3-astat"><b>∞</b><span>Конструктор компетенций</span></div>
+        </div>
+      </section>
 
-        <section class="landingSection" id="reports">
-          <div class="reportPreview glass"><div><span class="miniLabel">HR-отчёт</span><h2>Понятно для HRD, руководителя и собственника</h2><p>Отчёт показывает итоговое решение, профиль компетенций, красные флаги, сильные стороны, риски и рекомендации для следующего интервью.</p></div><div class="reportMini"><strong>76%</strong><span>приглашать дальше</span><div class="miniBars"><i style="width:86%"></i><i style="width:72%"></i><i style="width:58%"></i></div></div></div>
-        </section>
+      <!-- CTA BLOCK -->
+      <section class="lv3-cta-block">
+        <div class="lv3-cta-inner">
+          <div class="lv3-section-tag">Стартовый доступ</div>
+          <h2>Попробуйте всего за 990 ₽</h2>
+          <p>Получите 1 месяц доступа к оценке кандидатов и сотрудников.<br>Мы не делим людей на кандидатов и сотрудников — в одном доступе можно оценивать всех.</p>
+          <div class="lv3-cta-btns">
+            <button class="lv3-btn-primary lv3-btn-lg" data-route="login">Попробовать за 990 ₽ →</button>
+            <button class="lv3-btn-ghost lv3-btn-lg" data-route="login">Оплатить доступ</button>
+          </div>
+          <div class="lv3-cta-meta">20 оценок на 1 месяц в стартовом доступе</div>
+        </div>
+      </section>
 
-        <section class="landingSection" id="tariffs"><div class="sectionIntro dark"><span>Тарифы</span><h2>AI-рекомендации, отчёты и аналитика по тарифам</h2></div><div class="tariffGrid landingTariffs">${tariffs.map(renderTariffCard).join("")}</div></section>
-      </main>
-      <footer class="landingFooter">
-        <img src="/assets/eltera_logo_horizontal_on_dark.png" alt="Eltera" style="height:36px;width:auto;">
-        <div><a href="#/login">Войти</a><a href="#tariffs">Тарифы</a><a href="#reports">Отчёты</a><a href="#/app/referrals">Реферальная программа</a></div>
-        <span style="color:#4A5568;font-size:13px;">© 2026 Eltera. Все права защищены.</span>
+      <!-- HOW IT WORKS -->
+      <section class="lv3-section" id="lv3-how">
+        <div class="lv3-section-head">
+          <h2>Как это работает</h2>
+          <p>Пять шагов от задачи до решения</p>
+        </div>
+        <div class="lv3-steps">
+          <div class="lv3-step"><div class="lv3-step-num">01</div><div><h4>Расскажите задачу</h4><p>Вы выбираете, что нужно оценить: кандидатов, сотрудников, вовлечённость, руководителей, команду или риски текучести.</p></div></div>
+          <div class="lv3-step"><div class="lv3-step-num">02</div><div><h4>Мы помогаем подобрать инструмент</h4><p>Поддержка помогает выбрать готовую методику или собрать оценку под вашу задачу.</p></div></div>
+          <div class="lv3-step"><div class="lv3-step-num">03</div><div><h4>Отправьте оценку</h4><p>Вы отправляете ссылку кандидатам или сотрудникам. Они проходят оценку онлайн в удобное время.</p></div></div>
+          <div class="lv3-step"><div class="lv3-step-num">04</div><div><h4>Получите результат</h4><p>После прохождения результат сразу появляется в личном кабинете: профиль компетенций, риски, рекомендации и отчёт.</p></div></div>
+          <div class="lv3-step"><div class="lv3-step-num">05</div><div><h4>Примите решение</h4><p>Используйте отчёт для найма, развития, ротации, удержания или performance review.</p></div></div>
+        </div>
+      </section>
+
+      <!-- REPORTS -->
+      <section class="lv3-section" id="lv3-reports">
+        <div class="lv3-section-head">
+          <h2>Познакомьтесь с примерами отчётов</h2>
+          <p>Готовые отчёты для каждого сценария оценки</p>
+        </div>
+        <div class="lv3-reports-grid">
+          ${["Отчёт по оценке кандидата|Профиль компетенций, красные флаги, рекомендация по найму","Отчёт по оценке сотрудника|Сильные стороны, зоны развития, ИПР","Групповой отчёт|Сравнение команды по компетенциям и рискам","Пульс-опрос|Быстрый срез настроения и вовлечённости команды","Оценка 360|Обратная связь от коллег, руководителя и подчинённых","Оценка вовлечённости|eNPS, удовлетворённость, факторы удержания","Отчёт по рискам текучести|Зоны выгорания, факторы ухода, рекомендации","ИПР сотрудника|Индивидуальный план развития с целями и сроками"].map(r=>{
+            const [title,desc]=r.split('|');
+            return `<div class="lv3-report-card">
+              <div class="lv3-rc-top">
+                <div class="lv3-rc-icon">📄</div>
+                <div><h4>${title}</h4><p>${desc}</p></div>
+              </div>
+              <button class="lv3-btn-ghost lv3-btn-sm" data-route="login">Смотреть пример</button>
+            </div>`;
+          }).join('')}
+        </div>
+      </section>
+
+      <!-- IMPLEMENT -->
+      <section class="lv3-section" id="lv3-implement">
+        <div class="lv3-section-head">
+          <h2>Как внедрить платформу</h2>
+          <p>Внедрение не требует сложного проекта. Вы оплачиваете доступ, выбираете оценку, отправляете ссылку и получаете результаты.</p>
+        </div>
+        <div class="lv3-impl-steps">
+          <div class="lv3-impl-step"><div class="lv3-impl-num">1</div><h4>Оплатите доступ</h4><p>Выберите стартовый доступ за 990 ₽ или один из основных тарифов.</p></div>
+          <div class="lv3-impl-step"><div class="lv3-impl-num">2</div><h4>Выберите задачу оценки</h4><p>Оценка кандидатов, сотрудников, 360, вовлечённость или риски текучести.</p></div>
+          <div class="lv3-impl-step"><div class="lv3-impl-num">3</div><h4>Запустите оценку</h4><p>Отправьте ссылку кандидатам или сотрудникам — они проходят онлайн.</p></div>
+          <div class="lv3-impl-step"><div class="lv3-impl-num">4</div><h4>Получите отчёт</h4><p>Результат появляется в личном кабинете сразу после прохождения.</p></div>
+          <div class="lv3-impl-step"><div class="lv3-impl-num">5</div><h4>Используйте результаты</h4><p>Принимайте решения по найму, развитию, ротации или удержанию.</p></div>
+        </div>
+      </section>
+
+      <!-- PRICING -->
+      <section class="lv3-section" id="lv3-pricing">
+        <div class="lv3-section-head">
+          <h2>Тарифы</h2>
+          <p>Выберите подходящий план для вашей команды</p>
+        </div>
+        <div class="lv3-billing-toggle">
+          <button class="lv3-billing-btn active" data-billing="month">1 месяц</button>
+          <button class="lv3-billing-btn" data-billing="3month">3 месяца <span class="lv3-discount">−12%</span></button>
+          <button class="lv3-billing-btn" data-billing="year">1 год <span class="lv3-discount">−17%</span></button>
+        </div>
+        <div class="tariffGrid landingTariffs">${tariffs.map(renderTariffCard).join("")}</div>
+        <p class="lv3-tariff-note">Все тарифы включают оценку кандидатов и сотрудников. Отмена в любой момент.</p>
+      </section>
+
+      <!-- CASES -->
+      <section class="lv3-section" id="lv3-cases">
+        <div class="lv3-section-head">
+          <h2>Кейсы</h2>
+          <p>Станьте компанией, которая оценивает людей с помощью Eltera</p>
+        </div>
+        <div class="lv3-cases-grid">
+          <div class="lv3-case-card">
+            <div class="lv3-case-tag">Ритейл</div>
+            <h4>Ритейл-сеть</h4>
+            <p>Снизили текучесть кассиров на 18% за счёт оценки мотивации при найме</p>
+          </div>
+          <div class="lv3-case-card">
+            <div class="lv3-case-tag">IT</div>
+            <h4>IT-компания</h4>
+            <p>Ускорили закрытие вакансий разработчиков с 45 до 28 дней</p>
+          </div>
+          <div class="lv3-case-card">
+            <div class="lv3-case-tag">Сервис</div>
+            <h4>Контакт-центр</h4>
+            <p>Сократили ошибки найма операторов на 35% с помощью оценки компетенций</p>
+          </div>
+        </div>
+        <p class="lv3-cases-note">* Данные приведены в качестве иллюстрации потенциального эффекта платформы</p>
+      </section>
+
+      <!-- FOOTER -->
+      <footer class="lv3-footer">
+        <div class="lv3-footer-top">
+          <div class="lv3-footer-brand">
+            <img src="/public/assets/eltera_logo_horizontal_on_dark.png" alt="Eltera" style="height:34px;width:auto;object-fit:contain;">
+            <p>AI-платформа для оценки кандидатов и сотрудников. Компетенции, 360, вовлечённость, пульс-опросы и готовые отчёты.</p>
+            <button class="lv3-btn-ghost" data-route="login">Войти в личный кабинет</button>
+          </div>
+          <div class="lv3-footer-cols">
+            <div class="lv3-footer-col">
+              <div class="lv3-footer-col-title">ПРОДУКТЫ</div>
+              <a href="#lv3-assess">Оценка кандидатов и сотрудников</a>
+              <a href="#lv3-360">Оценка 360</a>
+              <a href="#lv3-engage">Оценка вовлечённости</a>
+              <a href="#lv3-pulse">Пульс-опросы</a>
+              <a href="#lv3-perf">Performance review</a>
+            </div>
+            <div class="lv3-footer-col">
+              <div class="lv3-footer-col-title">КОМПАНИЯ</div>
+              <a href="#lv3-cases">Кейсы</a>
+              <a href="#lv3-reports">Отчёты</a>
+              <a href="#lv3-pricing">Тарифы</a>
+              <a href="#lv3-implement">Внедрение</a>
+              <a href="#/app/referrals">Реферальная программа</a>
+            </div>
+            <div class="lv3-footer-col">
+              <div class="lv3-footer-col-title">РЕСУРСЫ</div>
+              <a href="#">Глоссарий</a>
+              <a href="#">Контакты</a>
+              <a href="#">Политика конфиденциальности</a>
+              <a href="#">Политика обработки ПД</a>
+            </div>
+          </div>
+        </div>
+        <div class="lv3-footer-bottom">
+          <span>© 2026 Eltera. Все права защищены.</span>
+          <div><a href="#">Политика конфиденциальности</a><a href="#">Пользовательское соглашение</a></div>
+        </div>
       </footer>
     </div>
   `;
@@ -154,7 +466,7 @@ export function renderLogin() {
   return `
     <div class="authPage">
       <section class="authBrand">
-        <img src="/assets/eltera_logo_horizontal_on_dark.png?v=5" alt="Eltera">
+        <img src="/public/assets/eltera_logo_horizontal_on_dark.png?v=5" alt="Eltera">
         <h1><span class="authGradientText">Интеллект в оценке.</span><br><span class="authWhiteText">Уверенность в решениях.</span></h1>
         <p>Разберётесь за 5 минут. Первая оценка — за 1 минуту. Без инструкций и долгого обучения.</p>
       </section>
@@ -233,7 +545,7 @@ export function renderAppShell(state, content) {
     <div class="appShell ${isDark ? "darkTheme" : "lightTheme"}">
       <aside class="elt-sidebar">
         <div class="elt-sidebar-logo">
-          <img src="${isDark ? "/assets/eltera_logo_horizontal_on_dark.png?v=5" : "/assets/eltera_logo_horizontal_on_light.png?v=5"}" alt="Eltera" class="elt-logo-img">
+          <img src="${isDark ? "/public/assets/eltera_logo_horizontal_on_dark.png?v=10" : "/public/assets/eltera_logo_horizontal_on_light.png?v=10"}" alt="Eltera" class="elt-logo-img">
         </div>
         <nav class="elt-sidenav">
           ${navGroups.map((group) => `
@@ -1166,7 +1478,7 @@ export function renderReport(state, session) {
     <section class="reportPage">
       <div class="reportToolbar noPrint"><button class="button subtle" data-view="reports">Назад</button><div><button class="button subtle">Ответы</button><button class="button subtle">Интерпретация</button><button class="button subtle">${aiAccess(state.company.tariff)}</button><button class="blueButton" data-action="print-report">Скачать PDF</button></div></div>
       <article class="reportSheet">
-        <header class="reportHeader"><img src="/assets/eltera_logo_horizontal_on_light.png" alt="Eltera"><div><b>${new Date(session.completedAt).toLocaleDateString("ru-RU")} · конфиденциально</b><span>Отчет оценки ${session.person.assessmentType.toLowerCase()}</span></div></header>
+        <header class="reportHeader"><img src="/public/assets/eltera_logo_horizontal_on_light.png" alt="Eltera"><div><b>${new Date(session.completedAt).toLocaleDateString("ru-RU")} · конфиденциально</b><span>Отчет оценки ${session.person.assessmentType.toLowerCase()}</span></div></header>
         <h1>${session.person.fullName || "Участник"}: рекомендация для HRD, руководителя и собственника</h1><p class="reportLead">${session.professionTitle}. Решение: ${result.recommendation.toLowerCase()}.</p>
         <section class="decisionBox ${statusClass}"><div class="decisionScore">${result.percent}%<span>соответствие роли</span></div><div><h2>Итоговое решение: ${result.recommendation}</h2><p>${decisionText(result)}</p></div></section>
         <section class="reportStats">${stat("Готовность", readiness(result))}${stat("Риск ошибки найма", `${Math.max(8, 100 - result.percent)}%`)}${stat("Достоверность", `${Math.max(55, 96 - result.redFlags * 12)}%`)}${stat("Следующий этап", "45 мин")}</section>
@@ -1397,7 +1709,7 @@ export function renderCandidateAssessment(link, profession, questions, answers, 
   // Тест с бэка: отрисовываем реальные вопросы конкретного теста (все типы).
   if (apiForm !== undefined) {
     const title = (apiForm && apiForm.title) || link.professionTitle || "Оценка";
-    const header = `<header class="candidateHeader"><img src="/assets/eltera_logo_horizontal_on_light.png" alt="Eltera"></header>`;
+    const header = `<header class="candidateHeader"><img src="/public/assets/eltera_logo_horizontal_on_light.png" alt="Eltera"></header>`;
     if (formError) {
       return `<div class="candidatePage">${header}<main class="candidateCard"><h1>${title}</h1><p>${formError}</p><a class="blueButton" href="#/">На главную</a></main></div>`;
     }
@@ -1409,7 +1721,7 @@ export function renderCandidateAssessment(link, profession, questions, answers, 
   }
 
   return `
-    <div class="candidatePage"><header class="candidateHeader"><img src="/assets/eltera_logo_horizontal_on_light.png" alt="Eltera"></header><main class="candidateCard"><span class="miniLabel">${link.recipientType} · ${link.professionTitle || profession.title}</span><h1>${link.professionTitle || profession.title}</h1><p>Заполните данные и ответьте на вопросы. Компания получит отчет после завершения оценки.</p><form class="candidateForm" data-candidate-form><label>ФИО<input name="fullName" required value="${link.fullName || ""}" placeholder="Иванов Иван"></label><label>Телефон<input name="phone" value="${link.phone || ""}" placeholder="+7..."></label><label>Email<input name="email" value="${link.email || ""}" placeholder="name@example.com"></label><label>Город<input name="city" placeholder="Москва"></label><label class="checkboxLine"><input type="checkbox" required><span>Согласен на обработку персональных данных</span></label><div class="questionList compact">${questions.map((question, index) => `<article class="questionCard"><div class="questionHead"><span>${competencyTitleById[question.competencyId] || question.competencyId}</span><b>${index + 1}/${questions.length}</b></div><h3>${question.text}</h3><div class="answers">${question.answers.map((answer, answerIndex) => `<label class="answer"><input type="radio" required name="${question.id}" value="${answerIndex}" ${answers[question.id] === answerIndex ? "checked" : ""}><span>${answer.text}</span></label>`).join("")}</div></article>`).join("")}</div><button class="blueButton wide" type="submit">Завершить оценку</button></form></main></div>
+    <div class="candidatePage"><header class="candidateHeader"><img src="/public/assets/eltera_logo_horizontal_on_light.png" alt="Eltera"></header><main class="candidateCard"><span class="miniLabel">${link.recipientType} · ${link.professionTitle || profession.title}</span><h1>${link.professionTitle || profession.title}</h1><p>Заполните данные и ответьте на вопросы. Компания получит отчет после завершения оценки.</p><form class="candidateForm" data-candidate-form><label>ФИО<input name="fullName" required value="${link.fullName || ""}" placeholder="Иванов Иван"></label><label>Телефон<input name="phone" value="${link.phone || ""}" placeholder="+7..."></label><label>Email<input name="email" value="${link.email || ""}" placeholder="name@example.com"></label><label>Город<input name="city" placeholder="Москва"></label><label class="checkboxLine"><input type="checkbox" required><span>Согласен на обработку персональных данных</span></label><div class="questionList compact">${questions.map((question, index) => `<article class="questionCard"><div class="questionHead"><span>${competencyTitleById[question.competencyId] || question.competencyId}</span><b>${index + 1}/${questions.length}</b></div><h3>${question.text}</h3><div class="answers">${question.answers.map((answer, answerIndex) => `<label class="answer"><input type="radio" required name="${question.id}" value="${answerIndex}" ${answers[question.id] === answerIndex ? "checked" : ""}><span>${answer.text}</span></label>`).join("")}</div></article>`).join("")}</div><button class="blueButton wide" type="submit">Завершить оценку</button></form></main></div>
   `;
 }
 
@@ -2335,7 +2647,7 @@ export function renderDevPortal(library) {
     <div class="devPortal">
       <div class="devPortalHeader">
         <div class="devPortalLogo">
-          <img src="/assets/eltera_logo_horizontal_on_dark.png?v=5" alt="Eltera" height="28">
+          <img src="/public/assets/eltera_logo_horizontal_on_dark.png?v=5" alt="Eltera" height="28">
           <span class="devPortalBadge">Dev Portal</span>
         </div>
         <div class="devPortalActions">
