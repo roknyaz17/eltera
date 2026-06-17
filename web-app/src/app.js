@@ -2091,12 +2091,69 @@ function initLv3Landing() {
   if (nav) {
     window.addEventListener('scroll', () => {
       if (window.scrollY > 40) {
-        nav.style.background = 'rgba(10,15,30,0.98)';
-        nav.style.boxShadow = '0 4px 24px rgba(0,0,0,0.3)';
+        nav.classList.add('lv3-nav--scrolled');
       } else {
-        nav.style.background = 'rgba(10,15,30,0.92)';
-        nav.style.boxShadow = 'none';
+        nav.classList.remove('lv3-nav--scrolled');
       }
     }, { passive: true });
   }
+
+  // BURGER MENU
+  const burger = document.getElementById('lv3Burger');
+  const mobileNav = document.getElementById('lv3MobileNav');
+  if (burger && mobileNav) {
+    burger.addEventListener('click', () => {
+      const isOpen = burger.classList.toggle('open');
+      if (isOpen) {
+        mobileNav.classList.add('open');
+        document.body.style.overflow = 'hidden';
+      } else {
+        mobileNav.classList.remove('open');
+        document.body.style.overflow = '';
+      }
+    });
+    // Close on link click
+    mobileNav.querySelectorAll('a, button').forEach(el => {
+      el.addEventListener('click', () => {
+        burger.classList.remove('open');
+        mobileNav.classList.remove('open');
+        document.body.style.overflow = '';
+      });
+    });
+  }
+
+  // SCROLL REVEAL ANIMATIONS
+  const revealEls = document.querySelectorAll('[data-reveal]');
+  if (revealEls.length > 0 && 'IntersectionObserver' in window) {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('revealed');
+          // Also reveal children with data-reveal-delay
+          entry.target.querySelectorAll('[data-reveal-delay]').forEach(child => {
+            child.classList.add('revealed');
+          });
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+    revealEls.forEach(el => observer.observe(el));
+  } else {
+    // Fallback: show all immediately
+    revealEls.forEach(el => el.classList.add('revealed'));
+  }
+
+  // SMOOTH ANCHOR SCROLL
+  document.querySelectorAll('a[href^="#lv3-"]').forEach(link => {
+    link.addEventListener('click', (e) => {
+      const id = link.getAttribute('href').slice(1);
+      const target = document.getElementById(id);
+      if (target) {
+        e.preventDefault();
+        const offset = 70;
+        const top = target.getBoundingClientRect().top + window.scrollY - offset;
+        window.scrollTo({ top, behavior: 'smooth' });
+      }
+    });
+  });
 }

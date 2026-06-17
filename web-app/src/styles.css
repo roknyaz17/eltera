@@ -7637,7 +7637,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 .lv3-btn-sm { padding: 6px 12px !important; font-size: 12px !important; border-radius: 6px !important; }
 
 /* HERO */
-.lv3-hero { position: relative; min-height: 100vh; display: flex; align-items: center; padding: 80px 48px; overflow: hidden; }
+.lv3-hero { position: relative; min-height: auto; display: flex; align-items: center; padding: 100px 48px 80px; overflow: hidden; }
 .lv3-hero-bg { position: absolute; inset: 0; pointer-events: none; }
 .lv3-hero-orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.18; }
 .lv3-hero-orb--1 { width: 600px; height: 600px; background: radial-gradient(circle, #1E5BFF, transparent 70%); top: -100px; left: -100px; animation: lv3OrbFloat 8s ease-in-out infinite; }
@@ -7839,4 +7839,172 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   .lv3-footer-cols { grid-template-columns: 1fr; }
   .lv3-hero-btns { flex-direction: column; }
   .lv3-hero-stats { flex-direction: column; }
+}
+
+/* ===== SCROLL ANIMATIONS ===== */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.6s cubic-bezier(0.22,1,0.36,1), transform 0.6s cubic-bezier(0.22,1,0.36,1);
+}
+[data-reveal].revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+[data-reveal-delay="1"] { transition-delay: 0.1s; }
+[data-reveal-delay="2"] { transition-delay: 0.2s; }
+[data-reveal-delay="3"] { transition-delay: 0.3s; }
+[data-reveal-delay="4"] { transition-delay: 0.4s; }
+[data-reveal-delay="5"] { transition-delay: 0.5s; }
+[data-reveal-delay="6"] { transition-delay: 0.6s; }
+
+/* ===== STICKY NAVBAR SCROLL EFFECT ===== */
+.lv3-nav--scrolled {
+  background: rgba(10,15,30,0.97) !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.06), 0 4px 24px rgba(0,0,0,0.4) !important;
+  backdrop-filter: blur(24px) !important;
+}
+
+/* ===== IMPROVED LIVE CARD TRANSITION ===== */
+.lv3-live-card-inner {
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.lv3-live-card-inner.fading {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.lv3-live-bar-fill {
+  transition: width 1.2s cubic-bezier(0.22,1,0.36,1) !important;
+}
+.lv3-live-bar-fill.animating {
+  width: 0 !important;
+}
+
+/* ===== BURGER MENU ===== */
+.lv3-burger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 36px;
+  height: 36px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+  transition: background .2s;
+  margin-left: auto;
+}
+.lv3-burger:hover { background: rgba(255,255,255,0.07); }
+.lv3-burger span {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: #E6F2FF;
+  border-radius: 2px;
+  transition: transform .3s ease, opacity .3s ease;
+  transform-origin: center;
+}
+.lv3-burger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.lv3-burger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.lv3-burger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* Mobile nav drawer */
+.lv3-mobile-nav {
+  display: none;
+  position: fixed;
+  top: 60px;
+  left: 0;
+  right: 0;
+  background: rgba(10,15,30,0.98);
+  backdrop-filter: blur(24px);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  z-index: 999;
+  padding: 16px 24px 24px;
+  flex-direction: column;
+  gap: 4px;
+  transform: translateY(-8px);
+  opacity: 0;
+  transition: transform .3s ease, opacity .3s ease;
+}
+.lv3-mobile-nav.open {
+  display: flex;
+  transform: translateY(0);
+  opacity: 1;
+}
+.lv3-mobile-nav a, .lv3-mobile-nav button {
+  color: #8899BB;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 500;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: color .2s, background .2s;
+  font-family: inherit;
+}
+.lv3-mobile-nav a:hover, .lv3-mobile-nav button:hover {
+  color: #E6F2FF;
+  background: rgba(255,255,255,0.05);
+}
+.lv3-mobile-nav .lv3-mobile-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.06);
+  margin: 8px 0;
+}
+.lv3-mobile-nav .lv3-mobile-cta {
+  background: linear-gradient(135deg, #1E5BFF, #0040CC) !important;
+  color: #fff !important;
+  text-align: center !important;
+  border-radius: 10px !important;
+  margin-top: 8px;
+  font-weight: 600 !important;
+}
+
+/* ===== MOBILE RESPONSIVE IMPROVEMENTS ===== */
+@media (max-width: 768px) {
+  .lv3-burger { display: flex; }
+  .lv3-navlinks { display: none !important; }
+  .lv3-navactions { display: none !important; }
+  .lv3-hero { padding: 80px 20px 48px; min-height: auto; }
+  .lv3-hero-content { grid-template-columns: 1fr; gap: 32px; }
+  .lv3-hero-left h1 { font-size: 28px; }
+  .lv3-hero-btns { flex-direction: column; }
+  .lv3-hero-btns button, .lv3-hero-btns a { width: 100%; text-align: center; justify-content: center; }
+  .lv3-hero-stats { flex-direction: column; gap: 8px; }
+  .lv3-hero-stat { flex: none; }
+  .lv3-section { padding: 48px 20px; }
+  .lv3-section-header h2 { font-size: 24px; }
+  .lv3-for-whom-tabs { flex-wrap: wrap; gap: 6px; }
+  .lv3-for-whom-tab { font-size: 13px; padding: 8px 14px; }
+  .lv3-tab-content { grid-template-columns: 1fr; }
+  .lv3-assess-grid { grid-template-columns: 1fr; }
+  .lv3-reports-grid { grid-template-columns: 1fr; }
+  .lv3-impl-steps { grid-template-columns: 1fr; }
+  .lv3-pricing-cards { flex-direction: column; align-items: center; }
+  .lv3-pricing-card { width: 100%; max-width: 380px; }
+  .lv3-cases-grid { grid-template-columns: 1fr; }
+  .lv3-footer-top { grid-template-columns: 1fr; gap: 32px; }
+  .lv3-footer-cols { grid-template-columns: repeat(2, 1fr); }
+  .lv3-ai-inner { grid-template-columns: 1fr; }
+  .lv3-ticker-track { animation-duration: 20s; }
+  .lv3-steps-list { gap: 16px; }
+  .lv3-step { padding: 20px; }
+  .lv3-start-inner { padding: 40px 24px; }
+  .lv3-start-inner h2 { font-size: 24px; }
+  .lv3-start-btns { flex-direction: column; align-items: center; }
+}
+
+@media (max-width: 480px) {
+  .lv3-nav { padding: 0 16px; height: 56px; }
+  .lv3-logo img { height: 36px !important; }
+  .lv3-hero { padding: 72px 16px 40px; }
+  .lv3-hero-left h1 { font-size: 24px; }
+  .lv3-section { padding: 40px 16px; }
+  .lv3-footer-cols { grid-template-columns: 1fr; }
+  .lv3-live-card { padding: 14px; }
 }

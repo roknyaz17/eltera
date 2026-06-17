@@ -45,7 +45,26 @@ export function renderLanding(tariffs) {
           <button class="lv3-btn-demo" data-demo-assessment>Пройти демо-оценку</button>
           <button class="lv3-btn-primary" data-route="login">Попробовать за 990 ₽</button>
         </div>
+        <button class="lv3-burger" id="lv3Burger" aria-label="Меню">
+          <span></span><span></span><span></span>
+        </button>
       </header>
+      <!-- MOBILE NAV -->
+      <nav class="lv3-mobile-nav" id="lv3MobileNav">
+        <a href="#lv3-how" class="lv3-mobile-link">Как работает</a>
+        <a href="#lv3-assess" class="lv3-mobile-link">Оценка кандидатов и сотрудников</a>
+        <a href="#lv3-360" class="lv3-mobile-link">Оценка 360</a>
+        <a href="#lv3-engage" class="lv3-mobile-link">Оценка вовлечённости</a>
+        <a href="#lv3-pulse" class="lv3-mobile-link">Пульс-опросы</a>
+        <a href="#lv3-perf" class="lv3-mobile-link">Performance review</a>
+        <div class="lv3-mobile-divider"></div>
+        <a href="#lv3-cases" class="lv3-mobile-link">Кейсы</a>
+        <a href="#lv3-reports" class="lv3-mobile-link">Отчёты</a>
+        <a href="#lv3-pricing" class="lv3-mobile-link">Тарифы</a>
+        <a href="#lv3-implement" class="lv3-mobile-link">Внедрение</a>
+        <div class="lv3-mobile-divider"></div>
+        <button class="lv3-mobile-cta" data-route="login">Попробовать за 990 ₽</button>
+      </nav>
 
       <!-- HERO -->
       <section class="lv3-hero" id="lv3-hero">
@@ -129,7 +148,7 @@ export function renderLanding(tariffs) {
       </div>
 
       <!-- FOR WHOM -->
-      <section class="lv3-section" id="lv3-for-whom">
+      <section class="lv3-section" id="lv3-for-whom" data-reveal>
         <div class="lv3-section-head">
           <h2>Для кого платформа</h2>
           <p>Eltera помогает разным ролям принимать решения на основе данных</p>
@@ -221,7 +240,7 @@ export function renderLanding(tariffs) {
       </section>
 
       <!-- AI SECTION -->
-      <section class="lv3-section lv3-ai-section" id="lv3-ai">
+      <section class="lv3-section lv3-ai-section" id="lv3-ai" data-reveal>
         <div class="lv3-ai-inner">
           <div class="lv3-ai-left">
             <div class="lv3-section-tag">AI-оценка</div>
@@ -253,7 +272,7 @@ export function renderLanding(tariffs) {
       </section>
 
       <!-- WHAT CAN BE ASSESSED -->
-      <section class="lv3-section" id="lv3-assess">
+      <section class="lv3-section" id="lv3-assess" data-reveal>
         <div class="lv3-section-head">
           <h2>Что можно оценивать на платформе</h2>
           <p>Комплексная система оценки для всех этапов работы с людьми — от найма до развития</p>
@@ -329,22 +348,22 @@ export function renderLanding(tariffs) {
       </section>
 
       <!-- HOW IT WORKS -->
-      <section class="lv3-section" id="lv3-how">
+      <section class="lv3-section" id="lv3-how" data-reveal>
         <div class="lv3-section-head">
           <h2>Как это работает</h2>
           <p>Пять шагов от задачи до решения</p>
         </div>
         <div class="lv3-steps">
-          <div class="lv3-step"><div class="lv3-step-num">01</div><div><h4>Расскажите задачу</h4><p>Вы выбираете, что нужно оценить: кандидатов, сотрудников, вовлечённость, руководителей, команду или риски текучести.</p></div></div>
-          <div class="lv3-step"><div class="lv3-step-num">02</div><div><h4>Мы помогаем подобрать инструмент</h4><p>Поддержка помогает выбрать готовую методику или собрать оценку под вашу задачу.</p></div></div>
-          <div class="lv3-step"><div class="lv3-step-num">03</div><div><h4>Отправьте оценку</h4><p>Вы отправляете ссылку кандидатам или сотрудникам. Они проходят оценку онлайн в удобное время.</p></div></div>
-          <div class="lv3-step"><div class="lv3-step-num">04</div><div><h4>Получите результат</h4><p>После прохождения результат сразу появляется в личном кабинете: профиль компетенций, риски, рекомендации и отчёт.</p></div></div>
-          <div class="lv3-step"><div class="lv3-step-num">05</div><div><h4>Примите решение</h4><p>Используйте отчёт для найма, развития, ротации, удержания или performance review.</p></div></div>
+          <div class="lv3-step" data-reveal data-reveal-delay="1"><div class="lv3-step-num">01</div><div><h4>Расскажите задачу</h4><p>Вы выбираете, что нужно оценить: кандидатов, сотрудников, вовлечённость, руководителей, команду или риски текучести.</p></div></div>
+          <div class="lv3-step" data-reveal data-reveal-delay="2"><div class="lv3-step-num">02</div><div><h4>Мы помогаем подобрать инструмент</h4><p>Поддержка помогает выбрать готовую методику или собрать оценку под вашу задачу.</p></div></div>
+          <div class="lv3-step" data-reveal data-reveal-delay="3"><div class="lv3-step-num">03</div><div><h4>Отправьте оценку</h4><p>Вы отправляете ссылку кандидатам или сотрудникам. Они проходят оценку онлайн в удобное время.</p></div></div>
+          <div class="lv3-step" data-reveal data-reveal-delay="4"><div class="lv3-step-num">04</div><div><h4>Получите результат</h4><p>После прохождения результат сразу появляется в личном кабинете: профиль компетенций, риски, рекомендации и отчёт.</p></div></div>
+          <div class="lv3-step" data-reveal data-reveal-delay="5"><div class="lv3-step-num">05</div><div><h4>Примите решение</h4><p>Используйте отчёт для найма, развития, ротации, удержания или performance review.</p></div></div>
         </div>
       </section>
 
       <!-- REPORTS -->
-      <section class="lv3-section" id="lv3-reports">
+      <section class="lv3-section" id="lv3-reports" data-reveal>
         <div class="lv3-section-head">
           <h2>Познакомьтесь с примерами отчётов</h2>
           <p>Готовые отчёты для каждого сценария оценки</p>
@@ -364,22 +383,22 @@ export function renderLanding(tariffs) {
       </section>
 
       <!-- IMPLEMENT -->
-      <section class="lv3-section" id="lv3-implement">
+      <section class="lv3-section" id="lv3-implement" data-reveal>
         <div class="lv3-section-head">
           <h2>Как внедрить платформу</h2>
           <p>Внедрение не требует сложного проекта. Вы оплачиваете доступ, выбираете оценку, отправляете ссылку и получаете результаты.</p>
         </div>
         <div class="lv3-impl-steps">
-          <div class="lv3-impl-step"><div class="lv3-impl-num">1</div><h4>Оплатите доступ</h4><p>Выберите стартовый доступ за 990 ₽ или один из основных тарифов.</p></div>
-          <div class="lv3-impl-step"><div class="lv3-impl-num">2</div><h4>Выберите задачу оценки</h4><p>Оценка кандидатов, сотрудников, 360, вовлечённость или риски текучести.</p></div>
-          <div class="lv3-impl-step"><div class="lv3-impl-num">3</div><h4>Запустите оценку</h4><p>Отправьте ссылку кандидатам или сотрудникам — они проходят онлайн.</p></div>
-          <div class="lv3-impl-step"><div class="lv3-impl-num">4</div><h4>Получите отчёт</h4><p>Результат появляется в личном кабинете сразу после прохождения.</p></div>
-          <div class="lv3-impl-step"><div class="lv3-impl-num">5</div><h4>Используйте результаты</h4><p>Принимайте решения по найму, развитию, ротации или удержанию.</p></div>
+          <div class="lv3-impl-step" data-reveal data-reveal-delay="1"><div class="lv3-impl-num">1</div><h4>Оплатите доступ</h4><p>Выберите стартовый доступ за 990 ₽ или один из основных тарифов.</p></div>
+          <div class="lv3-impl-step" data-reveal data-reveal-delay="2"><div class="lv3-impl-num">2</div><h4>Выберите задачу оценки</h4><p>Оценка кандидатов, сотрудников, 360, вовлечённость или риски текучести.</p></div>
+          <div class="lv3-impl-step" data-reveal data-reveal-delay="3"><div class="lv3-impl-num">3</div><h4>Запустите оценку</h4><p>Отправьте ссылку кандидатам или сотрудникам — они проходят онлайн.</p></div>
+          <div class="lv3-impl-step" data-reveal data-reveal-delay="4"><div class="lv3-impl-num">4</div><h4>Получите отчёт</h4><p>Результат появляется в личном кабинете сразу после прохождения.</p></div>
+          <div class="lv3-impl-step" data-reveal data-reveal-delay="5"><div class="lv3-impl-num">5</div><h4>Используйте результаты</h4><p>Принимайте решения по найму, развитию, ротации или удержанию.</p></div>
         </div>
       </section>
 
       <!-- PRICING -->
-      <section class="lv3-section" id="lv3-pricing">
+      <section class="lv3-section" id="lv3-pricing" data-reveal>
         <div class="lv3-section-head">
           <h2>Тарифы</h2>
           <p>Выберите подходящий план для вашей команды</p>
@@ -394,7 +413,7 @@ export function renderLanding(tariffs) {
       </section>
 
       <!-- CASES -->
-      <section class="lv3-section" id="lv3-cases">
+      <section class="lv3-section" id="lv3-cases" data-reveal>
         <div class="lv3-section-head">
           <h2>Кейсы</h2>
           <p>Станьте компанией, которая оценивает людей с помощью Eltera</p>
