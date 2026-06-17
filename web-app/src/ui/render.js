@@ -19,7 +19,7 @@ export function renderLanding(tariffs) {
   return `
     <div class="landing">
       <header class="landingHeader">
-        <a class="landingLogo" href="#/"><img src="/assets/eltera_logo_horizontal_on_dark.svg" alt="Eltera Assessment Intelligence"></a>
+        <a class="landingLogo" href="#/"><img src="/assets/eltera_logo_horizontal_on_dark.png" alt="Eltera Assessment Intelligence"></a>
         <nav class="landingNav"><a href="#how">Как работает</a><a href="#products">Продукты</a><a href="#reports">Отчеты</a><a href="#tariffs">Тарифы</a></nav>
         <div class="landingActions"><button class="ghostOnDark" data-route="login">Войти</button><button class="blueButton" data-route="login">Попробовать за 990 ₽</button></div>
       </header>
@@ -63,7 +63,7 @@ export function renderLanding(tariffs) {
         </section>
         <section class="landingSection" id="tariffs"><div class="sectionIntro dark"><span>Тарифы</span><h2>AI-рекомендации, отчеты и аналитика по тарифам</h2></div><div class="tariffGrid landingTariffs">${tariffs.map(renderTariffCard).join("")}</div></section>
       </main>
-      <footer class="landingFooter"><img src="/assets/eltera_logo_horizontal_on_dark.svg" alt="Eltera"><div><a href="#/login">Войти</a><a href="#tariffs">Тарифы</a><a href="#reports">Отчеты</a><a href="#/app/referrals">Реферальная программа</a></div></footer>
+      <footer class="landingFooter"><img src="/assets/eltera_logo_horizontal_on_dark.png" alt="Eltera"><div><a href="#/login">Войти</a><a href="#tariffs">Тарифы</a><a href="#reports">Отчеты</a><a href="#/app/referrals">Реферальная программа</a></div></footer>
     </div>
   `;
 }
@@ -72,7 +72,7 @@ export function renderLogin() {
   return `
     <div class="authPage">
       <section class="authBrand">
-        <img src="/assets/eltera_logo_horizontal_on_dark.svg?v=5" alt="Eltera">
+        <img src="/assets/eltera_logo_horizontal_on_dark.png?v=5" alt="Eltera">
         <h1><span class="authGradientText">Интеллект в оценке.</span><br><span class="authWhiteText">Уверенность в решениях.</span></h1>
         <p>Разберётесь за 5 минут. Первая оценка — за 1 минуту. Без инструкций и долгого обучения.</p>
       </section>
@@ -151,7 +151,7 @@ export function renderAppShell(state, content) {
     <div class="appShell ${isDark ? "darkTheme" : "lightTheme"}">
       <aside class="elt-sidebar">
         <div class="elt-sidebar-logo">
-          <img src="${isDark ? "/assets/eltera_logo_horizontal_on_dark.svg?v=4" : "/assets/eltera_logo_horizontal_on_light.svg?v=4"}" alt="Eltera" class="elt-logo-img">
+          <img src="${isDark ? "/assets/eltera_logo_horizontal_on_dark.png?v=5" : "/assets/eltera_logo_horizontal_on_light.png?v=5"}" alt="Eltera" class="elt-logo-img">
         </div>
         <nav class="elt-sidenav">
           ${navGroups.map((group) => `
@@ -1084,7 +1084,7 @@ export function renderReport(state, session) {
     <section class="reportPage">
       <div class="reportToolbar noPrint"><button class="button subtle" data-view="reports">Назад</button><div><button class="button subtle">Ответы</button><button class="button subtle">Интерпретация</button><button class="button subtle">${aiAccess(state.company.tariff)}</button><button class="blueButton" data-action="print-report">Скачать PDF</button></div></div>
       <article class="reportSheet">
-        <header class="reportHeader"><img src="/assets/eltera_logo_horizontal_on_light.svg" alt="Eltera"><div><b>${new Date(session.completedAt).toLocaleDateString("ru-RU")} · конфиденциально</b><span>Отчет оценки ${session.person.assessmentType.toLowerCase()}</span></div></header>
+        <header class="reportHeader"><img src="/assets/eltera_logo_horizontal_on_light.png" alt="Eltera"><div><b>${new Date(session.completedAt).toLocaleDateString("ru-RU")} · конфиденциально</b><span>Отчет оценки ${session.person.assessmentType.toLowerCase()}</span></div></header>
         <h1>${session.person.fullName || "Участник"}: рекомендация для HRD, руководителя и собственника</h1><p class="reportLead">${session.professionTitle}. Решение: ${result.recommendation.toLowerCase()}.</p>
         <section class="decisionBox ${statusClass}"><div class="decisionScore">${result.percent}%<span>соответствие роли</span></div><div><h2>Итоговое решение: ${result.recommendation}</h2><p>${decisionText(result)}</p></div></section>
         <section class="reportStats">${stat("Готовность", readiness(result))}${stat("Риск ошибки найма", `${Math.max(8, 100 - result.percent)}%`)}${stat("Достоверность", `${Math.max(55, 96 - result.redFlags * 12)}%`)}${stat("Следующий этап", "45 мин")}</section>
@@ -1315,7 +1315,7 @@ export function renderCandidateAssessment(link, profession, questions, answers, 
   // Тест с бэка: отрисовываем реальные вопросы конкретного теста (все типы).
   if (apiForm !== undefined) {
     const title = (apiForm && apiForm.title) || link.professionTitle || "Оценка";
-    const header = `<header class="candidateHeader"><img src="/assets/eltera_logo_horizontal_on_light.svg" alt="Eltera"></header>`;
+    const header = `<header class="candidateHeader"><img src="/assets/eltera_logo_horizontal_on_light.png" alt="Eltera"></header>`;
     if (formError) {
       return `<div class="candidatePage">${header}<main class="candidateCard"><h1>${title}</h1><p>${formError}</p><a class="blueButton" href="#/">На главную</a></main></div>`;
     }
@@ -1327,7 +1327,7 @@ export function renderCandidateAssessment(link, profession, questions, answers, 
   }
 
   return `
-    <div class="candidatePage"><header class="candidateHeader"><img src="/assets/eltera_logo_horizontal_on_light.svg" alt="Eltera"></header><main class="candidateCard"><span class="miniLabel">${link.recipientType} · ${link.professionTitle || profession.title}</span><h1>${link.professionTitle || profession.title}</h1><p>Заполните данные и ответьте на вопросы. Компания получит отчет после завершения оценки.</p><form class="candidateForm" data-candidate-form><label>ФИО<input name="fullName" required value="${link.fullName || ""}" placeholder="Иванов Иван"></label><label>Телефон<input name="phone" value="${link.phone || ""}" placeholder="+7..."></label><label>Email<input name="email" value="${link.email || ""}" placeholder="name@example.com"></label><label>Город<input name="city" placeholder="Москва"></label><label class="checkboxLine"><input type="checkbox" required><span>Согласен на обработку персональных данных</span></label><div class="questionList compact">${questions.map((question, index) => `<article class="questionCard"><div class="questionHead"><span>${competencyTitleById[question.competencyId] || question.competencyId}</span><b>${index + 1}/${questions.length}</b></div><h3>${question.text}</h3><div class="answers">${question.answers.map((answer, answerIndex) => `<label class="answer"><input type="radio" required name="${question.id}" value="${answerIndex}" ${answers[question.id] === answerIndex ? "checked" : ""}><span>${answer.text}</span></label>`).join("")}</div></article>`).join("")}</div><button class="blueButton wide" type="submit">Завершить оценку</button></form></main></div>
+    <div class="candidatePage"><header class="candidateHeader"><img src="/assets/eltera_logo_horizontal_on_light.png" alt="Eltera"></header><main class="candidateCard"><span class="miniLabel">${link.recipientType} · ${link.professionTitle || profession.title}</span><h1>${link.professionTitle || profession.title}</h1><p>Заполните данные и ответьте на вопросы. Компания получит отчет после завершения оценки.</p><form class="candidateForm" data-candidate-form><label>ФИО<input name="fullName" required value="${link.fullName || ""}" placeholder="Иванов Иван"></label><label>Телефон<input name="phone" value="${link.phone || ""}" placeholder="+7..."></label><label>Email<input name="email" value="${link.email || ""}" placeholder="name@example.com"></label><label>Город<input name="city" placeholder="Москва"></label><label class="checkboxLine"><input type="checkbox" required><span>Согласен на обработку персональных данных</span></label><div class="questionList compact">${questions.map((question, index) => `<article class="questionCard"><div class="questionHead"><span>${competencyTitleById[question.competencyId] || question.competencyId}</span><b>${index + 1}/${questions.length}</b></div><h3>${question.text}</h3><div class="answers">${question.answers.map((answer, answerIndex) => `<label class="answer"><input type="radio" required name="${question.id}" value="${answerIndex}" ${answers[question.id] === answerIndex ? "checked" : ""}><span>${answer.text}</span></label>`).join("")}</div></article>`).join("")}</div><button class="blueButton wide" type="submit">Завершить оценку</button></form></main></div>
   `;
 }
 
@@ -2253,7 +2253,7 @@ export function renderDevPortal(library) {
     <div class="devPortal">
       <div class="devPortalHeader">
         <div class="devPortalLogo">
-          <img src="/assets/eltera_logo_horizontal_on_dark.svg?v=5" alt="Eltera" height="28">
+          <img src="/assets/eltera_logo_horizontal_on_dark.png?v=5" alt="Eltera" height="28">
           <span class="devPortalBadge">Dev Portal</span>
         </div>
         <div class="devPortalActions">
