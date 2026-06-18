@@ -21,7 +21,7 @@ export function renderLanding(tariffs) {
       <!-- NAVBAR -->
       <header class="lv3-nav" id="lv3Nav">
         <a class="lv3-logo" href="#/">
-          <img src="/public/assets/eltera_logo_horizontal_on_dark.png?v=10" alt="Eltera" style="height:56px;width:auto;object-fit:contain;display:block;">
+          <img src="/public/assets/eltera_logo_main.png?v=1" alt="Eltera" style="height:52px;width:auto;object-fit:contain;display:block;mix-blend-mode:screen;filter:brightness(1.1);">
         </a>
         <nav class="lv3-navlinks">
           <a href="#lv3-how">Как работает</a>
@@ -76,10 +76,11 @@ export function renderLanding(tariffs) {
         <div class="lv3-hero-content">
           <div class="lv3-hero-left">
             <div class="lv3-pill lv3-fade" style="--d:.05s">❖ AI-платформа для оценки кандидатов и сотрудников</div>
-            <h1 class="lv3-fade" style="--d:.12s"><span class="lv3-grad">AI-оценка
-кандидатов
-и сотрудников</span>
-за <span class="lv3-grad">5 минут</span></h1>
+            <h1 class="lv3-fade" style="--d:.12s">
+              <span class="lv3-grad-purple">AI-оценка</span><br>
+              <span class="lv3-grad-white">кандидатов и сотрудников</span><br>
+              <span class="lv3-grad">за 5 минут</span>
+            </h1>
             <p class="lv3-fade" style="--d:.22s">Понимайте, кого брать, кого развивать
 и где есть риски — без сложных тестов
 и бесплатных демо-доступов.</p>
@@ -103,7 +104,19 @@ export function renderLanding(tariffs) {
                     <span class="lv3-live-dot"><span class="lv3-pulse"></span>Live</span>
                   </div>
                   <div class="lv3-hcard-person">
-                    <div class="lv3-hcard-avatar">М</div>
+                    <div class="lv3-hcard-avatar lv3-hcard-avatar--photo">
+                      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="20" cy="20" r="20" fill="url(#avatarBg)"/>
+                        <circle cx="20" cy="15" r="7" fill="rgba(255,255,255,0.85)"/>
+                        <ellipse cx="20" cy="34" rx="12" ry="8" fill="rgba(255,255,255,0.7)"/>
+                        <defs>
+                          <linearGradient id="avatarBg" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#1E5BFF"/>
+                            <stop offset="100%" stop-color="#7B61FF"/>
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                    </div>
                     <div>
                       <div class="lv3-hcard-name">Менеджер по подбору</div>
                       <div class="lv3-hcard-sub">ID: 7a-4fi-21 · Оценка завершена</div>
@@ -176,28 +189,33 @@ export function renderLanding(tariffs) {
                     <span class="lv3-live-dot"><span class="lv3-pulse"></span>Live</span>
                   </div>
                   <div class="lv3-9box-wrap">
-                    <div class="lv3-9box-grid">
-                      ${[0,1,2,3,4,5,6,7,8].map(i => `<div class="lv3-9box-cell${i===7?' lv3-9box-cell--active':''}"></div>`).join('')}
-                    </div>
-                    <div class="lv3-9box-labels">
-                      <div>Потенциал ↑</div>
-                      <div>Результативность →</div>
+                    <div class="lv3-9box-y-label">Потенциал</div>
+                    <div class="lv3-9box-main">
+                      <div class="lv3-9box-grid">
+                        <!-- Row 3 (high potential) -->
+                        <div class="lv3-9box-cell lv3-9box-cell--low" title="Знак" ><span>Знак</span></div>
+                        <div class="lv3-9box-cell lv3-9box-cell--mid" title="Перспективный"><span>Перспективный</span></div>
+                        <div class="lv3-9box-cell lv3-9box-cell--star" title="Звезда"><span>★ Звезда</span></div>
+                        <!-- Row 2 (mid potential) -->
+                        <div class="lv3-9box-cell lv3-9box-cell--risk" title="Риск"><span>Риск</span></div>
+                        <div class="lv3-9box-cell lv3-9box-cell--mid lv3-9box-cell--active" title="Стабильный"><span>● Стабильный</span></div>
+                        <div class="lv3-9box-cell lv3-9box-cell--high" title="Высокий"><span>Высокий</span></div>
+                        <!-- Row 1 (low potential) -->
+                        <div class="lv3-9box-cell lv3-9box-cell--danger" title="Увольнение"><span>Увольнение</span></div>
+                        <div class="lv3-9box-cell lv3-9box-cell--low" title="Исполнитель"><span>Исполнитель</span></div>
+                        <div class="lv3-9box-cell lv3-9box-cell--mid" title="Сильный"><span>Сильный</span></div>
+                      </div>
+                      <div class="lv3-9box-x-label">Результативность</div>
                     </div>
                   </div>
-                  <div class="lv3-hcard-metrics">
-                    <div class="lv3-hcard-metric">
-                      <div class="lv3-hcard-metric-row"><span>Performance</span><b class="lv3-status-good">высокий</b></div>
-                    </div>
-                    <div class="lv3-hcard-metric">
-                      <div class="lv3-hcard-metric-row"><span>Potential</span><b class="lv3-status-warn">средний/высокий</b></div>
-                    </div>
-                    <div class="lv3-hcard-metric">
-                      <div class="lv3-hcard-metric-row"><span>Категория</span><b>Сильный исполнитель</b></div>
-                    </div>
+                  <div class="lv3-9box-legend">
+                    <div class="lv3-9box-legend-item"><span class="lv3-9box-dot lv3-9box-dot--star"></span>Звезды (3)</div>
+                    <div class="lv3-9box-legend-item"><span class="lv3-9box-dot lv3-9box-dot--high"></span>Высокие (5)</div>
+                    <div class="lv3-9box-legend-item"><span class="lv3-9box-dot lv3-9box-dot--risk"></span>Риск (2)</div>
                   </div>
                   <div class="lv3-hcard-ai">
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#00E5D4" stroke-width="1.2"/><path d="M5 7l1.5 1.5L9 5" stroke="#00E5D4" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    <span>AI: Подходит для развития в управленческую роль</span>
+                    <span>AI: 3 сотрудника готовы к росту, 2 требуют внимания</span>
                   </div>
                 </div>
               </div>
@@ -942,7 +960,7 @@ export function renderLanding(tariffs) {
       <footer class="lv3-footer">
         <div class="lv3-footer-top">
           <div class="lv3-footer-brand">
-            <img src="/public/assets/eltera_logo_horizontal_on_dark.png" alt="Eltera" style="height:48px;width:auto;object-fit:contain;">
+            <img src="/public/assets/eltera_logo_main.png?v=1" alt="Eltera" style="height:48px;width:auto;object-fit:contain;mix-blend-mode:screen;filter:brightness(1.1);">
             <p>AI-платформа для оценки кандидатов и сотрудников. Компетенции, 360, вовлечённость, пульс-опросы и готовые отчёты.</p>
             <button class="lv3-btn-ghost" data-route="login">Войти в личный кабинет</button>
           </div>

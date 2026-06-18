@@ -1991,12 +1991,48 @@ function initLv3Landing() {
     let timer = null;
     const INTERVAL = 4000;
 
+    function animateBars(slide) {
+      // Reset all bars to 0, then animate to target width
+      const bars = slide.querySelectorAll('.lv3-hbar-fill');
+      bars.forEach(bar => {
+        const target = bar.style.getPropertyValue('--w') || bar.style.width || '0%';
+        bar.style.transition = 'none';
+        bar.style.width = '0%';
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            bar.style.transition = 'width 0.9s cubic-bezier(0.22, 0.68, 0, 1.1)';
+            bar.style.width = target;
+          });
+        });
+      });
+    }
+
     function goTo(idx) {
-      slides[current].classList.remove('lv3-hslide--active');
+      // Fade out current
+      slides[current].style.opacity = '0';
+      slides[current].style.transform = 'translateY(-8px)';
+      const prev = current;
+      setTimeout(() => {
+        slides[prev].classList.remove('lv3-hslide--active');
+        slides[prev].style.opacity = '';
+        slides[prev].style.transform = '';
+      }, 250);
       dots[current].classList.remove('lv3-hsdot--active');
       current = (idx + slides.length) % slides.length;
+      // Fade in new
+      slides[current].style.opacity = '0';
+      slides[current].style.transform = 'translateY(8px)';
       slides[current].classList.add('lv3-hslide--active');
       dots[current].classList.add('lv3-hsdot--active');
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          slides[current].style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+          slides[current].style.opacity = '1';
+          slides[current].style.transform = 'translateY(0)';
+          animateBars(slides[current]);
+          setTimeout(() => { slides[current].style.transition = ''; }, 400);
+        });
+      });
     }
 
     function startTimer() {
