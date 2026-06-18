@@ -1,9 +1,11 @@
 """Эндпоинты вкладки «Сотрудники»."""
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
+from app.crud import candidate as candidate_crud
 from app.crud import employee as crud
+from app.schemas.candidate import CandidateAnswers, PersonAssessments, Report360
 from app.schemas.employee import (
     EmployeeCreate,
     EmployeeList,
@@ -11,9 +13,52 @@ from app.schemas.employee import (
     EmployeeResultIn,
     EmployeeStats,
     EmployeeUpdate,
+    ImportResult,
 )
+from app.services import employee_import
+from app.services.adaptation import ensure_cycles
 
 router = APIRouter(prefix="/employees", tags=["employees"])
+
+_XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+@router.get("/import/template", summary="Скачать Excel-шаблон импорта сотрудников")
+async def download_import_template():
+    content = employee_import.build_template_bytes()
+    return Response(
+        content=content,
+        media_type=_XLSX_MIME,
+        headers={"Content-Disposition": 'attachment; filename="eltera-employees-import-template.xlsx"'},
+    )
+
+
+@router.post("/import", response_model=ImportResult, summary="Импорт сотрудников из Excel")
+async def import_employees(
+    file: UploadFile = File(...),
+    session: AsyncSession = Depends(get_session),
+):
+    name = (file.filename or "").lower()
+    if not name.endswith((".xlsx", ".xlsm")):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Нужен файл .xlsx по шаблону.")
+    content = await file.read()
+    rows, parse_errors = employee_import.parse_workbook(content)
+    if parse_errors and not rows:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "; ".join(parse_errors))
+    result = await crud.import_employees(session, rows)
+    # Ошибки парсинга (например нераспознанные даты) тоже показываем пользователю.
+    for msg in parse_errors:
+        row = 0
+        if msg.startswith("Строка "):
+            try:
+                row = int(msg.split()[1].rstrip(":"))
+            except (IndexError, ValueError):
+                row = 0
+        result.errors.append({"row": row, "reason": msg})
+    # Новым сотрудникам с датой выхода сразу заводим цикл адаптации.
+    if result.created:
+        await ensure_cycles(session)
+    return result
 
 
 @router.get("", response_model=EmployeeList, summary="Список сотрудников")
@@ -49,6 +94,44 @@ async def read_employee(employee_id: str, session: AsyncSession = Depends(get_se
     if emp is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Сотрудник не найден")
     return emp
+
+
+@router.get(
+    "/{employee_id}/assessments",
+    response_model=PersonAssessments,
+    summary="Оценки сотрудника по каждому тесту + средняя",
+)
+async def read_employee_assessments(employee_id: str, session: AsyncSession = Depends(get_session)):
+    data = await candidate_crud.list_person_assessments(session, employee_id)
+    if data is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Сотрудник не найден")
+    return data
+
+
+@router.get(
+    "/{employee_id}/360",
+    response_model=Report360,
+    summary="Сводный отчёт 360 по сотруднику (самооценка vs внешняя)",
+)
+async def read_employee_360(employee_id: str, session: AsyncSession = Depends(get_session)):
+    data = await candidate_crud.get_360_report(session, employee_id)
+    if data is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Сотрудник не найден")
+    return data
+
+
+@router.get(
+    "/{employee_id}/answers/{session_id}",
+    response_model=CandidateAnswers,
+    summary="Ответы сотрудника по конкретной оценке (сессии)",
+)
+async def read_employee_session_answers(
+    employee_id: str, session_id: str, session: AsyncSession = Depends(get_session)
+):
+    data = await candidate_crud.get_session_answers(session, session_id)
+    if data is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Оценка не найдена")
+    return data
 
 
 @router.post("", response_model=EmployeeRead, status_code=status.HTTP_201_CREATED, summary="Добавить сотрудника")

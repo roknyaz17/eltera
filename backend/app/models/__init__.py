@@ -1,4 +1,5 @@
 """ORM-модели. Импортируются здесь, чтобы Alembic видел все таблицы."""
+from app.models.adaptation import AdaptationCheckin, AdaptationCycle
 from app.models.assessment import (
     AiScoringJob,
     AssessmentLink,
@@ -9,6 +10,8 @@ from app.models.assessment import (
     SessionCompetencyScore,
 )
 from app.models.catalog import Competency, Department, Vacancy
+from app.models.hh import HHConnection
+from app.models.notification import Notification
 from app.models.organization import Organization, User
 from app.models.person import CandidateProfile, EmployeeProfile, Person
 from app.models.test import (
@@ -44,4 +47,8 @@ __all__ = [
     "SessionAnswerOption",
     "SessionCompetencyScore",
     "AiScoringJob",
+    "AdaptationCycle",
+    "AdaptationCheckin",
+    "Notification",
+    "HHConnection",
 ]

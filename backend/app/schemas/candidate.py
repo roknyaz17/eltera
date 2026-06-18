@@ -170,6 +170,75 @@ class CandidateAnswers(BaseModel):
     answers: list[CandidateAnswerView] = Field(default_factory=list)
 
 
+# --- Список пройденных оценок человека (по каждому тесту) ---
+
+
+class PersonAssessmentItem(BaseModel):
+    session_id: str
+    test_id: str
+    test_title: str | None = None
+    category: str | None = None
+    percent: int = 0
+    score: int = 0
+    max_score: int = 0
+    status: SessionStatus
+    recommendation_level: RecommendationLevel | None = None
+    recommendation_text: str | None = None
+    submitted_at: datetime | None = None
+
+
+class PersonAssessments(BaseModel):
+    person_id: str
+    full_name: str
+    average_percent: int = 0
+    count: int = 0
+    items: list[PersonAssessmentItem] = Field(default_factory=list)
+
+
+# --- Реестр отчётов (все завершённые сессии оценки) ---
+
+
+class ReportItem(BaseModel):
+    session_id: str
+    person_id: str | None = None
+    full_name: str
+    respondent_type: str  # candidate / employee
+    test_id: str
+    test_title: str | None = None
+    category: str | None = None
+    percent: int = 0
+    status: SessionStatus
+    recommendation_level: RecommendationLevel | None = None
+    submitted_at: datetime | None = None
+
+
+class ReportList(BaseModel):
+    items: list[ReportItem] = Field(default_factory=list)
+    total: int = 0
+
+
+# --- Сводный отчёт 360 (самооценка vs внешняя по компетенциям) ---
+
+
+class Comp360(BaseModel):
+    competency: str
+    self_percent: int | None = None
+    external_percent: int | None = None  # взвешенная внешняя оценка
+    by_role: dict[str, int] = Field(default_factory=dict)  # role -> средний %
+    gap: int | None = None  # self - external
+
+
+class Report360(BaseModel):
+    subject_person_id: str
+    full_name: str
+    has_self: bool = False
+    rater_counts: dict[str, int] = Field(default_factory=dict)  # role -> кол-во
+    self_overall: int | None = None
+    external_overall: int | None = None
+    gap_overall: int | None = None
+    competencies: list[Comp360] = Field(default_factory=list)
+
+
 # --- Статистика для дашборда ---
 
 

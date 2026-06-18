@@ -1,6 +1,7 @@
 """Операции с кандидатами поверх people + candidate_profiles + assessment_sessions."""
 from collections.abc import Sequence
 
+from pydantic import ValidationError
 from sqlalchemy import and_, asc, case, delete, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,9 +37,15 @@ from app.schemas.candidate import (
     CandidateRead,
     CandidateResultIn,
     CandidateStats,
+    Comp360,
     CompetencyScoreRead,
     HeatmapCell,
     HeatmapRow,
+    Report360,
+    PersonAssessmentItem,
+    PersonAssessments,
+    ReportItem,
+    ReportList,
     SourceBreakdown,
     StageBreakdown,
     VacancyBreakdown,
@@ -371,6 +378,64 @@ async def create_candidate(session: AsyncSession, data: CandidateCreate) -> str:
     return person.id
 
 
+async def import_candidates(session: AsyncSession, rows: list[dict]):
+    """Создаёт кандидатов из распарсенных строк Excel.
+
+    - дедуп по e-mail (иначе по ФИО) среди существующих кандидатов;
+    - вакансия создаётся/находится по названию;
+    - на каждую проблемную строку — запись в errors, импорт не прерывается.
+    """
+    from app.schemas.employee import ImportResult, ImportRowError
+
+    org_id = await _default_org_id(session)
+    existing = (await session.execute(
+        select(Person.full_name, Person.email)
+        .join(CandidateProfile, CandidateProfile.person_id == Person.id)
+        .where(Person.organization_id == org_id)
+    )).all()
+    seen_emails = {e.lower() for _, e in existing if e}
+    seen_names = {(n or "").strip().lower() for n, _ in existing if n}
+
+    result = ImportResult(total=len(rows))
+    for rec in rows:
+        row_no = rec.get("_row", 0)
+        full_name = (rec.get("full_name") or "").strip()
+        if not full_name:
+            result.errors.append(ImportRowError(row=row_no, reason="Не заполнено ФИО"))
+            continue
+        email = rec.get("email") or None
+        email_l = email.lower() if email else None
+        name_l = full_name.lower()
+        if email_l and email_l in seen_emails:
+            result.skipped += 1
+            result.errors.append(ImportRowError(row=row_no, reason=f"Пропущен: e-mail {email} уже есть"))
+            continue
+        if not email_l and name_l in seen_names:
+            result.skipped += 1
+            result.errors.append(ImportRowError(row=row_no, reason=f"Пропущен: «{full_name}» уже есть"))
+            continue
+        try:
+            data = CandidateCreate(
+                full_name=full_name, email=email, phone=rec.get("phone"),
+                city=rec.get("city"), vacancy_title=rec.get("vacancy_title"),
+                source=rec.get("source"), selection_type=rec.get("selection_type"),
+                applied_at=rec.get("applied_at"), notes=rec.get("notes"),
+            )
+        except ValidationError as exc:
+            msgs = "; ".join(e.get("msg", "") for e in exc.errors())
+            result.errors.append(ImportRowError(row=row_no, reason=f"Ошибка данных: {msgs}"))
+            continue
+
+        await create_candidate(session, data)
+        result.created += 1
+        result.created_names.append(full_name)
+        if email_l:
+            seen_emails.add(email_l)
+        seen_names.add(name_l)
+
+    return result
+
+
 async def update_candidate(session: AsyncSession, person_id: str, data) -> bool:
     person = await session.get(Person, person_id)
     if person is None or person.candidate_profile is None:
@@ -547,6 +612,206 @@ async def get_candidate_answers(session: AsyncSession, person_id: str) -> Candid
         candidate=person.full_name,
         test_title=test.title if test else None,
         percent=sess.percent,
+        answers=views,
+    )
+
+
+# --- Оценки человека по каждому тесту (карточка сотрудника/кандидата) ---
+
+
+async def list_person_assessments(session: AsyncSession, person_id: str) -> PersonAssessments | None:
+    person = await session.get(Person, person_id)
+    if person is None:
+        return None
+    sessions = (
+        await session.execute(
+            select(AssessmentSession)
+            .where(AssessmentSession.person_id == person_id)
+            .order_by(AssessmentSession.submitted_at.desc().nullslast())
+        )
+    ).scalars().all()
+    scored = [s for s in sessions if s.status in (
+        SessionStatus.scored.value, SessionStatus.reviewed.value, SessionStatus.submitted.value,
+    )]
+    test_ids = {s.test_id for s in scored}
+    tests = {}
+    if test_ids:
+        rows = (await session.execute(
+            select(Test.id, Test.title, Test.category).where(Test.id.in_(test_ids))
+        )).all()
+        tests = {tid: (title, cat) for tid, title, cat in rows}
+    items = [
+        PersonAssessmentItem(
+            session_id=s.id,
+            test_id=s.test_id,
+            test_title=tests.get(s.test_id, (None, None))[0],
+            category=tests.get(s.test_id, (None, None))[1],
+            percent=s.percent or 0,
+            score=s.score or 0,
+            max_score=s.max_score or 0,
+            status=s.status,
+            recommendation_level=s.recommendation_level,
+            recommendation_text=s.recommendation_text,
+            submitted_at=s.submitted_at,
+        )
+        for s in scored
+    ]
+    avg = round(sum(i.percent for i in items) / len(items)) if items else 0
+    return PersonAssessments(
+        person_id=person_id, full_name=person.full_name,
+        average_percent=avg, count=len(items), items=items,
+    )
+
+
+async def list_reports(session: AsyncSession) -> ReportList:
+    """Реестр отчётов — все завершённые сессии оценки (кандидаты + сотрудники)."""
+    sessions = (
+        await session.execute(
+            select(AssessmentSession)
+            .where(AssessmentSession.status.in_([
+                SessionStatus.scored.value, SessionStatus.reviewed.value, SessionStatus.submitted.value,
+            ]))
+            .order_by(AssessmentSession.submitted_at.desc().nullslast())
+        )
+    ).scalars().all()
+    person_ids = {s.person_id for s in sessions if s.person_id}
+    test_ids = {s.test_id for s in sessions}
+    persons = {}
+    if person_ids:
+        persons = {
+            p.id: p for p in (
+                await session.execute(select(Person).where(Person.id.in_(person_ids)))
+            ).scalars().all()
+        }
+    tests = {}
+    if test_ids:
+        rows = (await session.execute(
+            select(Test.id, Test.title, Test.category).where(Test.id.in_(test_ids))
+        )).all()
+        tests = {tid: (title, cat) for tid, title, cat in rows}
+    items = [
+        ReportItem(
+            session_id=s.id,
+            person_id=s.person_id,
+            full_name=(persons[s.person_id].full_name if s.person_id in persons else "—"),
+            respondent_type=s.respondent_type,
+            test_id=s.test_id,
+            test_title=tests.get(s.test_id, (None, None))[0],
+            category=tests.get(s.test_id, (None, None))[1],
+            percent=s.percent or 0,
+            status=s.status,
+            recommendation_level=s.recommendation_level,
+            submitted_at=s.submitted_at,
+        )
+        for s in sessions
+    ]
+    return ReportList(items=items, total=len(items))
+
+
+# Веса ролей во внешней оценке 360.
+ROLE_WEIGHTS_360 = {"manager": 0.4, "peer": 0.35, "report": 0.25}
+
+
+async def get_360_report(session: AsyncSession, subject_id: str) -> Report360 | None:
+    """Сводка 360 по оцениваемому: самооценка vs взвешенная внешняя по компетенциям."""
+    person = await session.get(Person, subject_id)
+    if person is None:
+        return None
+    done = [SessionStatus.scored.value, SessionStatus.reviewed.value, SessionStatus.submitted.value]
+    rows = (await session.execute(
+        select(AssessmentSession, AssessmentLink.rater_role)
+        .join(AssessmentLink, AssessmentLink.id == AssessmentSession.link_id)
+        .where(AssessmentLink.subject_person_id == subject_id, AssessmentSession.status.in_(done))
+    )).all()
+    sess_ids = [s.id for s, _ in rows]
+    comp_scores: dict[str, dict[str, int]] = {}
+    if sess_ids:
+        cs = (await session.execute(
+            select(SessionCompetencyScore).where(SessionCompetencyScore.session_id.in_(sess_ids))
+        )).scalars().all()
+        for c in cs:
+            comp_scores.setdefault(c.session_id, {})[c.competency_id] = c.percent
+    comp_ids = {cid for d in comp_scores.values() for cid in d}
+    titles = {}
+    if comp_ids:
+        titles = dict((await session.execute(
+            select(Competency.id, Competency.title).where(Competency.id.in_(comp_ids))
+        )).all())
+
+    by_comp: dict[str, dict] = {}
+    rater_counts: dict[str, int] = {}
+    has_self = False
+    for sess, role in rows:
+        role = role or ("self" if sess.person_id == subject_id else "peer")
+        if role == "self":
+            has_self = True
+        else:
+            rater_counts[role] = rater_counts.get(role, 0) + 1
+        for cid, pct in comp_scores.get(sess.id, {}).items():
+            d = by_comp.setdefault(cid, {"self": None, "roles": {}})
+            if role == "self":
+                d["self"] = pct
+            else:
+                d["roles"].setdefault(role, []).append(pct)
+
+    # Открытый вопрос «Обратная связь» — качественный, не участвует в сравнении компетенций.
+    skip_titles = {"Обратная связь"}
+    comps: list[Comp360] = []
+    self_vals, ext_vals = [], []
+    for cid, d in by_comp.items():
+        if titles.get(cid) in skip_titles:
+            continue
+        role_avgs = {r: round(sum(v) / len(v)) for r, v in d["roles"].items() if v}
+        ext = None
+        if role_avgs:
+            tot_w = sum(ROLE_WEIGHTS_360.get(r, 0.3) for r in role_avgs)
+            ext = round(sum(role_avgs[r] * ROLE_WEIGHTS_360.get(r, 0.3) for r in role_avgs) / tot_w) if tot_w else None
+        gap = (d["self"] - ext) if (d["self"] is not None and ext is not None) else None
+        comps.append(Comp360(
+            competency=titles.get(cid, "—"), self_percent=d["self"],
+            external_percent=ext, by_role=role_avgs, gap=gap,
+        ))
+        if d["self"] is not None:
+            self_vals.append(d["self"])
+        if ext is not None:
+            ext_vals.append(ext)
+    comps.sort(key=lambda c: c.competency)
+
+    self_overall = round(sum(self_vals) / len(self_vals)) if self_vals else None
+    ext_overall = round(sum(ext_vals) / len(ext_vals)) if ext_vals else None
+    gap_overall = (self_overall - ext_overall) if (self_overall is not None and ext_overall is not None) else None
+    return Report360(
+        subject_person_id=subject_id, full_name=person.full_name,
+        has_self=has_self, rater_counts=rater_counts,
+        self_overall=self_overall, external_overall=ext_overall, gap_overall=gap_overall,
+        competencies=comps,
+    )
+
+
+async def get_session_answers(session: AsyncSession, session_id: str) -> CandidateAnswers | None:
+    sess = await session.get(AssessmentSession, session_id)
+    if sess is None:
+        return None
+    test = await session.get(Test, sess.test_id)
+    person = await session.get(Person, sess.person_id)
+    if sess.answers_snapshot:
+        views = [
+            CandidateAnswerView(
+                question=a.get("question", "—"),
+                answer=a.get("answer"),
+                score=a.get("score", 0),
+                max_score=a.get("max_score", 0),
+                correct=a.get("correct"),
+                red_flag=a.get("red_flag", False),
+            )
+            for a in sess.answers_snapshot
+        ]
+    else:
+        views = await _answers_from_session(session, sess)
+    return CandidateAnswers(
+        candidate=person.full_name if person else "—",
+        test_title=test.title if test else None,
+        percent=sess.percent or 0,
         answers=views,
     )
 

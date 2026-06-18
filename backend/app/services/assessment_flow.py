@@ -141,6 +141,7 @@ async def create_link(session: AsyncSession, data: LinkCreate) -> AssessmentLink
     test, version = await _resolve_version(session, test_id)
 
     org_id = test.organization_id
+    person = None
     if data.person_id:
         person = await session.get(Person, data.person_id)
         if person is None:
@@ -159,12 +160,65 @@ async def create_link(session: AsyncSession, data: LinkCreate) -> AssessmentLink
         vacancy_id=data.vacancy_id,
         status=LinkStatus.pending.value,
         expires_at=data.expires_at,
+        subject_person_id=data.subject_person_id,
+        rater_role=data.rater_role,
     )
     link.events.append(AssessmentLinkEvent(event="created"))
     session.add(link)
     await session.commit()
     await session.refresh(link)
+
+    # Письмо-приглашение получателю (если есть e-mail и настроен SMTP).
+    await _notify_invite(session, link, test, person)
     return link
+
+
+async def _notify_report_ready(link, person, test_obj, category: str, percent: int) -> None:
+    """Уведомляет HR о завершённой оценке (кроме адаптации/360). Ошибки не пробрасываем."""
+    if category in ("360", "адаптация"):
+        return
+    from app.services import email as email_service
+    try:
+        full_name = person.full_name if person else (link.recipient_email or "—")
+        view = "employees" if link.recipient_type == "employee" else "candidates"
+        await email_service.send_report_ready(
+            full_name=full_name, recipient_type=link.recipient_type,
+            test_title=test_obj.title if test_obj else "Оценка",
+            percent=percent, view=view,
+        )
+    except Exception:  # noqa: BLE001
+        import logging
+        logging.getLogger("eltera.email").exception("notify_report_ready failed")
+
+
+async def _notify_invite(session, link, test, person) -> None:
+    """Шлёт письмо-приглашение по созданной ссылке. Ошибки не пробрасываем."""
+    from app.services import email as email_service
+
+    to = link.recipient_email or (person.email if person else None)
+    if not to:
+        return
+    subject_name = None
+    if link.subject_person_id:
+        subj = await session.get(Person, link.subject_person_id)
+        subject_name = subj.full_name if subj else None
+    try:
+        sent = await email_service.send_invite(
+            to=to,
+            full_name=person.full_name if person else None,
+            test_title=test.title,
+            category=test.category,
+            recipient_type=link.recipient_type,
+            rater_role=link.rater_role,
+            subject_name=subject_name,
+            token=link.token,
+        )
+        if sent:
+            link.events.append(AssessmentLinkEvent(event="email_sent"))
+            await session.commit()
+    except Exception:  # noqa: BLE001
+        import logging
+        logging.getLogger("eltera.email").exception("notify_invite failed")
 
 
 async def list_links(session: AsyncSession) -> list[LinkListItem]:
@@ -223,6 +277,8 @@ async def list_links(session: AsyncSession) -> list[LinkListItem]:
                 test_title=titles.get(lk.test_id),
                 percent=percents.get(lk.id),
                 created_at=lk.created_at,
+                subject_person_id=lk.subject_person_id,
+                rater_role=lk.rater_role,
             )
         )
     return items
@@ -278,6 +334,11 @@ async def build_form(session: AsyncSession, token: str) -> AssessmentForm:
         )
 
     person = await session.get(Person, link.person_id) if link.person_id else None
+    # 360: имя того, кого оценивает респондент (если роль не «самооценка»).
+    subject_name = None
+    if link.subject_person_id and link.subject_person_id != link.person_id:
+        subj = await session.get(Person, link.subject_person_id)
+        subject_name = subj.full_name if subj else None
 
     return AssessmentForm(
         token=token,
@@ -289,6 +350,8 @@ async def build_form(session: AsyncSession, token: str) -> AssessmentForm:
         full_name=person.full_name if person else None,
         email=link.recipient_email or (person.email if person else None),
         phone=link.recipient_phone or (person.phone if person else None),
+        subject_name=subject_name,
+        rater_role=link.rater_role,
         questions=questions,
     )
 
@@ -455,10 +518,19 @@ async def submit(session: AsyncSession, token: str, payload) -> AssessmentResult
             else:
                 person.candidate_profile.stage = CandidateStage.not_fit.value
     # Сотрудник: фиксируем соответствие (fit) — замыкаем цикл оценки сотрудников.
+    # Адаптация и 360 измеряют другие измерения (онбординг, круговая обратная
+    # связь), поэтому job-fit (соответствие должности) ими не перезаписываем.
+    test_obj = await session.get(Test, link.test_id)
+    category = (test_obj.category or "").strip().lower() if test_obj else ""
     if person is not None and person.employee_profile is not None:
-        person.employee_profile.fit = percent
+        if category not in ("360", "адаптация"):
+            person.employee_profile.fit = percent
 
     await session.commit()
+
+    # Письмо HR: оценка пройдена / отчёт готов. Не шлём для внутренних
+    # пульс-опросов (адаптация/360) — они идут в центр уведомлений, не в HR-почту.
+    await _notify_report_ready(link, person, test_obj, category, percent)
 
     return AssessmentResult(
         session_id=sess.id,

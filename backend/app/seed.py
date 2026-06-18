@@ -221,7 +221,8 @@ EMP_DEFS = [
 async def seed_structure(session, org_id: str) -> int:
     """CEO → руководители отделов → сотрудники. Возвращает число добавленных людей."""
     ceo = Person(organization_id=org_id, full_name="Алексей Козлов")
-    ceo.employee_profile = EmployeeProfile(position="Генеральный директор", turnover_risk="low", fit=95)
+    # fit (соответствие должности) НЕ засеваем — он берётся только из реальных оценок.
+    ceo.employee_profile = EmployeeProfile(position="Генеральный директор", turnover_risk="low")
     session.add(ceo)
     await session.flush()
 
@@ -237,7 +238,7 @@ async def seed_structure(session, org_id: str) -> int:
         h = Person(organization_id=org_id, full_name=head_name)
         h.employee_profile = EmployeeProfile(
             position=f"Руководитель: {name}", department_id=departments[name].id,
-            manager_id=ceo.id, turnover_risk="low", fit=88,
+            manager_id=ceo.id, turnover_risk="low",
         )
         session.add(h)
         await session.flush()
@@ -254,7 +255,6 @@ async def seed_structure(session, org_id: str) -> int:
             turnover_risk=RISK_MAP.get(risk, "low"), burnout=burnout,
             satisfaction=max(52, fit - 6),
             recommendation="Нужен ИПР и разговор с руководителем" if fit < 70 else "Поддерживать текущий план развития",
-            fit=fit,
         )
         session.add(p)
     await session.flush()
@@ -462,6 +462,30 @@ async def seed(force: bool = False) -> None:
             f"{len(CANDIDATES)} кандидатов, {len(DEPT_DEFS)} отдела, "
             f"{1 + len(DEPT_DEFS) + len(EMP_DEFS)} сотрудников."
         )
+
+    # 8. Тесты для сотрудников (Адаптация, Оценка 360°, Performance Review).
+    # Отдельной идемпотентной транзакцией — не дублирует при повторном запуске.
+    from app.seed_employee_tests import seed_employee_tests
+    await seed_employee_tests()
+
+    # 8b. 360-тесты по ролям (самооценка / руководитель / коллеги / подчинённые).
+    from app.seed_360_tests import seed_360_tests
+    await seed_360_tests()
+
+    # 8c. Опросы адаптации по этапам (Старт / Интеграция / Закрепление / Итог).
+    from app.seed_adaptation_tests import seed_adaptation_tests
+    await seed_adaptation_tests()
+
+    # 9. Реальные сессии 360 и адаптации (чтобы вкладки были наполнены данными).
+    from app.seed_employee_assessments import seed_employee_assessments
+    await seed_employee_assessments()
+
+    # 10. Циклы адаптации (по дате выхода) + демо-таймлайн «в процессе».
+    from app.services.adaptation import ensure_cycles
+    async with AsyncSessionLocal() as adapt_session:
+        await ensure_cycles(adapt_session)
+    from app.seed_adaptation_demo import main as seed_adaptation_demo
+    await seed_adaptation_demo()
 
 
 if __name__ == "__main__":

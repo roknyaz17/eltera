@@ -34,7 +34,7 @@ function icon(name) {
 
 // ─── KPI Cards ────────────────────────────────────────────────────────────────
 
-function kpiCard({ label, value, caption, status = "neutral", target = "", trend = "", iconName = "" }) {
+export function kpiCard({ label, value, caption, status = "neutral", target = "", trend = "", iconName = "" }) {
   const sc = statusClass(status);
   return `
     <article class="elt-kpi ${sc} ${target ? "clickable" : ""}" ${target ? `data-open-list="${target}"` : ""}>
@@ -54,7 +54,7 @@ function kpiCard({ label, value, caption, status = "neutral", target = "", trend
 
 // ─── Funnel ───────────────────────────────────────────────────────────────────
 
-function funnelChart(items) {
+export function funnelChart(items) {
   const first = Number(items[0]?.value ?? 1) || 1;
   return `
     <div class="elt-funnel">
@@ -81,7 +81,7 @@ function funnelChart(items) {
 
 // ─── Bar Chart ────────────────────────────────────────────────────────────────
 
-function barChart(items) {
+export function barChart(items) {
   const max = Math.max(...items.map((item) => Number(item.value ?? item[1]) || 1), 1);
   return `
     <div class="elt-bar-chart">

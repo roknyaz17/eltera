@@ -3,7 +3,7 @@
  * Handles all interactions for the multi-step assessment creation wizard.
  * Depends on: state (ref), render (fn), saveState (fn)
  */
-import { createLink } from "../data/api.js";
+import { createLink, startAdaptation } from "../data/api.js";
 
 export function initWizardController({ getState, setState, render, saveState }) {
 
@@ -15,88 +15,93 @@ export function initWizardController({ getState, setState, render, saveState }) 
     setTimeout(() => t.remove(), 3500);
   }
 
-  function handleSend360(w, state) {
-    const emps = state.employeesApi || [];
-    const targets = emps.filter(e => w.selected.includes(e.id));
-    const r360 = w.roles360 || { self: true, manager: false, peers: 0, reports: 0 };
-    const roleNames = [];
-    if (r360.self) roleNames.push("Самооценка");
-    if (r360.manager) roleNames.push("Руководитель");
-    for (let i = 0; i < r360.peers; i++) roleNames.push(`Коллега ${i + 1}`);
-    for (let i = 0; i < r360.reports; i++) roleNames.push(`Подчинённый ${i + 1}`);
+  // 360: оцениваемый получает самооценку, оценщики — тест по своей роли,
+  // на каждой ссылке проставляется subject (кого оценивают) и роль.
+  async function handleSend360Roles(w, state) {
+    const employees = state.employeesApi || [];
+    const subject = employees.find(e => e.id === w.subject);
+    const raters = w.raters || {};
+    if (!subject || !Object.keys(raters).length) {
+      showToast("Выберите оцениваемого и хотя бы одного оценщика", "info");
+      return;
+    }
+    const TITLE_BY_ROLE = {
+      self: "Оценка 360° · Самооценка",
+      manager: "Оценка 360° · Руководитель",
+      peer: "Оценка 360° · Коллеги",
+      report: "Оценка 360° · Подчинённые",
+    };
+    const byTitle = {};
+    (state.testsApi || []).forEach(t => { byTitle[t.title] = t; });
+
+    const jobs = [{ person: subject, role: "self" }];
+    Object.entries(raters).forEach(([id, role]) => {
+      const e = employees.find(x => x.id === id);
+      if (e) jobs.push({ person: e, role });
+    });
+
     const now = new Date();
-    const newLinks = [];
-    targets.forEach(emp =>
-      roleNames.forEach(role =>
-        newLinks.push({
-          token: Math.random().toString(36).slice(2, 10),
-          fullName: emp.fullName,
-          email: emp.email || "",
-          professionTitle: `360° — ${role}`,
-          recipientType: "employee",
-          assessType: "360",
-          role360: role,
-          status: "sent",
-          createdAt: now.toISOString(),
-          deadline: w.deadline,
-          employeeId: emp.id
-        })
-      )
-    );
-    setState(s => ({
-      ...s,
-      links: [...(s.links || []), ...newLinks],
-      company: { ...s.company, assessmentBalance: Math.max(0, (s.company.assessmentBalance || 0) - newLinks.length) },
-      modal: null
+    const localLinks = [];
+    await Promise.all(jobs.map(async (j, i) => {
+      const test = byTitle[TITLE_BY_ROLE[j.role]];
+      if (!test) return;
+      const local = {
+        id: `link-${Date.now()}-${i}`,
+        token: Math.random().toString(36).slice(2, 10),
+        professionId: test.key || "360",
+        professionTitle: test.title,
+        recipientType: "Сотрудник",
+        assessmentType: "Сотрудник",
+        fullName: j.person.fullName,
+        email: j.person.email || "",
+        status: "pending",
+        history: [["создана", now.toISOString()]],
+        createdAt: now.toISOString(),
+        apiPersonId: j.person.id,
+      };
+      try {
+        const resp = await createLink({
+          test_id: test.id, person_id: j.person.id, recipient_type: "employee",
+          subject_person_id: subject.id, rater_role: j.role,
+        });
+        local.apiToken = resp.token;
+        local.apiTestId = resp.test_id;
+      } catch (error) {
+        console.warn("Не удалось создать 360-ссылку:", error);
+      }
+      localLinks.push(local);
     }));
+
+    setState(s => ({ ...s, links: [...localLinks, ...(s.links || [])], linksStatus: "idle", modal: null }));
     saveState();
-    render();
-    showToast(`Оценка 360° запущена: ${targets.length} чел., ${newLinks.length} ссылок`);
+    if (location.hash === "#/app/links") render();
+    else location.hash = "#/app/links";
+    showToast(`360° запущена для ${subject.fullName}: самооценка + ${Object.keys(raters).length} оценщик(ов).`);
   }
 
-  function handleSendReview(w, state) {
-    const emps = state.employeesApi || [];
+  // Адаптация: «Создать оценку → Адаптация» запускает полноценный цикл
+  // (этапы 1/3/7/…/180 дней), первый опрос уходит сразу.
+  async function handleStartAdaptation(w, state) {
+    const employees = state.employeesApi || [];
     const targets = w.scope === "dept"
-      ? emps.filter(e => e.department === w.dept)
-      : emps.filter(e => w.selected.includes(e.id));
-    const prVals = w.prValues || {};
-    const nineBoxMap = {
-      "00": "Зона риска", "01": "Зона риска", "10": "Зона риска",
-      "11": "Зона развития", "02": "Стабильный", "20": "Стабильный",
-      "12": "Стабильный", "21": "Стабильный", "22": "Стабильный",
-      "03": "Стабильный", "30": "Стабильный", "13": "Перспективный",
-      "31": "Перспективный", "04": "HiPo", "40": "HiPo",
-      "14": "HiPo", "41": "HiPo", "23": "Перспективный",
-      "32": "Перспективный", "24": "HiPo", "42": "HiPo",
-      "33": "Перспективный", "34": "HiPo", "43": "HiPo", "44": "HiPo"
-    };
-    const pi = prVals.performance ?? 2;
-    const po = prVals.potential ?? 2;
-    const nineBox = nineBoxMap[`${pi}${po}`] || "Стабильный";
-    const now = new Date();
-    const newLinks = targets.map(emp => ({
-      token: Math.random().toString(36).slice(2, 10),
-      fullName: emp.fullName,
-      email: emp.email || "",
-      professionTitle: "Performance Review",
-      recipientType: "employee",
-      assessType: "review",
-      status: "sent",
-      createdAt: now.toISOString(),
-      deadline: w.deadline,
-      employeeId: emp.id,
-      prValues: prVals,
-      nineBox
-    }));
-    setState(s => ({
-      ...s,
-      links: [...(s.links || []), ...newLinks],
-      company: { ...s.company, assessmentBalance: Math.max(0, (s.company.assessmentBalance || 0) - newLinks.length) },
-      modal: null
-    }));
+      ? employees.filter(e => e.department === w.dept)
+      : employees.filter(e => w.selected.includes(e.id));
+    if (!targets.length) {
+      showToast("Выберите сотрудников", "info");
+      return;
+    }
+    try {
+      await startAdaptation(targets.map(t => t.id));
+    } catch (error) {
+      console.warn("Не удалось запустить адаптацию:", error);
+      showToast("Не удалось запустить адаптацию", "info");
+      return;
+    }
+    setState(s => ({ ...s, modal: null, adaptationStatus: "idle" }));
     saveState();
-    render();
-    showToast(`Performance Review запущен: ${newLinks.length} чел.`);
+    if (location.hash === "#/app/adaptation") render();
+    else location.hash = "#/app/adaptation";
+    showToast(`Адаптация запущена для ${targets.length} сотрудник(ов). Первый опрос отправлен.`);
   }
 
   async function handleSendStandard(w, state) {
@@ -104,12 +109,20 @@ export function initWizardController({ getState, setState, render, saveState }) 
     const targets = w.scope === "dept"
       ? employees.filter(e => e.department === w.dept)
       : employees.filter(e => w.selected.includes(e.id));
-    if (!targets.length || !w.profId) {
-      showToast("Выберите сотрудников и профиль оценки", "info");
+    // Для Адаптации/360/Performance Review тест фиксирован, для «Оценки
+    // компетенций» — берётся выбранный профиль.
+    const TYPE_TEST_TITLE = { "360": "Оценка 360°", review: "Performance Review", adaptation: "Адаптация сотрудника" };
+    let test = null;
+    if (w.assessType && TYPE_TEST_TITLE[w.assessType]) {
+      test = (state.testsApi || []).find(t => t.title === TYPE_TEST_TITLE[w.assessType] && t.target_type === "employee");
+    } else if (w.profId) {
+      test = (state.testsApi || []).find(t => t.id === w.profId);
+    }
+    if (!targets.length || !test) {
+      showToast("Выберите сотрудников и тест оценки", "info");
       return;
     }
-    const test = (state.testsApi || []).find(t => t.id === w.profId);
-    const professionId = (test && test.key) || "recruiter";
+    const professionId = test.key || "recruiter";
     const now = new Date();
     // Локальные ссылки — чтобы сотрудник прошёл тест; apiPersonId связывает с бэком.
     const localLinks = targets.map((emp, i) => ({
@@ -131,7 +144,7 @@ export function initWizardController({ getState, setState, render, saveState }) 
     await Promise.all(targets.map(async (emp, i) => {
       try {
         const resp = await createLink({
-          test_id: w.profId, person_id: emp.id, recipient_type: "employee"
+          test_id: test.id, person_id: emp.id, recipient_type: "employee"
         });
         localLinks[i].apiToken = resp.token;
         localLinks[i].apiTestId = resp.test_id;
@@ -229,47 +242,43 @@ export function initWizardController({ getState, setState, render, saveState }) 
       return;
     }
 
-    // PR scale selection
-    const prKeyEl = event.target.closest("[data-aw-pr-key]");
-    if (prKeyEl) {
-      const key = prKeyEl.dataset.awPrKey;
-      const val = parseInt(prKeyEl.dataset.awPrVal, 10);
-      setState(s => ({ ...s, modal: { ...s.modal, prValues: { ...(s.modal.prValues || {}), [key]: val } } }));
-      render();
-      return;
-    }
-
-    // 360 role toggle / counter
-    const roleEl = event.target.closest("[data-aw-role]");
-    if (roleEl) {
-      const role = roleEl.dataset.awRole;
-      const val = roleEl.dataset.awRoleVal;
+    // 360: выбрать оцениваемого (single)
+    const awSubject = event.target.closest("[data-aw-subject]")?.dataset.awSubject;
+    if (awSubject) {
       setState(s => {
-        const r360 = { ...(s.modal.roles360 || { self: true, manager: false, peers: 0, reports: 0 }) };
-        if (val === "toggle") r360[role] = !r360[role];
-        else if (val === "inc") r360[role] = Math.min((r360[role] || 0) + 1, 10);
-        else if (val === "dec") r360[role] = Math.max((r360[role] || 0) - 1, 0);
-        return { ...s, modal: { ...s.modal, roles360: r360 } };
+        const raters = { ...(s.modal.raters || {}) };
+        delete raters[awSubject]; // оцениваемый не может быть оценщиком
+        return { ...s, modal: { ...s.modal, subject: awSubject, raters } };
       });
       render();
       return;
     }
 
-    // Send Performance Review
-    if (event.target.closest("[data-aw-send-review]")) {
-      handleSendReview(getState().modal, getState());
+    // 360: назначить/снять роль оценщику ("personId|role")
+    const awRaterRole = event.target.closest("[data-aw-rater-role]")?.dataset.awRaterRole;
+    if (awRaterRole) {
+      const [pid, role] = awRaterRole.split("|");
+      setState(s => {
+        const raters = { ...(s.modal.raters || {}) };
+        if (raters[pid] === role) delete raters[pid]; // повторный клик — снять
+        else raters[pid] = role;
+        return { ...s, modal: { ...s.modal, raters } };
+      });
+      render();
       return;
     }
 
-    // Send 360
-    if (event.target.closest("[data-aw-send-360]")) {
-      handleSend360(getState().modal, getState());
+    // 360: запустить (самооценка + оценщики по ролям)
+    if (event.target.closest("[data-aw-send-360r]")) {
+      handleSend360Roles(getState().modal, getState());
       return;
     }
 
-    // Send standard assessment
+    // Send assessment (единый отправитель для всех типов оценки сотрудников)
     if (event.target.closest("[data-aw-send]")) {
-      handleSendStandard(getState().modal, getState());
+      const w = getState().modal;
+      if (w.assessType === "adaptation") handleStartAdaptation(w, getState());
+      else handleSendStandard(w, getState());
       return;
     }
   });

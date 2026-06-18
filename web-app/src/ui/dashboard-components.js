@@ -46,6 +46,14 @@ export function getRiskStatus(value) {
   return getMetricStatus(value, metricThresholds.risk);
 }
 
+// «В зоне риска»: только реально оценённые. Не оценённые (fit = null, риск «—»)
+// не считаются рисковыми — иначе аналитика по импортированным сотрудникам врёт.
+export function employeeAtRisk(e) {
+  const assessed = typeof e.fit === "number";
+  const riskElevated = e.turnoverRisk === "средний" || e.turnoverRisk === "повышенный" || e.turnoverRisk === "высокий";
+  return riskElevated || (assessed && e.fit < 70);
+}
+
 export function getVacancyHealthStatus(vacancy) {
   const conversion = Number(String(vacancy.conversion || 0).replace("%", ""));
   if (!vacancy.responses || !vacancy.fit) return "bad";

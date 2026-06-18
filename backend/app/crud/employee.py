@@ -1,6 +1,7 @@
 """Операции с сотрудниками, отделами и оргструктурой."""
 from collections.abc import Sequence
 
+from pydantic import ValidationError
 from sqlalchemy import and_, asc, case, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -220,6 +221,103 @@ async def create_employee(session: AsyncSession, data: EmployeeCreate) -> str:
     return person.id
 
 
+async def import_employees(session: AsyncSession, rows: list[dict]):
+    """Создаёт сотрудников из распарсенных строк Excel.
+
+    - дедупликация по e-mail (если есть), иначе по ФИО — дубли пропускаются;
+    - руководитель назначается по ФИО (в т.ч. если он добавлен в этом же файле);
+    - на каждую проблемную строку — запись в errors, импорт не прерывается.
+    """
+    from app.schemas.employee import ImportResult, ImportRowError
+
+    org_id = await _default_org_id(session)
+    existing = (await session.execute(
+        select(Person.full_name, Person.email).where(Person.organization_id == org_id)
+    )).all()
+    seen_emails = {e.lower() for _, e in existing if e}
+    seen_names = {(n or "").strip().lower() for n, _ in existing if n}
+
+    result = ImportResult(total=len(rows))
+    created_rows: list[tuple[str, str | None]] = []  # (person_id, manager_name)
+    welcome_targets: list[tuple[str, str]] = []      # (full_name, email) для welcome-писем
+
+    for rec in rows:
+        row_no = rec.get("_row", 0)
+        full_name = (rec.get("full_name") or "").strip()
+        if not full_name:
+            result.errors.append(ImportRowError(row=row_no, reason="Не заполнено ФИО"))
+            continue
+        email = rec.get("email") or None
+        email_l = email.lower() if email else None
+        name_l = full_name.lower()
+        if email_l and email_l in seen_emails:
+            result.skipped += 1
+            result.errors.append(ImportRowError(row=row_no, reason=f"Пропущен: e-mail {email} уже есть"))
+            continue
+        if not email_l and name_l in seen_names:
+            result.skipped += 1
+            result.errors.append(ImportRowError(row=row_no, reason=f"Пропущен: «{full_name}» уже есть"))
+            continue
+        try:
+            data = EmployeeCreate(
+                full_name=full_name, email=email, phone=rec.get("phone"),
+                city=rec.get("city"), position=rec.get("position"),
+                department_name=rec.get("department_name"), manager_name=rec.get("manager_name"),
+                project=rec.get("project"), start_date=rec.get("start_date"),
+                employment_type=rec.get("employment_type"),
+                # Импортированный сотрудник ещё не оценён: fit = NULL, риск = «none» («—»).
+                turnover_risk=RiskLevel.none,
+            )
+        except ValidationError as exc:
+            msgs = "; ".join(e.get("msg", "") for e in exc.errors())
+            result.errors.append(ImportRowError(row=row_no, reason=f"Ошибка данных: {msgs}"))
+            continue
+
+        pid = await create_employee(session, data)
+        created_rows.append((pid, rec.get("manager_name")))
+        result.created += 1
+        result.created_names.append(full_name)
+        if email:
+            welcome_targets.append((full_name, email))
+        if email_l:
+            seen_emails.add(email_l)
+        seen_names.add(name_l)
+
+    # Второй проход: назначаем руководителей, которые в файле идут ниже подчинённых.
+    if created_rows:
+        name_to_id = {
+            n: i for n, i in (await session.execute(
+                select(Person.full_name, Person.id).where(Person.organization_id == org_id)
+            )).all()
+        }
+        changed = False
+        for pid, mname in created_rows:
+            if not mname:
+                continue
+            ep = await session.get(EmployeeProfile, pid)
+            if ep is not None and ep.manager_id is None:
+                mid = name_to_id.get(mname)
+                if mid and mid != pid:
+                    ep.manager_id = mid
+                    changed = True
+        if changed:
+            await session.commit()
+
+    # Welcome-письма новым сотрудникам (если включено и есть e-mail).
+    if welcome_targets:
+        from app.core.config import get_settings
+        from app.services import email as email_service
+        if get_settings().welcome_email_on_import:
+            for full_name, to in welcome_targets:
+                try:
+                    await email_service.send_welcome(to=to, full_name=full_name)
+                except Exception:  # noqa: BLE001
+                    import logging
+                    logging.getLogger("eltera.email").exception("welcome email failed for %s", to)
+
+    return result
+
+
 async def update_employee(session: AsyncSession, person_id: str, data) -> bool:
     person = await session.get(Person, person_id)
     if person is None or person.employee_profile is None:
@@ -239,6 +337,10 @@ async def update_employee(session: AsyncSession, person_id: str, data) -> bool:
         if composed:
             person.full_name = composed
     await session.commit()
+    # Сдвиг даты выхода → пересчитать цикл адаптации (или создать, если появилась дата).
+    if "start_date" in changes:
+        from app.services.adaptation import resync_or_create_for_person
+        await resync_or_create_for_person(session, person_id)
     return True
 
 
@@ -337,12 +439,18 @@ async def get_employee_stats(session: AsyncSession) -> EmployeeStats:
             .join(Person, Person.id == EmployeeProfile.person_id)
         )
 
-    fit = func.coalesce(EmployeeProfile.fit, 0)
+    # fit может быть NULL («не оценён») — такие сотрудники не попадают ни в один
+    # из порогов (NULL-сравнения → false), т.е. не считаются «низкими».
+    fit = EmployeeProfile.fit
     total = await scalar(base())
     high = await scalar(base().where(fit >= HIGH))
     medium = await scalar(base().where(fit >= MEDIUM, fit < HIGH))
-    low = await scalar(base().where(fit < MEDIUM))
-    at_risk = await scalar(base().where(EmployeeProfile.turnover_risk != RiskLevel.low.value))
+    low = await scalar(base().where(fit.isnot(None), fit < MEDIUM))
+    # «В зоне риска» — только реально оценённые со средним/высоким риском.
+    # «low» и «none» (не оценён) сюда не входят, чтобы не искажать аналитику.
+    at_risk = await scalar(base().where(
+        EmployeeProfile.turnover_risk.notin_([RiskLevel.low.value, RiskLevel.none.value])
+    ))
     burnout = await scalar(
         base().where(
             EmployeeProfile.burnout.isnot(None),

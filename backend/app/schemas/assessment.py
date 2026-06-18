@@ -33,6 +33,9 @@ class LinkCreate(BaseModel):
     recipient_phone: str | None = None
     vacancy_id: str | None = None
     expires_at: datetime | None = None
+    # 360: кого оценивают (subject) и роль оценщика (self/manager/peer/report).
+    subject_person_id: str | None = None
+    rater_role: str | None = None
 
 
 class LinkRead(BaseModel):
@@ -60,6 +63,9 @@ class LinkListItem(BaseModel):
     test_title: str | None = None
     percent: int | None = None
     created_at: datetime
+    # 360: кого оценивают и роль оценщика.
+    subject_person_id: str | None = None
+    rater_role: str | None = None
 
 
 # --- Форма теста (то, что видит проходящий; без баллов и red flags) ---
@@ -91,6 +97,9 @@ class AssessmentForm(BaseModel):
     full_name: str | None = None
     email: str | None = None
     phone: str | None = None
+    # 360: кого оценивает респондент и в какой роли.
+    subject_name: str | None = None
+    rater_role: str | None = None
     questions: list[FormQuestion]
 
 

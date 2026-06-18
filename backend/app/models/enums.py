@@ -66,6 +66,7 @@ class CandidateStage(StrEnum):
 
 
 class RiskLevel(StrEnum):
+    none = "none"   # не оценён — риск ещё не определялся (импорт без оценки)
     low = "low"
     medium = "medium"
     high = "high"

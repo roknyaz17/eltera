@@ -1,5 +1,5 @@
 """HTTP-эндпоинты вкладки «Кандидаты»."""
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
@@ -17,8 +17,46 @@ from app.schemas.candidate import (
     CandidateStats,
     CandidateUpdate,
 )
+from app.schemas.employee import ImportResult
+from app.services import candidate_import
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
+
+_XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+@router.get("/import/template", summary="Скачать Excel-шаблон импорта кандидатов")
+async def download_import_template():
+    content = candidate_import.build_template_bytes()
+    return Response(
+        content=content,
+        media_type=_XLSX_MIME,
+        headers={"Content-Disposition": 'attachment; filename="eltera-candidates-import-template.xlsx"'},
+    )
+
+
+@router.post("/import", response_model=ImportResult, summary="Импорт кандидатов из Excel")
+async def import_candidates(
+    file: UploadFile = File(...),
+    session: AsyncSession = Depends(get_session),
+):
+    name = (file.filename or "").lower()
+    if not name.endswith((".xlsx", ".xlsm")):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Нужен файл .xlsx по шаблону.")
+    content = await file.read()
+    rows, parse_errors = candidate_import.parse_workbook(content)
+    if parse_errors and not rows:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "; ".join(parse_errors))
+    result = await crud.import_candidates(session, rows)
+    for msg in parse_errors:
+        row = 0
+        if msg.startswith("Строка "):
+            try:
+                row = int(msg.split()[1].rstrip(":"))
+            except (IndexError, ValueError):
+                row = 0
+        result.errors.append({"row": row, "reason": msg})
+    return result
 
 
 @router.get("", response_model=CandidateList, summary="Список кандидатов")

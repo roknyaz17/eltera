@@ -91,6 +91,21 @@ class EmployeeList(BaseModel):
     pages: int
 
 
+class ImportRowError(BaseModel):
+    row: int
+    reason: str
+
+
+class ImportResult(BaseModel):
+    """Итог импорта сотрудников из Excel."""
+
+    total: int = 0          # строк с данными в файле
+    created: int = 0        # создано новых сотрудников
+    skipped: int = 0        # пропущено (дубликаты)
+    created_names: list[str] = Field(default_factory=list)
+    errors: list[ImportRowError] = Field(default_factory=list)
+
+
 class EmployeeResultIn(BaseModel):
     """Готовый результат оценки сотрудника (приходит с фронта после прохождения)."""
 

@@ -63,6 +63,20 @@ class QuestionView(BaseModel):
     options: list[QuestionOptionView] = Field(default_factory=list)
 
 
+class ProfileCompetency(BaseModel):
+    """Компетенция в составе профиля (теста)."""
+    competency_id: str
+    title: str
+    kind: str = "professional"
+    weight: float = 1.0
+    questions_count: int = 0
+
+
+class ProfileCompetencyAdd(BaseModel):
+    competency_id: str
+    weight: float = 1.0
+
+
 class TestDetail(BaseModel):
     id: str
     title: str
@@ -71,9 +85,38 @@ class TestDetail(BaseModel):
     target_type: str
     status: str
     current_version_id: str | None = None
+    competencies: list[ProfileCompetency] = Field(default_factory=list)
     questions: list[QuestionView] = Field(default_factory=list)
     questions_count: int = 0
     max_score: int = 0
+
+
+# ── Библиотека компетенций ──
+
+class CompetencyRead(BaseModel):
+    id: str
+    key: str | None = None
+    title: str
+    kind: str = "professional"
+    description: str | None = None
+    questions_count: int = 0
+
+
+class CompetencyDetail(CompetencyRead):
+    questions: list[QuestionView] = Field(default_factory=list)
+    max_score: int = 0
+
+
+class CompetencyCreate(BaseModel):
+    title: str = Field(..., max_length=160)
+    kind: str = "professional"   # common / professional
+    description: str | None = None
+
+
+class CompetencyUpdate(BaseModel):
+    title: str | None = Field(None, max_length=160)
+    kind: str | None = None
+    description: str | None = None
 
 
 class TestListItem(BaseModel):
@@ -82,3 +125,13 @@ class TestListItem(BaseModel):
     category: str | None = None
     target_type: str
     questions_count: int = 0
+
+
+class LibraryImportResult(BaseModel):
+    competencies_created: int = 0
+    competencies_updated: int = 0
+    questions_created: int = 0
+    questions_skipped: int = 0
+    profiles_created: int = 0
+    profiles_updated: int = 0
+    errors: list[str] = Field(default_factory=list)
