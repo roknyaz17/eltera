@@ -7705,9 +7705,9 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 /* ── Scroll-driven Sticky Features ── */
 .lv3-scroll-features {
   position: relative;
-  /* height = sticky panel height + (N-1) * scroll-step */
-  /* We set this via JS, but set a fallback */
-  height: 600vh;
+  /* height set dynamically by JS */
+  height: 600vh; /* fallback */
+  background: #0A0F1E;
 }
 .lv3-scroll-sticky {
   position: sticky;
@@ -7724,9 +7724,11 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   padding-bottom: 0 !important;
 }
 .lv3-scroll-sentinel {
+  position: absolute;
+  left: 0;
+  width: 100%;
   height: 100vh;
   pointer-events: none;
-  position: relative;
   z-index: 0;
 }
 /* Progress dots */

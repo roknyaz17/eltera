@@ -462,12 +462,6 @@ export function renderLanding(tariffs) {
         </div><!-- /lv3-folders -->
           </section>
         </div><!-- /lv3-scroll-sticky -->
-        <!-- Scroll sentinels: one per slide -->
-        <div class="lv3-scroll-sentinel" data-slide="0"></div>
-        <div class="lv3-scroll-sentinel" data-slide="1"></div>
-        <div class="lv3-scroll-sentinel" data-slide="2"></div>
-        <div class="lv3-scroll-sentinel" data-slide="3"></div>
-        <div class="lv3-scroll-sentinel" data-slide="4"></div>
       </div><!-- /lv3-scroll-features -->
 
       <!-- AI SECTION -->

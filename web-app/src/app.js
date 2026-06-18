@@ -2343,29 +2343,36 @@ function initLv3Landing() {
     dot.addEventListener('click', () => activateFolder(parseInt(dot.dataset.dot)));
   });
 
-  // ── SCROLL-DRIVEN: IntersectionObserver on sentinels ──
-  const sentinels = document.querySelectorAll('.lv3-scroll-sentinel');
-  if (sentinels.length > 0 && 'IntersectionObserver' in window) {
-    const sentinelObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const slideIdx = parseInt(entry.target.dataset.slide);
-          activateFolder(slideIdx);
-        }
-      });
-    }, {
-      threshold: 0.5,
-      rootMargin: '0px 0px 0px 0px'
-    });
-    sentinels.forEach(s => sentinelObserver.observe(s));
+  // ── SCROLL-DRIVEN: scroll position tracking ──
+  const scrollFeatures = document.getElementById('lv3ScrollFeatures');
+  const scrollSticky = document.getElementById('lv3ScrollSticky');
+  const TOTAL_SLIDES = 5;
+
+  function setupScrollFeatures() {
+    if (!scrollFeatures || !scrollSticky) return;
+    const vh = window.innerHeight;
+    // Total height: 1 sticky viewport + N scroll steps (one per slide)
+    scrollFeatures.style.height = (vh * (1 + TOTAL_SLIDES)) + 'px';
   }
 
-  // Set scroll-features height to accommodate all slides
-  const scrollFeatures = document.getElementById('lv3ScrollFeatures');
-  if (scrollFeatures) {
-    // 100vh sticky + 5 * 100vh sentinels = 600vh total (set in CSS)
-    // Already set via CSS height: 600vh
+  function onScrollFeatures() {
+    if (!scrollFeatures || !scrollSticky) return;
+    const rect = scrollFeatures.getBoundingClientRect();
+    const vh = window.innerHeight;
+    // How far we've scrolled INTO the scroll-features section
+    const scrolled = -rect.top; // 0 when section top hits viewport top
+    if (scrolled < 0) return; // haven't reached section yet
+    // Each slide occupies one viewport height of scroll
+    const slideIdx = Math.min(Math.floor(scrolled / vh), TOTAL_SLIDES - 1);
+    activateFolder(slideIdx);
   }
+
+  setupScrollFeatures();
+  window.addEventListener('scroll', onScrollFeatures, { passive: true });
+  window.addEventListener('resize', () => {
+    setupScrollFeatures();
+    onScrollFeatures();
+  }, { passive: true });
 
   // Animate bars on initial load (slide 0 is active)
   setTimeout(() => {
