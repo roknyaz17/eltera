@@ -138,9 +138,9 @@ export function renderLanding(tariffs) {
               </div>
             </div>
             <div class="lv3-hero-stats">
-              <div class="lv3-hstat"><b>↓ до 40%</b><span>ошибок найма</span></div>
-              <div class="lv3-hstat"><b>+85%</b><span>точнее оценка</span></div>
-              <div class="lv3-hstat"><b>3 000+</b><span>профессий</span></div>
+              <div class="lv3-hstat"><b data-count-to="40" data-count-prefix="↓ до " data-count-suffix="%">↓ до 40%</b><span>ошибок найма</span></div>
+              <div class="lv3-hstat"><b data-count-to="85" data-count-prefix="+" data-count-suffix="%">+85%</b><span>точнее оценка</span></div>
+              <div class="lv3-hstat"><b data-count-to="3000" data-count-prefix="" data-count-suffix=" 000+">3 000+</b><span>профессий</span></div>
             </div>
           </div>
         </div>
@@ -503,10 +503,10 @@ export function renderLanding(tariffs) {
           </div>
         </div>
         <div class="lv3-proof-stats">
-          <div class="lv3-proof-stat"><b>3 000+</b><span>профессий в базе</span></div>
-          <div class="lv3-proof-stat"><b>639</b><span>вопросов по компетенциям</span></div>
-          <div class="lv3-proof-stat"><b>60+</b><span>готовых должностей</span></div>
-          <div class="lv3-proof-stat"><b>100+</b><span>методик оценки</span></div>
+          <div class="lv3-proof-stat"><b data-count-to="3000" data-count-prefix="" data-count-suffix=" 000+">3 000+</b><span>профессий в базе</span></div>
+          <div class="lv3-proof-stat"><b data-count-to="639" data-count-prefix="" data-count-suffix="">639</b><span>вопросов по компетенциям</span></div>
+          <div class="lv3-proof-stat"><b data-count-to="60" data-count-prefix="" data-count-suffix="+">60+</b><span>готовых должностей</span></div>
+          <div class="lv3-proof-stat"><b data-count-to="100" data-count-prefix="" data-count-suffix="+">100+</b><span>методик оценки</span></div>
         </div>
       </section>
 

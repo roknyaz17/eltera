@@ -2228,6 +2228,71 @@ function initLv3Landing() {
     });
   }
 
+  // ANIMATED COUNTERS ON SCROLL
+  function animateCounter(el, target, suffix, prefix, duration) {
+    const start = performance.now();
+    const isFloat = String(target).includes('.');
+    function step(now) {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      // easeOutExpo
+      const eased = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+      const current = Math.round(eased * target);
+      el.textContent = prefix + (isFloat ? current.toFixed(1) : current.toLocaleString('ru-RU')) + suffix;
+      if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  function parseCounterEl(el) {
+    const raw = el.dataset.countTo || el.textContent.trim();
+    // Extract numeric value, prefix and suffix
+    const match = raw.match(/^([^\d]*?)([\d\s]+(?:[.,]\d+)?)(.*?)$/);
+    if (!match) return null;
+    const prefix = match[1];
+    const num = parseFloat(match[2].replace(/[\s]/g, '').replace(',', '.'));
+    const suffix = match[3];
+    return { prefix, num, suffix };
+  }
+
+  const counterEls = document.querySelectorAll('.lv3-hstat b[data-count-to], .lv3-proof-stat b[data-count-to]');
+  if (counterEls.length > 0 && 'IntersectionObserver' in window) {
+    const counterObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const el = entry.target;
+          if (el.dataset.counted === 'true') return;
+          el.dataset.counted = 'true';
+          const target = parseFloat(el.dataset.countTo);
+          const prefix = el.dataset.countPrefix || '';
+          const suffix = el.dataset.countSuffix || '';
+          if (!isNaN(target)) {
+            // Special case: 3000 displays as "3 000+"
+            if (el.dataset.countSuffix === ' 000+') {
+              el.textContent = prefix + '0 000+';
+              const startTime = performance.now();
+              const dur = 1600;
+              function stepK(now) {
+                const p = Math.min((now - startTime) / dur, 1);
+                const e = p === 1 ? 1 : 1 - Math.pow(2, -10 * p);
+                const v = Math.round(e * 3);
+                el.textContent = prefix + v + ' 000+';
+                if (p < 1) requestAnimationFrame(stepK);
+              }
+              requestAnimationFrame(stepK);
+            } else {
+              el.textContent = prefix + '0' + suffix;
+              animateCounter(el, target, suffix, prefix, 1400);
+            }
+          }
+          counterObserver.unobserve(el);
+        }
+      });
+    }, { threshold: 0.5 });
+
+    counterEls.forEach(el => counterObserver.observe(el));
+  }
+
   // SMOOTH ANCHOR SCROLL
   document.querySelectorAll('a[href^="#lv3-"]').forEach(link => {
     link.addEventListener('click', (e) => {
