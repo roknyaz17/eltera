@@ -7655,7 +7655,6 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   -webkit-text-fill-color: transparent;
   background-clip: text;
   animation: authGradientShift 5s linear infinite;
-  filter: drop-shadow(0 0 18px rgba(0,229,212,0.45)) drop-shadow(0 0 36px rgba(30,91,255,0.30));
 }
 .lv3-hero-left p { font-size: 16px; line-height: 1.7; color: #8899BB; margin: 0; }
 .lv3-hero-btns { display: flex; gap: 12px; flex-wrap: wrap; }
