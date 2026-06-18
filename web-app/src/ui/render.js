@@ -179,23 +179,33 @@ export function renderLanding(tariffs) {
           <!-- Folder tabs -->
           <div class="lv3-folder-tabs">
             <button class="lv3-folder-tab active" data-folder="0">
-              <span class="lv3-folder-icon">📊</span>
+              <span class="lv3-folder-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+              </span>
               <span>Аналитика</span>
             </button>
             <button class="lv3-folder-tab" data-folder="1">
-              <span class="lv3-folder-icon">🤖</span>
+              <span class="lv3-folder-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 2.5-1.3 4.7-3.3 6l-.7 4H9l-.7-4A7 7 0 0 1 12 2z"/><line x1="9" y1="21" x2="15" y2="21"/><line x1="9.5" y1="9" x2="9.5" y2="13"/><line x1="14.5" y1="7" x2="14.5" y2="13"/></svg>
+              </span>
               <span>AI-помощник</span>
             </button>
             <button class="lv3-folder-tab" data-folder="2">
-              <span class="lv3-folder-icon">⚡</span>
+              <span class="lv3-folder-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+              </span>
               <span>Простота</span>
             </button>
             <button class="lv3-folder-tab" data-folder="3">
-              <span class="lv3-folder-icon">🏢</span>
+              <span class="lv3-folder-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="6" height="14" rx="1.5"/><rect x="9" y="3" width="6" height="18" rx="1.5"/><rect x="16" y="10" width="6" height="11" rx="1.5"/></svg>
+              </span>
               <span>Структура</span>
             </button>
             <button class="lv3-folder-tab" data-folder="4">
-              <span class="lv3-folder-icon">💎</span>
+              <span class="lv3-folder-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
+              </span>
               <span>Реферальная</span>
             </button>
           </div>

@@ -7780,7 +7780,26 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   height: 2px;
   background: linear-gradient(90deg, #1E5BFF, #00E5D4);
 }
-.lv3-folder-icon { font-size: 16px; }
+.lv3-folder-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(30, 91, 255, 0.1);
+  color: #5B8AFF;
+  flex-shrink: 0;
+  transition: all .25s;
+}
+.lv3-folder-tab.active .lv3-folder-icon {
+  background: rgba(0, 229, 212, 0.12);
+  color: #00E5D4;
+}
+.lv3-folder-tab:hover .lv3-folder-icon {
+  background: rgba(30, 91, 255, 0.15);
+  color: #7AA8FF;
+}
 .lv3-folder-panels {
   background: #111A33;
   border: 1px solid rgba(255,255,255,0.07);
