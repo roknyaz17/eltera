@@ -160,6 +160,7 @@ export function renderLanding(tariffs) {
       <!-- FOR WHOM -->
       <!-- FEATURES FOLDER TABS (scroll-driven sticky) -->
       <div class="lv3-scroll-features" id="lv3ScrollFeatures">
+        <div class="lv3-features-grid-bg"></div>
         <!-- Sticky panel -->
         <div class="lv3-scroll-sticky" id="lv3ScrollSticky">
           <section class="lv3-section lv3-features-section" id="lv3-for-whom">

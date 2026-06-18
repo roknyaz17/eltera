@@ -7705,7 +7705,49 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 /* TABS */
 /* ── Scroll-driven Sticky Features ── */
 .lv3-scroll-features {
+  position: relative;
   background: #0A0F1E;
+  overflow: hidden;
+}
+/* Orbs matching hero style */
+.lv3-scroll-features::before {
+  content: '';
+  position: absolute;
+  width: 700px;
+  height: 700px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(30,91,255,0.14), transparent 70%);
+  filter: blur(80px);
+  top: -150px;
+  right: -100px;
+  pointer-events: none;
+  animation: lv3OrbFloat 10s ease-in-out infinite;
+}
+.lv3-scroll-features::after {
+  content: '';
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,229,212,0.10), transparent 70%);
+  filter: blur(80px);
+  bottom: -80px;
+  left: -60px;
+  pointer-events: none;
+  animation: lv3OrbFloat 12s ease-in-out infinite reverse;
+}
+/* Subtle grid overlay */
+.lv3-features-grid-bg {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(30,91,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(30,91,255,0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+  z-index: 0;
+}
+.lv3-scroll-features > * {
+  position: relative;
+  z-index: 1;
 }
 .lv3-scroll-sticky {
   /* no longer sticky — normal flow */
