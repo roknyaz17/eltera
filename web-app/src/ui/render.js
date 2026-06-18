@@ -11,96 +11,972 @@ import {
   getConversionStatus,
   getFitStatus,
   getRiskStatus,
-  getVacancyHealthStatus,
-  employeeAtRisk
+  getVacancyHealthStatus
 } from "./dashboard-components.js";
-import { renderPremiumDashboard, kpiCard, funnelChart, barChart } from "./dashboard-premium.js";
-import { professionalCompetencies, commonCompetencies } from "../data/assessment-library.js";
-import { employeeImportTemplateUrl, candidateImportTemplateUrl, libraryImportTemplateUrl } from "../data/api.js";
-
-// Конфиг модалок импорта (сотрудники / кандидаты) — общий рендер, разные тексты.
-const IMPORT_MODALS = {
-  "import-employees": {
-    title: "Импорт сотрудников",
-    columns: "ФИО, Email, Телефон, Должность, Отдел, Руководитель, Проект, Дата выхода, Тип занятости, Город",
-    hint: "ФИО — обязательное поле; «Дата выхода» запускает цикл адаптации.",
-    templateUrl: employeeImportTemplateUrl,
-    runAction: "run-employee-import",
-    fileNoun: "сотрудников",
-  },
-  "import-candidates": {
-    title: "Импорт кандидатов",
-    columns: "ФИО, Email, Телефон, Вакансия, Источник, Тип подбора, Дата отклика, Город, Комментарий",
-    hint: "ФИО — обязательное поле; вакансия создаётся автоматически по названию.",
-    templateUrl: candidateImportTemplateUrl,
-    runAction: "run-candidate-import",
-    fileNoun: "кандидатов",
-  },
-};
-
-// Слаг компетенции → человекочитаемое название (общие + профессиональные).
-const COMPETENCY_LABELS = {
-  ...professionalCompetencies,
-  ...Object.fromEntries(commonCompetencies.map((c) => [c.id, c.title]))
-};
-const competencyLabel = (slug) => COMPETENCY_LABELS[slug] || slug;
-
-// Экранирование пользовательского текста (имена/ошибки импорта) перед вставкой в HTML.
-function escapeHtml(value) {
-  return String(value == null ? "" : value)
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
+import { renderPremiumDashboard } from "./dashboard-premium.js";
 
 export function renderLanding(tariffs) {
   return `
-    <div class="landing">
-      <header class="landingHeader">
-        <a class="landingLogo" href="#/"><img src="/assets/eltera_logo_horizontal_on_dark.svg" alt="Eltera Assessment Intelligence"></a>
-        <nav class="landingNav"><a href="#how">Как работает</a><a href="#products">Продукты</a><a href="#reports">Отчеты</a><a href="#tariffs">Тарифы</a></nav>
-        <div class="landingActions"><button class="ghostOnDark" data-route="login">Войти</button><button class="blueButton" data-route="login">Попробовать за 990 ₽</button></div>
-      </header>
-      <main>
-        <section class="hero">
-          <div class="heroCopy">
-            <div class="pill">AI assessment platform</div>
-            <h1>AI-платформа для оценки кандидатов и сотрудников</h1>
-            <p>Эльтера помогает быстрее принимать кадровые решения: готовые профили ролей, оценочные ссылки, HR-отчеты, красные флаги и рекомендации для интервью или развития.</p>
-            <div class="heroButtons"><button class="blueButton large" data-route="login">Попробовать за 990 ₽</button><button class="ghostOnDark large" data-demo-assessment>Пройти демо-оценку</button></div>
-            <span class="underCta">1 месяц доступа · 20 оценок · кандидаты и сотрудники в одном тарифе</span>
-          </div>
-          <div class="heroPanel">
-            <div class="panelGlow"></div>
-            <div class="heroCard glass">
-              <div class="cardLine"><span>Потенциал эффекта</span><b>AI-анализ</b></div>
-              ${metric("Снизить ошибки найма", "до 40%", 82)}
-              ${metric("Меньше ручной работы с опросами", "до x10", 91)}
-              ${metric("Сократить текучесть", "до 20%", 64)}
-              ${metric("Готовность к роли", "76%", 76)}
-              <div class="aiNote">Рекомендация: приглашать дальше, но проверить обработку возражений и дисциплину ведения воронки.</div>
+    <div class="landing landing--v3">
+      <!-- NAVBAR -->
+      <header class="lv3-nav" id="lv3Nav">
+        <a class="lv3-logo" href="#/">
+          <img src="/public/assets/eltera_logo_horizontal_on_dark.png?v=10" alt="Eltera" style="height:56px;width:auto;object-fit:contain;display:block;">
+        </a>
+        <nav class="lv3-navlinks">
+          <a href="#lv3-how">Как работает</a>
+          <div class="lv3-dropdown">
+            <button class="lv3-dropbtn">Продукты <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></button>
+            <div class="lv3-dropmenu">
+              <a href="#lv3-assess">Оценка кандидатов и сотрудников</a>
+              <a href="#lv3-360">Оценка 360</a>
+              <a href="#lv3-engage">Оценка вовлечённости</a>
+              <a href="#lv3-pulse">Пульс-опросы</a>
+              <a href="#lv3-perf">Performance review</a>
             </div>
           </div>
-        </section>
-        <section class="trusted"><span>Для точечного подбора, офисных и IT-ролей</span><div>HRD · рекрутеры · руководители · собственники · кадровые агентства · команды продаж · back office · IT</div></section>
-        <section class="landingSection" id="products">
-          <div class="sectionIntro dark"><span>Продукты</span><h2>Оценка людей в одной системе</h2><p>Не делим кандидатов и сотрудников: все люди проходят оценку через понятный flow, а компания получает отчет для решения.</p></div>
-          <div class="productGrid">
-            ${product("Оценка кандидатов и сотрудников", "Готовые профили профессий, вопросы, кейсы, красные флаги и итоговая рекомендация.")}
-            ${product("Оценка 360", "Только TalentStudio: самооценка, руководитель, коллеги, подчиненные.")}
-            ${product("Пульс-опросы и вовлеченность", "Диагностика настроения, удержания, выгорания и рисков команд.")}
-            ${product("Performance review", "Оценка результативности, потенциала, развития и управленческих решений.")}
+          <a href="#lv3-cases">Кейсы</a>
+          <a href="#lv3-reports">Отчёты</a>
+          <a href="#lv3-pricing">Тарифы</a>
+          <a href="#lv3-implement">Внедрение</a>
+        </nav>
+        <div class="lv3-navactions">
+          <button class="lv3-btn-ghost" data-route="login">Войти</button>
+        </div>
+        <button class="lv3-burger" id="lv3Burger" aria-label="Меню">
+          <span></span><span></span><span></span>
+        </button>
+      </header>
+      <!-- MOBILE NAV -->
+      <nav class="lv3-mobile-nav" id="lv3MobileNav">
+        <a href="#lv3-how" class="lv3-mobile-link">Как работает</a>
+        <a href="#lv3-assess" class="lv3-mobile-link">Оценка кандидатов и сотрудников</a>
+        <a href="#lv3-360" class="lv3-mobile-link">Оценка 360</a>
+        <a href="#lv3-engage" class="lv3-mobile-link">Оценка вовлечённости</a>
+        <a href="#lv3-pulse" class="lv3-mobile-link">Пульс-опросы</a>
+        <a href="#lv3-perf" class="lv3-mobile-link">Performance review</a>
+        <div class="lv3-mobile-divider"></div>
+        <a href="#lv3-cases" class="lv3-mobile-link">Кейсы</a>
+        <a href="#lv3-reports" class="lv3-mobile-link">Отчёты</a>
+        <a href="#lv3-pricing" class="lv3-mobile-link">Тарифы</a>
+        <a href="#lv3-implement" class="lv3-mobile-link">Внедрение</a>
+        <div class="lv3-mobile-divider"></div>
+        <button class="lv3-mobile-cta" data-route="login">Попробовать за 990 ₽</button>
+      </nav>
+
+      <!-- HERO -->
+      <section class="lv3-hero" id="lv3-hero">
+        <div class="lv3-hero-bg">
+          <canvas class="lv3-particles" id="lv3Particles"></canvas>
+          <div class="lv3-hero-orb lv3-hero-orb--1"></div>
+          <div class="lv3-hero-orb lv3-hero-orb--2"></div>
+          <div class="lv3-hero-orb lv3-hero-orb--3"></div>
+          <div class="lv3-hero-grid"></div>
+        </div>
+        <div class="lv3-hero-content">
+          <div class="lv3-hero-left">
+            <div class="lv3-pill lv3-fade" style="--d:.05s">❖ AI-платформа для оценки кандидатов и сотрудников</div>
+            <h1 class="lv3-fade" style="--d:.12s"><span class="lv3-grad">AI-оценка
+кандидатов
+и сотрудников</span>
+за <span class="lv3-grad">5 минут</span></h1>
+            <p class="lv3-fade" style="--d:.22s">Понимайте, кого брать, кого развивать
+и где есть риски — без сложных тестов
+и бесплатных демо-доступов.</p>
+            <div class="lv3-hero-btns lv3-fade" style="--d:.32s">
+              <button class="lv3-btn-primary lv3-btn-lg" data-route="login">Попробовать за 990 ₽ →</button>
+              <button class="lv3-btn-ghost lv3-btn-lg" data-demo-assessment>Пройти демо-оценку</button>
+            </div>
+            <div class="lv3-hero-meta lv3-fade" style="--d:.42s">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="rgba(230,242,255,0.3)" stroke-width="1"/><path d="M7 4v3.5l2 1.5" stroke="rgba(230,242,255,0.4)" stroke-width="1.2" stroke-linecap="round"/></svg>
+              Первая оценка — за 5 минут
+            </div>
           </div>
-        </section>
-        <section class="landingSection twoCols" id="how">
-          <div class="sectionIntro dark"><span>Как работает</span><h2>От ссылки до управленческого решения</h2><p>HR выбирает профиль, отправляет ссылку, кандидат или сотрудник проходит оценку, отчет появляется в кабинете и скачивается в PDF.</p></div>
-          <div class="stepsGlass">${step("01", "Выбрать профиль", "Офисные, IT, руководители, массовый и точечный подбор.")}${step("02", "Отправить ссылку", "Оценка открывается без регистрации, внутренний отчет скрыт от участника.")}${step("03", "Получить отчет", "HR видит проценты, компетенции, риски, ответы, историю и PDF.")}</div>
-        </section>
-        <section class="landingSection" id="reports">
-          <div class="reportPreview glass"><div><span class="miniLabel">HR-отчет</span><h2>Понятно для HRD, руководителя и собственника</h2><p>Отчет показывает итоговое решение, профиль компетенций, красные флаги, сильные стороны, риски и рекомендации для следующего интервью.</p></div><div class="reportMini"><strong>76%</strong><span>приглашать дальше</span><div class="miniBars"><i style="width:86%"></i><i style="width:72%"></i><i style="width:58%"></i></div></div></div>
-        </section>
-        <section class="landingSection" id="tariffs"><div class="sectionIntro dark"><span>Тарифы</span><h2>AI-рекомендации, отчеты и аналитика по тарифам</h2></div><div class="tariffGrid landingTariffs">${tariffs.map(renderTariffCard).join("")}</div></section>
-      </main>
-      <footer class="landingFooter"><img src="/assets/eltera_logo_horizontal_on_dark.svg" alt="Eltera"><div><a href="#/login">Войти</a><a href="#tariffs">Тарифы</a><a href="#reports">Отчеты</a><a href="#/app/referrals">Реферальная программа</a></div></footer>
+          <div class="lv3-hero-right lv3-fade" style="--d:.18s">
+            <!-- HERO CARD SLIDER -->
+            <div class="lv3-hslider" id="lv3HSlider">
+              <!-- Slide 1: Оценка кандидата -->
+              <div class="lv3-hslide lv3-hslide--active" data-slide="0">
+                <div class="lv3-hcard">
+                  <div class="lv3-hcard-header">
+                    <div class="lv3-hcard-title">Оценка кандидата</div>
+                    <span class="lv3-live-dot"><span class="lv3-pulse"></span>Live</span>
+                  </div>
+                  <div class="lv3-hcard-person">
+                    <div class="lv3-hcard-avatar">М</div>
+                    <div>
+                      <div class="lv3-hcard-name">Менеджер по подбору</div>
+                      <div class="lv3-hcard-sub">ID: 7a-4fi-21 · Оценка завершена</div>
+                    </div>
+                  </div>
+                  <div class="lv3-hcard-metrics">
+                    <div class="lv3-hcard-metric">
+                      <div class="lv3-hcard-metric-row"><span>Соответствие профилю</span><b>84%</b></div>
+                      <div class="lv3-hbar"><div class="lv3-hbar-fill" style="--w:84%;background:linear-gradient(90deg,#1E5BFF,#00E5D4)"></div></div>
+                    </div>
+                    <div class="lv3-hcard-metric">
+                      <div class="lv3-hcard-metric-row"><span>Ответственность</span><b>91%</b></div>
+                      <div class="lv3-hbar"><div class="lv3-hbar-fill" style="--w:91%;background:linear-gradient(90deg,#7B61FF,#1E5BFF)"></div></div>
+                    </div>
+                    <div class="lv3-hcard-metric">
+                      <div class="lv3-hcard-metric-row"><span>Коммуникация</span><b>78%</b></div>
+                      <div class="lv3-hbar"><div class="lv3-hbar-fill" style="--w:78%;background:linear-gradient(90deg,#00E5D4,#1E5BFF)"></div></div>
+                    </div>
+                    <div class="lv3-hcard-metric">
+                      <div class="lv3-hcard-metric-row"><span>Риск выгорания</span><b class="lv3-status-good">— низкий</b></div>
+                    </div>
+                  </div>
+                  <div class="lv3-hcard-ai">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#00E5D4" stroke-width="1.2"/><path d="M5 7l1.5 1.5L9 5" stroke="#00E5D4" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>AI: Кандидат подходит для следующего этапа</span>
+                  </div>
+                </div>
+              </div>
+              <!-- Slide 2: Оценка сотрудника -->
+              <div class="lv3-hslide" data-slide="1">
+                <div class="lv3-hcard">
+                  <div class="lv3-hcard-header">
+                    <div class="lv3-hcard-title">Оценка сотрудника</div>
+                    <span class="lv3-live-dot"><span class="lv3-pulse"></span>Live</span>
+                  </div>
+                  <div class="lv3-hcard-person">
+                    <div class="lv3-hcard-avatar lv3-hcard-avatar--blue">А</div>
+                    <div>
+                      <div class="lv3-hcard-name">Руководитель группы</div>
+                      <div class="lv3-hcard-sub">Стаж 3 года · Отдел продаж</div>
+                    </div>
+                  </div>
+                  <div class="lv3-hcard-metrics">
+                    <div class="lv3-hcard-metric">
+                      <div class="lv3-hcard-metric-row"><span>Результативность</span><b>88%</b></div>
+                      <div class="lv3-hbar"><div class="lv3-hbar-fill" style="--w:88%;background:linear-gradient(90deg,#1E5BFF,#00E5D4)"></div></div>
+                    </div>
+                    <div class="lv3-hcard-metric">
+                      <div class="lv3-hcard-metric-row"><span>Вовлечённость</span><b>74%</b></div>
+                      <div class="lv3-hbar"><div class="lv3-hbar-fill" style="--w:74%;background:linear-gradient(90deg,#7B61FF,#1E5BFF)"></div></div>
+                    </div>
+                    <div class="lv3-hcard-metric">
+                      <div class="lv3-hcard-metric-row"><span>Потенциал роста</span><b class="lv3-status-good">высокий</b></div>
+                    </div>
+                    <div class="lv3-hcard-metric">
+                      <div class="lv3-hcard-metric-row"><span>Риск увольнения</span><b class="lv3-status-warn">средний</b></div>
+                    </div>
+                  </div>
+                  <div class="lv3-hcard-ai">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#00E5D4" stroke-width="1.2"/><path d="M5 7l1.5 1.5L9 5" stroke="#00E5D4" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>AI: Нужен план развития и контроль нагрузки</span>
+                  </div>
+                </div>
+              </div>
+              <!-- Slide 3: 9-box -->
+              <div class="lv3-hslide" data-slide="2">
+                <div class="lv3-hcard">
+                  <div class="lv3-hcard-header">
+                    <div class="lv3-hcard-title">9-box · Матрица потенциала</div>
+                    <span class="lv3-live-dot"><span class="lv3-pulse"></span>Live</span>
+                  </div>
+                  <div class="lv3-9box-wrap">
+                    <div class="lv3-9box-grid">
+                      ${[0,1,2,3,4,5,6,7,8].map(i => `<div class="lv3-9box-cell${i===7?' lv3-9box-cell--active':''}"></div>`).join('')}
+                    </div>
+                    <div class="lv3-9box-labels">
+                      <div>Потенциал ↑</div>
+                      <div>Результативность →</div>
+                    </div>
+                  </div>
+                  <div class="lv3-hcard-metrics">
+                    <div class="lv3-hcard-metric">
+                      <div class="lv3-hcard-metric-row"><span>Performance</span><b class="lv3-status-good">высокий</b></div>
+                    </div>
+                    <div class="lv3-hcard-metric">
+                      <div class="lv3-hcard-metric-row"><span>Potential</span><b class="lv3-status-warn">средний/высокий</b></div>
+                    </div>
+                    <div class="lv3-hcard-metric">
+                      <div class="lv3-hcard-metric-row"><span>Категория</span><b>Сильный исполнитель</b></div>
+                    </div>
+                  </div>
+                  <div class="lv3-hcard-ai">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#00E5D4" stroke-width="1.2"/><path d="M5 7l1.5 1.5L9 5" stroke="#00E5D4" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>AI: Подходит для развития в управленческую роль</span>
+                  </div>
+                </div>
+              </div>
+              <!-- Slide 4: Зона риска -->
+              <div class="lv3-hslide" data-slide="3">
+                <div class="lv3-hcard lv3-hcard--risk">
+                  <div class="lv3-hcard-header">
+                    <div class="lv3-hcard-title">Зона риска</div>
+                    <span class="lv3-live-dot lv3-live-dot--warn"><span class="lv3-pulse lv3-pulse--warn"></span>Риск</span>
+                  </div>
+                  <div class="lv3-hcard-metrics">
+                    <div class="lv3-hcard-metric">
+                      <div class="lv3-hcard-metric-row"><span>Риск выгорания</span><b class="lv3-status-risk">высокий</b></div>
+                    </div>
+                    <div class="lv3-hcard-metric">
+                      <div class="lv3-hcard-metric-row"><span>Вовлечённость</span><b>42%</b></div>
+                      <div class="lv3-hbar"><div class="lv3-hbar-fill" style="--w:42%;background:linear-gradient(90deg,#E8855A,#C26B3A)"></div></div>
+                    </div>
+                    <div class="lv3-hcard-metric">
+                      <div class="lv3-hcard-metric-row"><span>Конфликтность</span><b class="lv3-status-risk">повышена</b></div>
+                    </div>
+                    <div class="lv3-hcard-metric">
+                      <div class="lv3-hcard-metric-row"><span>Адаптация</span><b class="lv3-status-risk">под риском</b></div>
+                    </div>
+                  </div>
+                  <div class="lv3-hcard-ai lv3-hcard-ai--warn">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#E8855A" stroke-width="1.2"/><path d="M7 4v4M7 9.5v.5" stroke="#E8855A" stroke-width="1.2" stroke-linecap="round"/></svg>
+                    <span>AI: Нужна встреча с руководителем и коррекция нагрузки</span>
+                  </div>
+                </div>
+              </div>
+              <!-- Slide 5: Групповая оценка -->
+              <div class="lv3-hslide" data-slide="4">
+                <div class="lv3-hcard">
+                  <div class="lv3-hcard-header">
+                    <div class="lv3-hcard-title">Групповая оценка</div>
+                    <span class="lv3-live-dot"><span class="lv3-pulse"></span>Live</span>
+                  </div>
+                  <div class="lv3-hcard-person">
+                    <div class="lv3-hcard-avatar lv3-hcard-avatar--group">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </div>
+                    <div>
+                      <div class="lv3-hcard-name">Отдел продаж</div>
+                      <div class="lv3-hcard-sub">12 сотрудников</div>
+                    </div>
+                  </div>
+                  <div class="lv3-hcard-metrics">
+                    <div class="lv3-hcard-metric">
+                      <div class="lv3-hcard-metric-row"><span>Ср. соответствие профилю</span><b>76%</b></div>
+                      <div class="lv3-hbar"><div class="lv3-hbar-fill" style="--w:76%;background:linear-gradient(90deg,#1E5BFF,#00E5D4)"></div></div>
+                    </div>
+                    <div class="lv3-hcard-metric">
+                      <div class="lv3-hcard-metric-row"><span>Риск текучести</span><b class="lv3-status-warn">31%</b></div>
+                      <div class="lv3-hbar"><div class="lv3-hbar-fill" style="--w:31%;background:linear-gradient(90deg,#E8A55A,#C28A3A)"></div></div>
+                    </div>
+                    <div class="lv3-hcard-metric">
+                      <div class="lv3-hcard-metric-row"><span>Сильные зоны</span><b>коммуникация</b></div>
+                    </div>
+                  </div>
+                  <div class="lv3-hcard-ai">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#00E5D4" stroke-width="1.2"/><path d="M5 7l1.5 1.5L9 5" stroke="#00E5D4" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>AI: Работать над ответственностью и стабильностью</span>
+                  </div>
+                </div>
+              </div>
+              <!-- Slide 6: Оценка 360 -->
+              <div class="lv3-hslide" data-slide="5">
+                <div class="lv3-hcard">
+                  <div class="lv3-hcard-header">
+                    <div class="lv3-hcard-title">Оценка 360°</div>
+                    <span class="lv3-live-dot"><span class="lv3-pulse"></span>Live</span>
+                  </div>
+                  <div class="lv3-hcard-person">
+                    <div class="lv3-hcard-avatar lv3-hcard-avatar--purple">Р</div>
+                    <div>
+                      <div class="lv3-hcard-name">Руководитель отдела</div>
+                      <div class="lv3-hcard-sub">Оценивают: команда, коллеги, собственник</div>
+                    </div>
+                  </div>
+                  <div class="lv3-hcard-metrics">
+                    <div class="lv3-hcard-metric">
+                      <div class="lv3-hcard-metric-row"><span>Лидерство</span><b>82%</b></div>
+                      <div class="lv3-hbar"><div class="lv3-hbar-fill" style="--w:82%;background:linear-gradient(90deg,#7B61FF,#1E5BFF)"></div></div>
+                    </div>
+                    <div class="lv3-hcard-metric">
+                      <div class="lv3-hcard-metric-row"><span>Коммуникация</span><b>79%</b></div>
+                      <div class="lv3-hbar"><div class="lv3-hbar-fill" style="--w:79%;background:linear-gradient(90deg,#1E5BFF,#00E5D4)"></div></div>
+                    </div>
+                    <div class="lv3-hcard-metric">
+                      <div class="lv3-hcard-metric-row"><span>Доверие команды</span><b>86%</b></div>
+                      <div class="lv3-hbar"><div class="lv3-hbar-fill" style="--w:86%;background:linear-gradient(90deg,#00E5D4,#7B61FF)"></div></div>
+                    </div>
+                  </div>
+                  <div class="lv3-hcard-ai">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#00E5D4" stroke-width="1.2"/><path d="M5 7l1.5 1.5L9 5" stroke="#00E5D4" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>AI: Сильный профиль, зона роста — делегирование</span>
+                  </div>
+                </div>
+              </div>
+              <!-- Slide dots -->
+              <div class="lv3-hslider-dots" id="lv3HSliderDots">
+                ${[0,1,2,3,4,5].map(i=>`<button class="lv3-hsdot${i===0?' lv3-hsdot--active':''}" data-hsdot="${i}"></button>`).join('')}
+              </div>
+            </div>
+            <!-- Stats below slider -->
+            <div class="lv3-hero-stats">
+              <div class="lv3-hstat">
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="12" stroke="#00E5D4" stroke-width="1.5" stroke-dasharray="4 2" opacity="0.4"/><path d="M14 8v6l4 2" stroke="#00E5D4" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <div><b data-count-to="40" data-count-prefix="до " data-count-suffix="%">до 40%</b><span>меньше ошибок найма</span></div>
+              </div>
+              <div class="lv3-hstat">
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="12" stroke="#1E5BFF" stroke-width="1.5" stroke-dasharray="4 2" opacity="0.4"/><path d="M8 14l4 4 8-8" stroke="#1E5BFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <div><b data-count-to="5" data-count-prefix="" data-count-suffix=" минут">5 минут</b><span>на первую оценку</span></div>
+              </div>
+              <div class="lv3-hstat">
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="12" stroke="#7B61FF" stroke-width="1.5" stroke-dasharray="4 2" opacity="0.4"/><path d="M9 14h10M9 10h6M9 18h8" stroke="#7B61FF" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <div><b data-count-to="3000" data-count-prefix="" data-count-suffix="+">3000+</b><span>профилей профессий</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TICKER -->
+      <div class="lv3-ticker">
+        <div class="lv3-ticker-label">ДЛЯ КОМАНД ИЗ СФЕР</div>
+        <div class="lv3-ticker-track">
+          <div class="lv3-ticker-inner">
+            ${["Ритейл","IT","Банки","Производство","Логистика","Сервис","Контакт-центры","Девелопмент","Страхование","Фармацевтика","Агропром","Телеком"].map(s=>`<span>${s}</span>`).join("")}
+            ${["Ритейл","IT","Банки","Производство","Логистика","Сервис","Контакт-центры","Девелопмент","Страхование","Фармацевтика","Агропром","Телеком"].map(s=>`<span>${s}</span>`).join("")}
+          </div>
+        </div>
+      </div>
+
+      <!-- FOR WHOM -->
+      <!-- FEATURES FOLDER TABS (scroll-driven sticky) -->
+      <div class="lv3-scroll-features" id="lv3ScrollFeatures">
+        <div class="lv3-features-grid-bg"></div>
+        <!-- Sticky panel -->
+        <div class="lv3-scroll-sticky" id="lv3ScrollSticky">
+          <section class="lv3-section lv3-features-section" id="lv3-for-whom">
+            <div class="lv3-section-head">
+              <h2>Почему выбирают Eltera</h2>
+              <p>Пять причин, которые делают оценку людей простой и эффективной</p>
+            </div>
+            <!-- Progress dots -->
+            <div class="lv3-scroll-dots" id="lv3ScrollDots">
+              <div class="lv3-scroll-dot active" data-dot="0"></div>
+              <div class="lv3-scroll-dot" data-dot="1"></div>
+              <div class="lv3-scroll-dot" data-dot="2"></div>
+              <div class="lv3-scroll-dot" data-dot="3"></div>
+              <div class="lv3-scroll-dot" data-dot="4"></div>
+            </div>
+        <div class="lv3-folders" id="lv3Folders">
+          <!-- Folder tabs -->
+          <div class="lv3-folder-tabs">
+            <button class="lv3-folder-tab active" data-folder="0">
+              <span class="lv3-folder-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+              </span>
+              <span>Аналитика</span>
+            </button>
+            <button class="lv3-folder-tab" data-folder="1">
+              <span class="lv3-folder-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 2.5-1.3 4.7-3.3 6l-.7 4H9l-.7-4A7 7 0 0 1 12 2z"/><line x1="9" y1="21" x2="15" y2="21"/><line x1="9.5" y1="9" x2="9.5" y2="13"/><line x1="14.5" y1="7" x2="14.5" y2="13"/></svg>
+              </span>
+              <span>AI-помощник</span>
+            </button>
+            <button class="lv3-folder-tab" data-folder="2">
+              <span class="lv3-folder-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+              </span>
+              <span>Простота</span>
+            </button>
+            <button class="lv3-folder-tab" data-folder="3">
+              <span class="lv3-folder-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="6" height="14" rx="1.5"/><rect x="9" y="3" width="6" height="18" rx="1.5"/><rect x="16" y="10" width="6" height="11" rx="1.5"/></svg>
+              </span>
+              <span>Структура</span>
+            </button>
+            <button class="lv3-folder-tab" data-folder="4">
+              <span class="lv3-folder-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
+              </span>
+              <span>Реферальная</span>
+            </button>
+          </div>
+
+          <!-- Folder panels -->
+          <div class="lv3-folder-panels">
+
+            <!-- Slide 1: Analytics Dashboard -->
+            <div class="lv3-folder-panel active" data-folder-panel="0">
+              <div class="lv3-folder-content">
+                <div class="lv3-folder-text">
+                  <div class="lv3-folder-tag">Аналитика</div>
+                  <h3>Удобная аналитика в одном кабинете</h3>
+                  <p>Видите полную картину компании: KPI, воронку найма, риски, вовлечённость и потенциал каждого сотрудника — всё в одном визуальном дашборде.</p>
+                  <ul class="lv3-folder-list">
+                    <li>Дашборд HR-директора и собственника</li>
+                    <li>Radar компетенций и 9-box матрица</li>
+                    <li>Тепловая карта рисков команды</li>
+                    <li>Воронка подбора в реальном времени</li>
+                  </ul>
+                </div>
+                <div class="lv3-folder-visual">
+                  <div class="lv3-dash-preview">
+                    <div class="lv3-dash-header">
+                      <span class="lv3-dash-title">HR Dashboard</span>
+                      <span class="lv3-live-dot">● Live</span>
+                    </div>
+                    <div class="lv3-dash-kpis">
+                      <div class="lv3-dash-kpi">
+                        <span class="lv3-dash-kpi-val lv3-teal">47</span>
+                        <span class="lv3-dash-kpi-label">Оценок</span>
+                      </div>
+                      <div class="lv3-dash-kpi">
+                        <span class="lv3-dash-kpi-val lv3-green">81%</span>
+                        <span class="lv3-dash-kpi-label">Конверсия</span>
+                      </div>
+                      <div class="lv3-dash-kpi">
+                        <span class="lv3-dash-kpi-val lv3-amber">3</span>
+                        <span class="lv3-dash-kpi-label">Риска</span>
+                      </div>
+                    </div>
+                    <div class="lv3-dash-bars">
+                      <div class="lv3-dash-bar-row">
+                        <span>Коммуникация</span>
+                        <div class="lv3-dash-bar"><div class="lv3-dash-bar-fill" style="width:87%"></div></div>
+                        <span>87%</span>
+                      </div>
+                      <div class="lv3-dash-bar-row">
+                        <span>Лидерство</span>
+                        <div class="lv3-dash-bar"><div class="lv3-dash-bar-fill" style="width:72%"></div></div>
+                        <span>72%</span>
+                      </div>
+                      <div class="lv3-dash-bar-row">
+                        <span>Стрессоустойчивость</span>
+                        <div class="lv3-dash-bar"><div class="lv3-dash-bar-fill lv3-bar-amber" style="width:54%"></div></div>
+                        <span>54%</span>
+                      </div>
+                      <div class="lv3-dash-bar-row">
+                        <span>Обучаемость</span>
+                        <div class="lv3-dash-bar"><div class="lv3-dash-bar-fill" style="width:91%"></div></div>
+                        <span>91%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Slide 2: AI Assistant -->
+            <div class="lv3-folder-panel" data-folder-panel="1">
+              <div class="lv3-folder-content">
+                <div class="lv3-folder-text">
+                  <div class="lv3-folder-tag">AI-помощник</div>
+                  <h3>Спроси AI, если не знаешь как действовать</h3>
+                  <p>Не знаете как провести оценку 360, на кого из кандидатов обратить внимание или как интерпретировать результаты? AI ответит на любой HR-вопрос за секунды.</p>
+                  <ul class="lv3-folder-list">
+                    <li>Рекомендации по кандидатам</li>
+                    <li>Помощь в настройке оценки 360</li>
+                    <li>Анализ рисков и красных флагов</li>
+                    <li>Советы по развитию сотрудников</li>
+                  </ul>
+                </div>
+                <div class="lv3-folder-visual">
+                  <div class="lv3-ai-chat" id="lv3AiChat">
+                    <div class="lv3-ai-chat-header">
+                      <span class="lv3-ai-avatar">✦</span>
+                      <span>Eltera AI</span>
+                      <span class="lv3-live-dot">● Online</span>
+                    </div>
+                    <div class="lv3-ai-chat-messages" id="lv3AiMessages">
+                      <div class="lv3-ai-msg lv3-ai-msg-user lv3-ai-msg-visible">Как провести оценку 360 для руководителя?</div>
+                      <div class="lv3-ai-msg lv3-ai-msg-bot lv3-ai-msg-visible">Для оценки 360 выберите профиль «Руководитель», добавьте 5–8 коллег и подчинённых как оценщиков, установите срок 7 дней. Я автоматически сформирую сводный отчёт. 📊</div>
+                      <div class="lv3-ai-msg lv3-ai-msg-user">На кого из кандидатов обратить внимание?</div>
+                      <div class="lv3-ai-msg lv3-ai-msg-bot">Рекомендую Анну К. — fit к роли 94%, высокая обучаемость и стрессоустойчивость. Красных флагов нет. ✅</div>
+                      <div class="lv3-ai-msg lv3-ai-msg-user">Что значит низкий показатель вовлечённости?</div>
+                      <div class="lv3-ai-msg lv3-ai-msg-bot">Вовлечённость ниже 60% — сигнал риска выгорания. Рекомендую 1-on-1 с сотрудником и пересмотр нагрузки. 🔥</div>
+                    </div>
+                    <div class="lv3-ai-chat-input">
+                      <input type="text" placeholder="Задайте вопрос AI..." readonly>
+                      <button>↑</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Slide 3: Simple Interface -->
+            <div class="lv3-folder-panel" data-folder-panel="2">
+              <div class="lv3-folder-content">
+                <div class="lv3-folder-text">
+                  <div class="lv3-folder-tag">Простота</div>
+                  <h3>HR без воды — интуитивно понятный интерфейс</h3>
+                  <p>Создайте и отправьте оценку за 1 минуту. Никаких инструкций, долгого обучения и технических сложностей. Просто выберите профиль и отправьте ссылку.</p>
+                  <ul class="lv3-folder-list">
+                    <li>Создание оценки за 3 клика</li>
+                    <li>Готовые профили для 120+ должностей</li>
+                    <li>Автоматическая отправка ссылок</li>
+                    <li>Результат сразу после прохождения</li>
+                  </ul>
+                </div>
+                <div class="lv3-folder-visual">
+                  <div class="lv3-send-preview">
+                    <div class="lv3-send-step" id="lv3SendStep">
+                      <div class="lv3-send-stage" data-stage="0">
+                        <div class="lv3-send-form">
+                          <div class="lv3-send-label">Должность</div>
+                          <div class="lv3-send-field lv3-typing" id="lv3TypeField">Менеджер по продажам</div>
+                          <div class="lv3-send-label">Кандидат</div>
+                          <div class="lv3-send-field">Иванов Алексей</div>
+                          <div class="lv3-send-label">Email</div>
+                          <div class="lv3-send-field">ivanov@company.ru</div>
+                        </div>
+                      </div>
+                      <div class="lv3-send-stage" data-stage="1" style="display:none">
+                        <div class="lv3-send-sending">
+                          <div class="lv3-send-icon">📤</div>
+                          <div class="lv3-send-text">Отправляем оценку...</div>
+                          <div class="lv3-send-progress"><div class="lv3-send-progress-bar" id="lv3SendBar"></div></div>
+                        </div>
+                      </div>
+                      <div class="lv3-send-stage" data-stage="2" style="display:none">
+                        <div class="lv3-send-done">
+                          <div class="lv3-send-check">✓</div>
+                          <div class="lv3-send-text lv3-green">Оценка отправлена!</div>
+                          <div class="lv3-send-link">eltera.ai/a/xK9mP2</div>
+                        </div>
+                      </div>
+                    </div>
+                    <button class="lv3-send-btn" id="lv3SendBtn">Отправить оценку →</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Slide 4: Company Structure -->
+            <div class="lv3-folder-panel" data-folder-panel="3">
+              <div class="lv3-folder-content">
+                <div class="lv3-folder-text">
+                  <div class="lv3-folder-tag">Структура</div>
+                  <h3>Вся структура компании и данные о каждом</h3>
+                  <p>Видите полную оргструктуру: отделы, руководителей, сотрудников. Кликните на любого — получите его профиль, оценки, риски и ИПР.</p>
+                  <ul class="lv3-folder-list">
+                    <li>Оргструктура с drill-down</li>
+                    <li>Профиль каждого сотрудника</li>
+                    <li>История оценок и динамика</li>
+                    <li>Риски и рекомендации по каждому</li>
+                  </ul>
+                </div>
+                <div class="lv3-folder-visual">
+                  <div class="lv3-org-preview">
+                    <div class="lv3-org-node lv3-org-root" id="lv3OrgRoot">
+                      <span class="lv3-org-avatar">ГД</span>
+                      <span>Генеральный директор</span>
+                    </div>
+                    <div class="lv3-org-branches">
+                      <div class="lv3-org-branch">
+                        <div class="lv3-org-node lv3-org-dept" id="lv3OrgDept1">
+                          <span class="lv3-org-avatar lv3-org-blue">HR</span>
+                          <span>HR-отдел</span>
+                        </div>
+                        <div class="lv3-org-children" id="lv3OrgHr">
+                          <div class="lv3-org-leaf"><span class="lv3-org-dot lv3-green"></span>Анна К. <span class="lv3-org-fit">94%</span></div>
+                          <div class="lv3-org-leaf"><span class="lv3-org-dot lv3-teal"></span>Мария С. <span class="lv3-org-fit">88%</span></div>
+                        </div>
+                      </div>
+                      <div class="lv3-org-branch">
+                        <div class="lv3-org-node lv3-org-dept" id="lv3OrgDept2">
+                          <span class="lv3-org-avatar lv3-org-purple">IT</span>
+                          <span>IT-отдел</span>
+                        </div>
+                        <div class="lv3-org-children" id="lv3OrgIt">
+                          <div class="lv3-org-leaf"><span class="lv3-org-dot lv3-green"></span>Дмитрий В. <span class="lv3-org-fit">91%</span></div>
+                          <div class="lv3-org-leaf"><span class="lv3-org-dot lv3-amber"></span>Павел Н. <span class="lv3-org-fit">67%</span></div>
+                        </div>
+                      </div>
+                      <div class="lv3-org-branch">
+                        <div class="lv3-org-node lv3-org-dept" id="lv3OrgDept3">
+                          <span class="lv3-org-avatar lv3-org-teal">ПР</span>
+                          <span>Продажи</span>
+                        </div>
+                        <div class="lv3-org-children" id="lv3OrgSales">
+                          <div class="lv3-org-leaf"><span class="lv3-org-dot lv3-green"></span>Алексей И. <span class="lv3-org-fit">89%</span></div>
+                          <div class="lv3-org-leaf"><span class="lv3-org-dot lv3-red"></span>Сергей М. <span class="lv3-org-fit">45%</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Slide 5: Referral -->
+            <div class="lv3-folder-panel" data-folder-panel="4">
+              <div class="lv3-folder-content">
+                <div class="lv3-folder-text">
+                  <div class="lv3-folder-tag">Реферальная программа</div>
+                  <h3>Зарабатывай криптовалюту и выводи рублями</h3>
+                  <p>Приглашайте компании в Eltera и получайте 10% от каждой их оплаты. Бонусы начисляются в USDT и выводятся на российскую карту в рублях.</p>
+                  <ul class="lv3-folder-list">
+                    <li>10% от оплаты каждой приглашённой компании</li>
+                    <li>Начисление в USDT</li>
+                    <li>Вывод на карту РФ в рублях</li>
+                    <li>Реальные выплаты без ограничений</li>
+                  </ul>
+                </div>
+                <div class="lv3-folder-visual">
+                  <div class="lv3-ref-preview">
+                    <div class="lv3-ref-balance">
+                      <span class="lv3-ref-bal-label">Ваш баланс</span>
+                      <span class="lv3-ref-bal-val">$142.50 <span class="lv3-ref-rub">≈ 13 200 ₽</span></span>
+                    </div>
+                    <div class="lv3-ref-link-block">
+                      <div class="lv3-ref-link-label">Ваша реферальная ссылка</div>
+                      <div class="lv3-ref-link-row">
+                        <span class="lv3-ref-link-url">eltera.ai/ref/xK9mP2qR</span>
+                        <button class="lv3-ref-copy-btn" id="lv3RefCopyBtn">Скопировать</button>
+                      </div>
+                    </div>
+                    <div class="lv3-ref-stats">
+                      <div class="lv3-ref-stat">
+                        <span class="lv3-ref-stat-val lv3-teal">7</span>
+                        <span class="lv3-ref-stat-label">Компаний</span>
+                      </div>
+                      <div class="lv3-ref-stat">
+                        <span class="lv3-ref-stat-val lv3-green">$142</span>
+                        <span class="lv3-ref-stat-label">Заработано</span>
+                      </div>
+                      <div class="lv3-ref-stat">
+                        <span class="lv3-ref-stat-val lv3-amber">$38</span>
+                        <span class="lv3-ref-stat-label">Ожидает</span>
+                      </div>
+                    </div>
+                    <div class="lv3-ref-history">
+                      <div class="lv3-ref-hist-row"><span>ООО «Ритейл Групп»</span><span class="lv3-green">+$18.00</span></div>
+                      <div class="lv3-ref-hist-row"><span>IT-компания «Devs»</span><span class="lv3-green">+$24.50</span></div>
+                      <div class="lv3-ref-hist-row"><span>Контакт-центр «Плюс»</span><span class="lv3-green">+$12.00</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /lv3-folder-panels -->
+        </div><!-- /lv3-folders -->
+          </section>
+        </div><!-- /lv3-scroll-sticky -->
+      </div><!-- /lv3-scroll-features -->
+
+      <!-- AI SECTION -->
+      <section class="lv3-section lv3-ai-section" id="lv3-ai" data-reveal>
+        <div class="lv3-ai-inner">
+          <div class="lv3-ai-left">
+            <div class="lv3-section-tag">AI-оценка</div>
+            <h2>AI анализирует, вы <span class="lv3-grad">принимаете решение</span></h2>
+            <p>AI анализирует ответы, компетенции, кейсы и поведенческие маркеры, а затем формирует понятный отчёт: сильные стороны, зоны риска, красные флаги, рекомендацию и индивидуальный план развития.</p>
+            <div class="lv3-ai-note-box">Важно: AI помогает структурировать оценку и подсветить риски, но финальное решение остаётся за человеком.</div>
+          </div>
+          <div class="lv3-ai-right">
+            <div class="lv3-accordion" id="lv3Accordion">
+              <div class="lv3-acc-item active" data-acc="0">
+                <div class="lv3-acc-head"><span class="lv3-acc-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#00E5D4" stroke-width="1.2"/><circle cx="8" cy="8" r="3" fill="#00E5D4" fill-opacity="0.4"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2" stroke="#00E5D4" stroke-width="1.2" stroke-linecap="round"/></svg></span><span>Профиль компетенций</span><svg class="lv3-acc-arrow" width="16" height="16" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+                <div class="lv3-acc-body">Визуальный radar с процентами по каждой компетенции. Сразу видно сильные стороны и зоны развития.</div>
+              </div>
+              <div class="lv3-acc-item" data-acc="1">
+                <div class="lv3-acc-head"><span class="lv3-acc-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v7" stroke="#FF6B6B" stroke-width="1.4" stroke-linecap="round"/><circle cx="8" cy="13" r="1.2" fill="#FF6B6B"/><path d="M3 2h10L11 7H5L3 2z" stroke="#FF6B6B" stroke-width="1.2" fill="#FF6B6B" fill-opacity="0.15"/></svg></span><span>Красные флаги и риски</span><svg class="lv3-acc-arrow" width="16" height="16" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+                <div class="lv3-acc-body">AI выделяет тревожные сигналы и зоны внимания. Вы видите риски до принятия решения.</div>
+              </div>
+              <div class="lv3-acc-item" data-acc="2">
+                <div class="lv3-acc-head"><span class="lv3-acc-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#00E5D4" stroke-width="1.2"/><path d="M5 8l2 2 4-4" stroke="#00E5D4" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Рекомендация по кандидату</span><svg class="lv3-acc-arrow" width="16" height="16" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+                <div class="lv3-acc-body">Приглашать / наблюдать / не рекомендовать — с обоснованием и конкретными аргументами.</div>
+              </div>
+              <div class="lv3-acc-item" data-acc="3">
+                <div class="lv3-acc-head"><span class="lv3-acc-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 12l4-4 3 3 5-7" stroke="#1E5BFF" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="14" cy="4" r="1.5" fill="#1E5BFF"/></svg></span><span>ИПР — план развития</span><svg class="lv3-acc-arrow" width="16" height="16" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+                <div class="lv3-acc-body">Индивидуальный план развития с конкретными шагами, целями и сроками для каждого сотрудника.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- WHAT CAN BE ASSESSED -->
+      <section class="lv3-section" id="lv3-assess" data-reveal>
+        <div class="lv3-section-head">
+          <h2>Комплексная оценка людей: <span class="lv3-grad">от найма до развития</span></h2>
+          <p>Все инструменты для работы с кандидатами и сотрудниками в одной платформе</p>
+        </div>
+        <div class="lv3-assess-grid">
+          <div class="lv3-assess-card">
+            <div class="lv3-assess-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="7" r="3" stroke="#00E5D4" stroke-width="1.4"/><circle cx="15" cy="7" r="3" stroke="#1E5BFF" stroke-width="1.4"/><path d="M3 20c0-3.314 2.686-6 6-6h6c3.314 0 6 2.686 6 6" stroke="#00E5D4" stroke-width="1.4" stroke-linecap="round"/></svg></div>
+            <h4>Корпоративная культура и вовлечённость</h4>
+            <ul>
+              <li>Групповые опросы</li>
+              <li>Опросы вовлечённости</li>
+              <li>Пульс-опросы</li>
+              <li>Оценка ценностей</li>
+              <li>Оценка факторов удержания</li>
+              <li>Оценка удовлетворённости и лояльности</li>
+            </ul>
+          </div>
+          <div class="lv3-assess-card">
+            <div class="lv3-assess-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 3L2 20h20L12 3z" stroke="#FFB347" stroke-width="1.4" stroke-linejoin="round"/><path d="M12 10v5" stroke="#FFB347" stroke-width="1.4" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="#FFB347"/></svg></div>
+            <h4>Риски текучести и увольнения</h4>
+            <ul>
+              <li>Exit-интервью</li>
+              <li>Оценка репутационных рисков</li>
+              <li>Отчёт по рискам текучести</li>
+              <li>Факторы ухода</li>
+              <li>Зоны выгорания</li>
+            </ul>
+          </div>
+          <div class="lv3-assess-card">
+            <div class="lv3-assess-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="12" width="4" height="9" rx="1" fill="#1E5BFF" fill-opacity="0.3" stroke="#1E5BFF" stroke-width="1.2"/><rect x="10" y="7" width="4" height="14" rx="1" fill="#1E5BFF" fill-opacity="0.5" stroke="#1E5BFF" stroke-width="1.2"/><rect x="17" y="3" width="4" height="18" rx="1" fill="#00E5D4" fill-opacity="0.5" stroke="#00E5D4" stroke-width="1.2"/></svg></div>
+            <h4>Оценка и развитие персонала</h4>
+            <ul>
+              <li>Индивидуальная оценка руководителя</li>
+              <li>Оценка 360</li>
+              <li>Оценка потенциала</li>
+              <li>Performance review</li>
+              <li>Индивидуальный план развития (ИПР)</li>
+              <li>Автоматические мониторинги</li>
+            </ul>
+          </div>
+          <div class="lv3-assess-card">
+            <div class="lv3-assess-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#00E5D4" stroke-width="1.4"/><path d="M16.5 16.5l4 4" stroke="#00E5D4" stroke-width="1.4" stroke-linecap="round"/><path d="M8 11h6M11 8v6" stroke="#00E5D4" stroke-width="1.2" stroke-linecap="round"/></svg></div>
+            <h4>Поиск и подбор</h4>
+            <ul>
+              <li>Оценка кандидатов</li>
+              <li>Сравнение кандидатов</li>
+              <li>Готовые профили должностей</li>
+              <li>Оценка soft skills</li>
+              <li>Оценка мотивации</li>
+              <li>Контроль рисков найма</li>
+            </ul>
+          </div>
+        </div>
+        <div class="lv3-assess-stats">
+          <div class="lv3-astat"><b>120+</b><span>готовых профилей должностей</span></div>
+          <div class="lv3-astat"><b>1000+</b><span>методик оценки</span></div>
+          <div class="lv3-astat"><b>∞</b><span>Гибкий конструктор компетенций</span></div>
+        </div>
+      </section>
+
+      <!-- CTA BLOCK -->
+      <section class="lv3-cta-block">
+        <div class="lv3-cta-inner">
+          <div class="lv3-section-tag">Стартовый доступ</div>
+          <h2>Попробуйте всего за 990 ₽</h2>
+          <p>Получите 1 месяц доступа к оценке кандидатов и сотрудников.<br>Мы не делим людей на кандидатов и сотрудников — в одном доступе можно оценивать всех.</p>
+          <div class="lv3-cta-btns">
+            <button class="lv3-btn-primary lv3-btn-lg" data-route="login">Попробовать за 990 ₽ →</button>
+            <button class="lv3-btn-ghost lv3-btn-lg" data-route="login">Оплатить доступ</button>
+          </div>
+          <div class="lv3-cta-meta">20 оценок на 1 месяц в стартовом доступе</div>
+        </div>
+      </section>
+
+      <!-- HOW IT WORKS -->
+      <section class="lv3-section" id="lv3-how" data-reveal>
+        <div class="lv3-section-head">
+          <h2>Как это работает</h2>
+          <p>Пять шагов от задачи до решения</p>
+        </div>
+        <div class="lv3-steps">
+          <div class="lv3-step" data-reveal data-reveal-delay="1"><div class="lv3-step-num">01</div><div><h4>Расскажите задачу</h4><p>Вы выбираете, что нужно оценить: кандидатов, сотрудников, вовлечённость, руководителей, команду или риски текучести.</p></div></div>
+          <div class="lv3-step" data-reveal data-reveal-delay="2"><div class="lv3-step-num">02</div><div><h4>Мы помогаем подобрать инструмент</h4><p>Поддержка помогает выбрать готовую методику или собрать оценку под вашу задачу.</p></div></div>
+          <div class="lv3-step" data-reveal data-reveal-delay="3"><div class="lv3-step-num">03</div><div><h4>Отправьте оценку</h4><p>Вы отправляете ссылку кандидатам или сотрудникам. Они проходят оценку онлайн в удобное время.</p></div></div>
+          <div class="lv3-step" data-reveal data-reveal-delay="4"><div class="lv3-step-num">04</div><div><h4>Получите результат</h4><p>После прохождения результат сразу появляется в личном кабинете: профиль компетенций, риски, рекомендации и отчёт.</p></div></div>
+          <div class="lv3-step" data-reveal data-reveal-delay="5"><div class="lv3-step-num">05</div><div><h4>Примите решение</h4><p>Используйте отчёт для найма, развития, ротации, удержания или performance review.</p></div></div>
+        </div>
+      </section>
+
+      <!-- REPORTS -->
+      <section class="lv3-section" id="lv3-reports" data-reveal>
+        <div class="lv3-section-head">
+          <h2>Познакомьтесь с примерами отчётов</h2>
+          <p>Готовые отчёты для каждого сценария оценки</p>
+        </div>
+        <div class="lv3-reports-grid">
+          ${[
+            {t:"Отчёт по оценке кандидата",d:"Профиль компетенций, красные флаги, рекомендация по найму",c:"#00E5D4"},
+            {t:"Отчёт по оценке сотрудника",d:"Сильные стороны, зоны развития, ИПР",c:"#1E5BFF"},
+            {t:"Групповой отчёт",d:"Сравнение команды по компетенциям и рискам",c:"#7B61FF"},
+            {t:"Оценка 360",d:"Обратная связь от коллег, руководителя и подчинённых",c:"#00E5D4"},
+            {t:"Оценка вовлечённости",d:"eNPS, удовлетворённость, факторы удержания",c:"#1E5BFF"},
+            {t:"Пульс-опрос",d:"Быстрый срез настроения и вовлечённости команды",c:"#00E5D4"},
+            {t:"Отчёт по рискам текучести",d:"Зоны выгорания, факторы ухода, рекомендации",c:"#FFB347"},
+            {t:"ИПР сотрудника",d:"Индивидуальный план развития с целями и сроками",c:"#1E5BFF"}
+          ].map(r=>{
+            return `<div class="lv3-report-card">
+              <div class="lv3-rc-top">
+                <div class="lv3-rc-icon" style="color:${r.c};background:${r.c}18"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 3h8l4 4v10a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.3"/><path d="M13 3v5h4" stroke="currentColor" stroke-width="1.3"/><path d="M7 10h6M7 13h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></div>
+                <div><h4>${r.t}</h4><p>${r.d}</p></div>
+              </div>
+              <button class="lv3-btn-ghost lv3-btn-sm" data-route="login">Смотреть пример</button>
+            </div>`;
+          }).join('')}
+        </div>
+      </section>
+
+      <!-- IMPLEMENT -->
+      <section class="lv3-section" id="lv3-implement" data-reveal>
+        <div class="lv3-section-head">
+          <h2>Как внедрить платформу</h2>
+          <p>Внедрение не требует сложного проекта. Вы оплачиваете доступ, выбираете оценку, отправляете ссылку и получаете результаты.</p>
+        </div>
+        <div class="lv3-impl-steps">
+          <div class="lv3-impl-step" data-reveal data-reveal-delay="1"><div class="lv3-impl-num">1</div><h4>Оплатите доступ</h4><p>Выберите стартовый доступ за 990 ₽ или один из основных тарифов.</p></div>
+          <div class="lv3-impl-step" data-reveal data-reveal-delay="2"><div class="lv3-impl-num">2</div><h4>Выберите задачу оценки</h4><p>Оценка кандидатов, сотрудников, 360, вовлечённость или риски текучести.</p></div>
+          <div class="lv3-impl-step" data-reveal data-reveal-delay="3"><div class="lv3-impl-num">3</div><h4>Запустите оценку</h4><p>Отправьте ссылку кандидатам или сотрудникам — они проходят онлайн.</p></div>
+          <div class="lv3-impl-step" data-reveal data-reveal-delay="4"><div class="lv3-impl-num">4</div><h4>Получите отчёт</h4><p>Результат появляется в личном кабинете сразу после прохождения.</p></div>
+          <div class="lv3-impl-step" data-reveal data-reveal-delay="5"><div class="lv3-impl-num">5</div><h4>Используйте результаты</h4><p>Принимайте решения по найму, развитию, ротации или удержанию.</p></div>
+        </div>
+      </section>
+
+      <!-- PRICING -->
+      <section class="lv3-section" id="lv3-pricing" data-reveal>
+        <div class="lv3-section-head">
+          <h2>Тарифы</h2>
+          <p>Выберите подходящий план для вашей команды</p>
+        </div>
+        <div class="lv3-billing-toggle">
+          <button class="lv3-billing-btn active" data-billing="month">1 месяц</button>
+          <button class="lv3-billing-btn" data-billing="3month">3 месяца <span class="lv3-discount">−12%</span></button>
+          <button class="lv3-billing-btn" data-billing="year">1 год <span class="lv3-discount">−17%</span></button>
+        </div>
+        <div class="tariffGrid landingTariffs">${tariffs.map(renderTariffCard).join("")}</div>
+        <p class="lv3-tariff-note">Все тарифы включают оценку кандидатов и сотрудников. Отмена в любой момент.</p>
+
+        <!-- COMPARISON TABLE -->
+        <div class="lv3-compare-wrap" data-reveal>
+          <div class="lv3-compare-toggle">
+            <button class="lv3-compare-btn active" id="lv3CompareToggle">Сравнить тарифы ↓</button>
+          </div>
+          <div class="lv3-compare-table" id="lv3CompareTable">
+            <table>
+              <thead>
+                <tr>
+                  <th>Функция</th>
+                  <th><span class="lv3-plan-name">Start</span></th>
+                  <th><span class="lv3-plan-name">TalentCheck</span></th>
+                  <th><span class="lv3-plan-name lv3-plan-popular">TalentPro</span></th>
+                  <th><span class="lv3-plan-name">TalentStudio</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Оценка кандидатов</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td></tr>
+                <tr><td>Оценка сотрудников</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td></tr>
+                <tr><td>PDF-отчёты</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td></tr>
+                <tr><td>Готовые профили должностей</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td></tr>
+                <tr><td>Конструктор оценок</td><td class="lv3-no">—</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td></tr>
+                <tr><td>Групповые отчёты</td><td class="lv3-no">—</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td></tr>
+                <tr><td>Адаптация 7/14/30/60/90 дней</td><td class="lv3-no">—</td><td class="lv3-no">—</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td></tr>
+                <tr><td>Performance Review + 9-box</td><td class="lv3-no">—</td><td class="lv3-no">—</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td></tr>
+                <tr><td>Оценка 360</td><td class="lv3-no">—</td><td class="lv3-no">—</td><td class="lv3-no">—</td><td class="lv3-yes">✓</td></tr>
+                <tr><td>API-интеграция</td><td class="lv3-no">—</td><td class="lv3-no">—</td><td class="lv3-no">—</td><td class="lv3-yes">✓</td></tr>
+                <tr><td>Брендированные отчёты</td><td class="lv3-no">—</td><td class="lv3-no">—</td><td class="lv3-no">—</td><td class="lv3-yes">✓</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- SOCIAL PROOF -->
+      <section class="lv3-section lv3-social-proof" id="lv3-social" data-reveal>
+        <div class="lv3-section-head">
+          <h2>Нам доверяют HR-команды</h2>
+          <p>Компании разных отраслей используют Eltera для оценки людей</p>
+        </div>
+        <div class="lv3-logos-row">
+          <div class="lv3-logo-pill">Ритейл</div>
+          <div class="lv3-logo-pill">IT-компании</div>
+          <div class="lv3-logo-pill">Банки</div>
+          <div class="lv3-logo-pill">Производство</div>
+          <div class="lv3-logo-pill">Логистика</div>
+          <div class="lv3-logo-pill">Контакт-центры</div>
+          <div class="lv3-logo-pill">Девелопмент</div>
+          <div class="lv3-logo-pill">Страхование</div>
+        </div>
+        <div class="lv3-testimonials">
+          <div class="lv3-testimonial">
+            <div class="lv3-test-text">"Раньше оценка кандидата занимала 2-3 дня. Теперь результат готов через 30 минут после прохождения. Экономим около 60% времени HR-отдела."</div>
+            <div class="lv3-test-author">
+              <div class="lv3-test-avatar">ЕК</div>
+              <div><b>Елена К.</b><span>HR-директор, ритейл-сеть</span></div>
+            </div>
+          </div>
+          <div class="lv3-testimonial">
+            <div class="lv3-test-text">"Оценка 360 помогла нам честно поговорить с командой о точках роста. Отчёты понятные, без лишней воды — сразу видно что делать."</div>
+            <div class="lv3-test-author">
+              <div class="lv3-test-avatar">АМ</div>
+              <div><b>Андрей М.</b><span>Руководитель отдела, IT-компания</span></div>
+            </div>
+          </div>
+          <div class="lv3-testimonial">
+            <div class="lv3-test-text">"Собственник наконец увидел реальную картину по команде. Тепловая карта рисков и 9-box матрица — именно то, что нужно для управленческих решений."</div>
+            <div class="lv3-test-author">
+              <div class="lv3-test-avatar">НВ</div>
+              <div><b>Наталья В.</b><span>HRD, производственная компания</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="lv3-proof-stats">
+          <div class="lv3-proof-stat"><b data-count-to="3000" data-count-prefix="" data-count-suffix=" 000+">3 000+</b><span>профессий в базе</span></div>
+          <div class="lv3-proof-stat"><b data-count-to="639" data-count-prefix="" data-count-suffix="">639</b><span>вопросов по компетенциям</span></div>
+          <div class="lv3-proof-stat"><b data-count-to="60" data-count-prefix="" data-count-suffix="+">60+</b><span>готовых должностей</span></div>
+          <div class="lv3-proof-stat"><b data-count-to="100" data-count-prefix="" data-count-suffix="+">100+</b><span>методик оценки</span></div>
+        </div>
+      </section>
+
+      <!-- CASES -->
+      <section class="lv3-section" id="lv3-cases" data-reveal>
+        <div class="lv3-section-head">
+          <h2>Кейсы</h2>
+          <p>Станьте компанией, которая оценивает людей с помощью Eltera</p>
+        </div>
+        <div class="lv3-cases-grid">
+          <div class="lv3-case-card">
+            <div class="lv3-case-tag">Ритейл</div>
+            <h4>Ритейл-сеть</h4>
+            <p>Снизили текучесть кассиров на 18% за счёт оценки мотивации при найме</p>
+          </div>
+          <div class="lv3-case-card">
+            <div class="lv3-case-tag">IT</div>
+            <h4>IT-компания</h4>
+            <p>Ускорили закрытие вакансий разработчиков с 45 до 28 дней</p>
+          </div>
+          <div class="lv3-case-card">
+            <div class="lv3-case-tag">Сервис</div>
+            <h4>Контакт-центр</h4>
+            <p>Сократили ошибки найма операторов на 35% с помощью оценки компетенций</p>
+          </div>
+        </div>
+        <p class="lv3-cases-note">* Данные приведены в качестве иллюстрации потенциального эффекта платформы</p>
+      </section>
+
+      <!-- FOOTER -->
+      <footer class="lv3-footer">
+        <div class="lv3-footer-top">
+          <div class="lv3-footer-brand">
+            <img src="/public/assets/eltera_logo_horizontal_on_dark.png" alt="Eltera" style="height:48px;width:auto;object-fit:contain;">
+            <p>AI-платформа для оценки кандидатов и сотрудников. Компетенции, 360, вовлечённость, пульс-опросы и готовые отчёты.</p>
+            <button class="lv3-btn-ghost" data-route="login">Войти в личный кабинет</button>
+          </div>
+          <div class="lv3-footer-cols">
+            <div class="lv3-footer-col">
+              <div class="lv3-footer-col-title">ПРОДУКТЫ</div>
+              <a href="#lv3-assess">Оценка кандидатов и сотрудников</a>
+              <a href="#lv3-360">Оценка 360</a>
+              <a href="#lv3-engage">Оценка вовлечённости</a>
+              <a href="#lv3-pulse">Пульс-опросы</a>
+              <a href="#lv3-perf">Performance review</a>
+            </div>
+            <div class="lv3-footer-col">
+              <div class="lv3-footer-col-title">КОМПАНИЯ</div>
+              <a href="#lv3-cases">Кейсы</a>
+              <a href="#lv3-reports">Отчёты</a>
+              <a href="#lv3-pricing">Тарифы</a>
+              <a href="#lv3-implement">Внедрение</a>
+              <a href="#/app/referrals">Реферальная программа</a>
+            </div>
+            <div class="lv3-footer-col">
+              <div class="lv3-footer-col-title">РЕСУРСЫ</div>
+              <a href="#">Глоссарий</a>
+              <a href="#">Контакты</a>
+              <a href="#">Политика конфиденциальности</a>
+              <a href="#">Политика обработки ПД</a>
+            </div>
+          </div>
+        </div>
+        <div class="lv3-footer-bottom">
+          <span>© 2026 Eltera. Все права защищены.</span>
+          <div><a href="#">Политика конфиденциальности</a><a href="#">Пользовательское соглашение</a></div>
+        </div>
+      </footer>
     </div>
   `;
 }
@@ -109,7 +985,7 @@ export function renderLogin() {
   return `
     <div class="authPage">
       <section class="authBrand">
-        <img src="/assets/eltera_logo_horizontal_on_dark.svg?v=5" alt="Eltera">
+        <img src="/public/assets/eltera_logo_horizontal_on_dark.png?v=5" alt="Eltera">
         <h1><span class="authGradientText">Интеллект в оценке.</span><br><span class="authWhiteText">Уверенность в решениях.</span></h1>
         <p>Разберётесь за 5 минут. Первая оценка — за 1 минуту. Без инструкций и долгого обучения.</p>
       </section>
@@ -188,7 +1064,7 @@ export function renderAppShell(state, content) {
     <div class="appShell ${isDark ? "darkTheme" : "lightTheme"}">
       <aside class="elt-sidebar">
         <div class="elt-sidebar-logo">
-          <img src="${isDark ? "/assets/eltera_logo_horizontal_on_dark.svg?v=4" : "/assets/eltera_logo_horizontal_on_light.svg?v=4"}" alt="Eltera" class="elt-logo-img">
+          <img src="${isDark ? "/public/assets/eltera_logo_horizontal_on_dark.png?v=10" : "/public/assets/eltera_logo_horizontal_on_light.png?v=10"}" alt="Eltera" class="elt-logo-img">
         </div>
         <nav class="elt-sidenav">
           ${navGroups.map((group) => `
@@ -232,13 +1108,10 @@ export function renderAppShell(state, content) {
                 : `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2.5" fill="currentColor"/><line x1="7" y1="1" x2="7" y2="2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="7" y1="11.5" x2="7" y2="13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="1" y1="7" x2="2.5" y2="7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="11.5" y1="7" x2="13" y2="7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>`
               }
             </button>
-            <div class="elt-notif-wrap">
-              <button class="elt-icon-btn elt-notif-btn${state.notifPanelOpen ? " active" : ""}" title="Уведомления" data-action="toggle-notifications">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5a4 4 0 0 1 4 4v2.5l1 1.5H2l1-1.5V5.5a4 4 0 0 1 4-4z" stroke="currentColor" stroke-width="1.3" fill="none" opacity=".85"/><path d="M5.5 11.5a1.5 1.5 0 0 0 3 0" stroke="currentColor" stroke-width="1.3" fill="none" opacity=".7"/></svg>
-                ${state.notifUnread > 0 ? `<span class="elt-notif-badge">${state.notifUnread > 99 ? "99+" : state.notifUnread}</span>` : ""}
-              </button>
-              ${state.notifPanelOpen ? renderNotifPanel(state) : ""}
-            </div>
+            <button class="elt-icon-btn elt-notif-btn" title="Уведомления">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5a4 4 0 0 1 4 4v2.5l1 1.5H2l1-1.5V5.5a4 4 0 0 1 4-4z" stroke="currentColor" stroke-width="1.3" fill="none" opacity=".85"/><path d="M5.5 11.5a1.5 1.5 0 0 0 3 0" stroke="currentColor" stroke-width="1.3" fill="none" opacity=".7"/></svg>
+              <span class="elt-notif-dot"></span>
+            </button>
             <button class="elt-avatar-btn" title="Профиль" data-oc-avatar="ceo" style="padding:0;overflow:hidden">
               ${(state.employeePhotos || {})['ceo'] ? `<img class="oc-avatar-img" src="${(state.employeePhotos || {})['ceo']}" alt="Профиль" style="width:100%;height:100%;object-fit:cover;border-radius:50%">` : 'РК'}
             </button>
@@ -248,44 +1121,6 @@ export function renderAppShell(state, content) {
       </div>
     </div>
   `;
-}
-
-const NOTIF_ICON = {
-  assessment_completed: "✓",
-  adaptation_risk: "⚠",
-  adaptation_missed: "✕",
-  new_employee: "+",
-  new_candidate: "+",
-  adaptation_started: "▶",
-};
-
-function renderNotifPanel(state) {
-  const items = state.notifications || [];
-  const loading = state.notifStatus === "loading" && !items.length;
-  const body = loading
-    ? `<div class="elt-notif-empty">Загрузка…</div>`
-    : items.length
-      ? items.map((n) => `
-        <button class="elt-notif-item${n.read ? "" : " unread"}" data-notif-open="${n.id}"${n.target_view ? ` data-notif-view="${n.target_view}"` : ""}${n.target_id ? ` data-notif-target="${n.target_id}"` : ""}>
-          <span class="elt-notif-sev sev-${n.severity}">${NOTIF_ICON[n.kind] || "•"}</span>
-          <span class="elt-notif-item-body">
-            <span class="elt-notif-item-title">${escapeHtml(n.title)}</span>
-            ${n.subtitle ? `<span class="elt-notif-item-sub">${escapeHtml(n.subtitle)}</span>` : ""}
-            <span class="elt-notif-item-time">${_formatRelTime(n.event_at)}</span>
-          </span>
-          ${n.read ? "" : `<span class="elt-notif-unread-dot"></span>`}
-        </button>`).join("")
-      : `<div class="elt-notif-empty">Новых уведомлений нет 👌</div>`;
-
-  return `
-    <div class="elt-notif-backdrop" data-action="close-notifications"></div>
-    <div class="elt-notif-panel">
-      <div class="elt-notif-panel-head">
-        <h3>Уведомления${state.notifUnread > 0 ? ` <span class="elt-notif-count">${state.notifUnread}</span>` : ""}</h3>
-        ${state.notifUnread > 0 ? `<button class="elt-notif-readall" data-action="notif-mark-all">Прочитать все</button>` : ""}
-      </div>
-      <div class="elt-notif-list">${body}</div>
-    </div>`;
 }
 
 function eltNavItem(item, activeView) {
@@ -314,221 +1149,6 @@ export function renderDashboard(state, filters) {
     statusForLabel,
     pageFilterConfig
   );
-}
-
-// ────────────────────────────── ГЛАВНАЯ (Overview) ──────────────────────────
-// Единая сводка по всем разделам платформы. Данные приходят одним запросом
-// GET /overview (см. app/services/overview.py).
-
-const OVERVIEW_EVENT_ICON = {
-  assessment_completed: "✓",
-  new_employee: "+",
-  new_candidate: "+",
-  adaptation_started: "▶",
-  cycle_completed: "★",
-};
-const OVERVIEW_EVENT_COLOR = {
-  assessment_completed: "#22C55E",
-  new_employee: "#5B8CFF",
-  new_candidate: "#5B8CFF",
-  adaptation_started: "#7C5CFF",
-  cycle_completed: "#F59E0B",
-};
-const OVERVIEW_ATTENTION_COLOR = { high: "#F87171", medium: "#F59E0B", low: "#5B8CFF" };
-
-function _formatRelTime(iso) {
-  if (!iso) return "";
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return "";
-  const diff = Math.floor((Date.now() - t) / 60000);
-  if (diff < 1) return "только что";
-  if (diff < 60) return `${diff} мин назад`;
-  const h = Math.floor(diff / 60);
-  if (h < 24) return `${h} ч назад`;
-  const d = Math.floor(h / 24);
-  if (d < 7) return `${d} д назад`;
-  return new Date(t).toLocaleDateString("ru-RU");
-}
-
-function _formatDueDate(iso, daysUntil) {
-  if (daysUntil < 0) return `просрочено · ${Math.abs(daysUntil)} дн`;
-  if (daysUntil === 0) return "сегодня";
-  if (daysUntil === 1) return "завтра";
-  return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
-}
-
-// Иконка-заголовок панели (как в премиум-дашборде).
-function _ovPanelIcon(path) {
-  return `<svg width="15" height="15" viewBox="0 0 15 15" fill="none">${path}</svg>`;
-}
-
-export function renderOverview(state) {
-  const status = state.overviewStatus || "idle";
-  const ov = state.overview;
-
-  if (!ov) {
-    const message = status === "error"
-      ? "Не удалось загрузить сводку — API не отвечает. Откройте другие разделы или попробуйте позже."
-      : "Загружаем сводку…";
-    return `<section class="elt-dashboard ov">
-      <header class="elt-dash-header">
-        <div class="elt-dash-header-left">
-          <span class="elt-mini-label">Главная</span>
-          <h1 class="elt-dash-title">Обзор HR-платформы</h1>
-          <p class="elt-dash-subtitle">${message}</p>
-        </div>
-      </header>
-    </section>`;
-  }
-
-  const { candidates: c, employees: e, adaptation: a, attention, events, upcoming_adaptation: upcoming } = ov;
-
-  // ── KPI-плитки (премиум-вид с иконками) ──
-  const kpiCards = [
-    { label: "Кандидатов всего", value: c.total, caption: `${c.assessment_sent} оценок отправлено`, status: "neutral", iconName: "candidates", target: "Кандидаты:Кандидатов всего" },
-    { label: "Подходят", value: c.fit, caption: c.avg_percent ? `${Math.round(c.avg_percent)}% средний балл` : "под профиль", status: c.fit > 0 ? "good" : "neutral", iconName: "fit", target: "Кандидаты:Подходят", trend: c.assessment_passed ? `из ${c.assessment_passed} оценок` : "" },
-    { label: "Зависли", value: c.stuck, caption: "кандидаты без движения", status: c.stuck > 0 ? "bad" : "good", iconName: "active", target: "Кандидаты:Зависли" },
-    { label: "Сотрудников", value: e.total, caption: `${e.not_assessed} ещё не оценены`, status: "neutral", iconName: "employees", target: "Сотрудники:Сотрудников всего" },
-    { label: "Средний балл", value: `${Math.round(e.avg_fit)}%`, caption: "соответствие должности", status: e.avg_fit >= 70 ? "good" : e.avg_fit >= 50 ? "medium" : "bad", iconName: "completed", target: "Сотрудники:Средний результат" },
-    { label: "В зоне риска", value: e.at_risk, caption: "сотрудники · нужен ИПР", status: e.at_risk > 0 ? "bad" : "good", iconName: "risk", target: "Сотрудники:В зоне риска" },
-    { label: "Циклов адаптации", value: a.active_cycles, caption: `${a.completed_cycles} завершено`, status: "neutral", iconName: "chart", target: "Адаптация:Новые сотрудники" },
-    { label: "Алерты адаптации", value: a.at_risk, caption: a.due_now ? `${a.due_now} опросов дозрели` : "риски и пропуски", status: a.at_risk > 0 ? "bad" : a.due_now > 0 ? "medium" : "good", iconName: "balance", target: "Адаптация:В зоне риска" },
-  ];
-
-  // ── Воронка подбора (реальные данные) ──
-  const funnelItems = [
-    { label: "Кандидаты", value: c.total, target: "Кандидаты:Кандидатов всего" },
-    { label: "Оценку прошли", value: c.assessment_passed, target: "Кандидаты:Оценка пройдена" },
-    { label: "Подходят", value: c.fit, target: "Кандидаты:Подходят" },
-  ];
-
-  // ── Состояние адаптации (бары) ──
-  const adaptationBars = [
-    { label: "Активные циклы", value: a.active_cycles, status: "neutral" },
-    { label: "Готовы к рассылке", value: a.due_now, status: a.due_now > 0 ? "medium" : "good" },
-    { label: "Ждут прохождения", value: a.sent_pending, status: "neutral" },
-    { label: "Алерты", value: a.at_risk, status: a.at_risk > 0 ? "bad" : "good" },
-  ];
-
-  // ── Сотрудники: оценка (бары) ──
-  const employeeBars = [
-    { label: "Оценены", value: e.assessed, status: "good" },
-    { label: "Не оценены", value: e.not_assessed, status: "medium" },
-    { label: "В зоне риска", value: e.at_risk, status: "bad" },
-  ];
-
-  // ── Лента «Требует внимания» ──
-  const attentionHtml = attention.length
-    ? attention.map((it) => {
-        const color = OVERVIEW_ATTENTION_COLOR[it.severity] || "#5B8CFF";
-        const tgt = it.target_filter
-          ? `data-open-list="${escapeHtml(it.target_filter)}"`
-          : it.target_view ? `data-view="${escapeHtml(it.target_view)}"` : "";
-        return `<button class="ov-att" ${tgt}>
-          <span class="ov-att-dot" style="background:${color}"></span>
-          <div class="ov-att-body">
-            <div class="ov-att-title">${escapeHtml(it.title)}</div>
-            ${it.subtitle ? `<div class="ov-att-sub">${escapeHtml(it.subtitle)}</div>` : ""}
-          </div>
-          <span class="ov-att-arrow">→</span>
-        </button>`;
-      }).join("")
-    : `<div class="ov-empty">Ничего срочного 👌</div>`;
-
-  // ── Лента «Последние события» ──
-  const eventsHtml = events.length
-    ? events.map((ev) => {
-        const color = OVERVIEW_EVENT_COLOR[ev.kind] || "#8C9BB5";
-        const ic = OVERVIEW_EVENT_ICON[ev.kind] || "•";
-        const tgt = ev.target_view ? `data-view="${escapeHtml(ev.target_view)}"` : "";
-        return `<button class="ov-event" ${tgt}>
-          <span class="ov-event-icon" style="background:${color}22;color:${color}">${ic}</span>
-          <div class="ov-event-body">
-            <div class="ov-event-title">${escapeHtml(ev.title)}</div>
-            ${ev.subtitle ? `<div class="ov-event-sub">${escapeHtml(ev.subtitle)}</div>` : ""}
-          </div>
-          <span class="ov-event-time">${_formatRelTime(ev.at)}</span>
-        </button>`;
-      }).join("")
-    : `<div class="ov-empty">Событий пока не было.</div>`;
-
-  // ── Ближайшие чек-ины адаптации ──
-  const upcomingHtml = upcoming.length
-    ? upcoming.slice(0, 8).map((u) => {
-        const overdue = u.days_until < 0;
-        const today = u.days_until === 0;
-        const stageShort = (u.stage || "").replace("Адаптация · ", "");
-        return `<button class="ov-up ${overdue ? "overdue" : today ? "today" : ""}" data-open-card="${u.person_id}">
-          <div class="ov-up-day">${u.offset_days}д</div>
-          <div class="ov-up-body">
-            <div class="ov-up-name">${escapeHtml(u.full_name)}</div>
-            <div class="ov-up-stage">${escapeHtml(stageShort)} · ${escapeHtml(u.status === "sent" ? "отправлен" : "запланирован")}</div>
-          </div>
-          <div class="ov-up-due">${_formatDueDate(u.due_date, u.days_until)}</div>
-        </button>`;
-      }).join("")
-    : `<div class="ov-empty">Ближайших опросов нет.</div>`;
-
-  const panelHead = (iconPath, title, caption) => `
-    <div class="elt-panel-head">
-      <div class="elt-panel-head-left">${_ovPanelIcon(iconPath)}<h2>${title}</h2></div>
-      ${caption ? `<span class="elt-panel-caption">${caption}</span>` : ""}
-    </div>`;
-
-  return `<section class="elt-dashboard ov">
-    <header class="elt-dash-header">
-      <div class="elt-dash-header-left">
-        <span class="elt-mini-label">HR-аналитика · ${state.company.tariff}</span>
-        <h1 class="elt-dash-title">Что происходит сегодня</h1>
-        <p class="elt-dash-subtitle">${c.total + e.total} человек в системе · ${a.active_cycles} активных цикла адаптации · ${attention.length} требует внимания</p>
-      </div>
-      <div class="elt-dash-header-actions">
-        <button class="elt-btn-ghost" data-action="add-candidate">+ Кандидат</button>
-        <button class="elt-btn-ghost" data-action="add-structure-member">+ Сотрудник</button>
-        <button class="elt-btn-ghost" data-action="import-employees">Импорт</button>
-        <button class="elt-btn-primary" data-action="open-assess-wizard">Создать оценку</button>
-      </div>
-    </header>
-
-    <section class="elt-kpi-grid">
-      ${kpiCards.map(kpiCard).join("")}
-    </section>
-
-    <section class="elt-analytics-grid">
-      <article class="elt-panel elt-chart-panel">
-        ${panelHead('<path d="M2 2h11l-4 5v5l-3-2V7L2 2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>', "Воронка подбора", "кандидаты")}
-        ${funnelChart(funnelItems)}
-      </article>
-
-      <article class="elt-panel elt-chart-panel">
-        ${panelHead('<rect x="1.5" y="4" width="12" height="9" rx="1.3" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 4V3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1" stroke="currentColor" stroke-width="1.2"/>', "Сотрудники: оценка", "срез базы")}
-        ${barChart(employeeBars)}
-      </article>
-
-      <article class="elt-panel elt-chart-panel">
-        ${panelHead('<circle cx="7.5" cy="7.5" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M7.5 4v3.5l2.5 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>', "Состояние адаптации", "циклы и опросы")}
-        ${barChart(adaptationBars)}
-      </article>
-
-      <article class="elt-panel elt-chart-panel">
-        <div class="elt-panel-head">
-          <div class="elt-panel-head-left">${_ovPanelIcon('<path d="M7.5 1.5l1.8 3.7 4 .6-2.9 2.8.7 4-3.6-1.9-3.6 1.9.7-4L2.7 5.8l4-.6z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>')}<h2>Требует внимания</h2></div>
-          <span class="elt-panel-badge">${attention.length}</span>
-        </div>
-        <div class="ov-att-list">${attentionHtml}</div>
-      </article>
-
-      <article class="elt-panel elt-chart-panel">
-        ${panelHead('<circle cx="7.5" cy="7.5" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M7.5 4.5v3l2 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>', "Последние события", "")}
-        <div class="ov-events-list">${eventsHtml}</div>
-      </article>
-
-      <article class="elt-panel elt-chart-panel elt-wide">
-        ${panelHead('<rect x="1.5" y="2.5" width="12" height="11" rx="1.5" stroke="currentColor" stroke-width="1.3"/><line x1="1.5" y1="5.5" x2="13.5" y2="5.5" stroke="currentColor" stroke-width="1"/><line x1="4.5" y1="1" x2="4.5" y2="4" stroke="currentColor" stroke-width="1.2"/><line x1="10.5" y1="1" x2="10.5" y2="4" stroke="currentColor" stroke-width="1.2"/>', "Ближайшие опросы адаптации", "ближайшие 14 дней")}
-        <div class="ov-up-list">${upcomingHtml}</div>
-      </article>
-    </section>
-  </section>`;
 }
 
 export function renderPeople(state) {
@@ -564,9 +1184,9 @@ export function renderCandidates(state) {
       ? state.sessions.filter((item) => item.person.assessmentType === "Кандидат")
       : [];
   const fit = candidates
-    .filter((item) => item.assessed && item.result.percent >= 68)
+    .filter((item) => item.result.percent >= 68)
     .sort((a, b) => b.result.percent - a.result.percent);
-  const risky = candidates.filter((item) => item.assessed && item.result.percent < 55);
+  const risky = candidates.filter((item) => item.result.percent < 55);
 
   const subtitle = failed
     ? "API недоступен — показаны демо-данные"
@@ -630,7 +1250,7 @@ export function renderCandidates(state) {
     period: state.period,
     actions: [
       { label: "Добавить кандидата", attrs: "data-action=\"add-candidate\"" },
-      { label: "Импорт", attrs: "data-action=\"import-candidates\"" },
+      { label: "Импорт" },
       { label: "Создать ссылку", primary: true, attrs: "data-action=\"create-link\"" }
     ],
     filters: pageFilterConfig.candidates,
@@ -659,7 +1279,7 @@ export function renderEmployees(state) {
   const failed = state.employeesStatus === "error";
   const s = ready ? state.employeeStats : EMPTY_EMP_STATS;
   const employees = ready ? state.employeesApi : [];
-  const risky = employees.filter(employeeAtRisk);
+  const risky = employees.filter((item) => item.fit < 70 || item.turnoverRisk !== "низкий");
 
   const subtitle = failed
     ? "API недоступен — данные не загружены"
@@ -816,352 +1436,199 @@ export function renderStructure(state) {
     `;
   }
 
-  const totalPeople = allNodes.length;
-  const totalDepts = state.orgTree ? state.orgTree.total_departments : (state.departments || []).length;
-
-  // ── Палитра и иконка отдела ──
-  const DEPT_PALETTE = ["#1E5BFF", "#00B8D4", "#7C5CFF", "#10B981", "#F59E0B", "#EC4899", "#0EA5E9", "#84CC16"];
-  const deptColorFor = (name) =>
-    deptColors[name] || DEPT_PALETTE[[...(name || "?")].reduce((a, c) => a + c.charCodeAt(0), 0) % DEPT_PALETTE.length];
-  const deptLetter = (name) => (name || "?").trim().charAt(0).toUpperCase();
-
-  // ── Статусы сотрудников (по дате выхода, если есть в employeesApi) ──
-  const empById = {};
-  (state.employeesApi || []).forEach((e) => { empById[e.id] = e; });
-  const daysSince = (d) => { if (!d) return null; const t = Date.parse(d); return Number.isNaN(t) ? null : Math.floor((Date.now() - t) / 86400000); };
-  const statusOf = (node) => {
-    const d = daysSince(empById[node.id]?.startDate);
-    return d !== null && d <= 60 ? { label: "Новый сотрудник", cls: "new" } : { label: "Активен", cls: "active" };
-  };
-
-  // ── Левый список ──
-  const search = (state.structureSearch || "").trim().toLowerCase();
-  const listSource = allNodes.filter((n) =>
-    !search || `${n.fullName} ${n.position} ${n.department}`.toLowerCase().includes(search)
-  );
-  const listItems = listSource.map((n) => {
-    const st = statusOf(n);
-    const color = deptColorFor(n.department);
-    return `<button class="oc2-li" data-oc-select="${n.id}">
-      ${renderAvatar(n, "oc2-li-av")}
-      <div class="oc2-li-main">
-        <div class="oc2-li-name">${n.fullName}</div>
-        <div class="oc2-li-pos">${n.position || "—"}</div>
-        ${n.department ? `<span class="oc2-li-dept" style="background:${color}1a;color:${color}">${n.department}</span>` : ""}
-      </div>
-      <span class="oc2-li-status ${st.cls}">${st.label}</span>
-    </button>`;
-  }).join("") || `<div class="oc2-empty">Никого не найдено</div>`;
-
-  // ── Отделы для графа ──
-  const byDept = {};
-  allNodes.filter((n) => n.id !== ceo.id).forEach((n) => {
-    const d = n.department || "Без отдела";
-    (byDept[d] = byDept[d] || []).push(n);
+  const ceoChildren = heads;
+  const empsByHead = {};
+  heads.forEach(h => {
+    empsByHead[h.id] = emps.filter(e => e.managerId === h.id);
   });
-  const deptEntries = Object.entries(byDept).sort((a, b) => b[1].length - a[1].length);
-  const showAll = Boolean(state.structureAllDepts);
-  const VISIBLE_DEPTS = 5;
-  const visibleDepts = showAll ? deptEntries : deptEntries.slice(0, VISIBLE_DEPTS);
-  const hiddenDepts = deptEntries.length - visibleDepts.length;
-  const expanded = state.structureExpandedDepts || [];
-  const SHOWN = 3;
 
-  const memberRow = (n) => `
-    <button class="oc2-member" data-oc-select="${n.id}">
-      ${renderAvatar(n, "oc2-member-av")}
-      <div class="oc2-member-main">
-        <div class="oc2-member-name">${n.fullName}</div>
-        <div class="oc2-member-role">${n.position || "—"}</div>
-      </div>
-    </button>`;
-
-  const deptCols = visibleDepts.map(([name, nodes]) => {
-    const ordered = nodes.slice().sort((a, b) => (a.role === "Head" ? 0 : 1) - (b.role === "Head" ? 0 : 1));
-    const isOpen = expanded.includes(name);
-    const shown = isOpen ? ordered : ordered.slice(0, SHOWN);
-    const extra = ordered.length - shown.length;
-    const color = deptColorFor(name);
-    return `<div class="oc2-dept">
-      <div class="oc2-dept-head">
-        <div class="oc2-dept-icon" style="background:${color}">${deptLetter(name)}</div>
-        <div><div class="oc2-dept-name">${name}</div><div class="oc2-dept-count">${nodes.length} сотрудников</div></div>
-      </div>
-      <div class="oc2-dept-members">${shown.map(memberRow).join("")}</div>
-      ${extra > 0
-        ? `<button class="oc2-dept-more" data-oc-dept-toggle="${name}">Ещё ${extra} сотрудников ▾</button>`
-        : isOpen && ordered.length > SHOWN
-          ? `<button class="oc2-dept-more" data-oc-dept-toggle="${name}">Свернуть ▴</button>`
-          : ""}
-    </div>`;
-  }).join("");
-
-  const zoom = Math.max(50, Math.min(120, state.structureZoom || 80));
-  const ceoStatus = statusOf(ceo);
-
-  const searchIcon = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>`;
+  const totalPeople = allNodes.length;
+  const totalDepts = state.orgTree ? state.orgTree.total_departments : state.departments.length;
 
   return `
-    <div class="oc2">
-      <div class="oc2-grid">
-        <!-- LEFT: employee list -->
-        <aside class="oc2-list-panel">
-          <div class="oc2-list-head">
-            <span class="oc2-list-title">👥 Сотрудники</span>
-            <button class="elt-btn-primary oc2-add-btn" data-action="add-structure-member">+ Добавить</button>
+    <div class="elt-dashboard">
+      <header class="elt-dash-header">
+        <div class="elt-dash-header-left">
+          <span class="elt-mini-label">СТРУКТУРА КОМПАНИИ</span>
+          <h1 class="elt-dash-title">Организационная структура</h1>
+          <p class="elt-dash-subtitle">${totalPeople} сотрудников · ${totalDepts} отдела · 1 уровень управления</p>
+        </div>
+        <div class="elt-dash-header-actions">
+          <div class="oc-view-toggle">
+            <button class="oc-view-btn active" data-oc-view="list">Список</button>
+            <button class="oc-view-btn" data-oc-view="chart">Org Chart</button>
           </div>
-          <div class="oc2-search">${searchIcon}<input class="oc2-search-input" data-structure-search="list" placeholder="Поиск сотрудников..." value="${state.structureSearch || ""}"></div>
-          <div class="oc2-list-allrow"><span>Все сотрудники</span><b>${listSource.length}</b></div>
-          <div class="oc2-list-scroll">${listItems}</div>
-          <button class="oc2-list-foot" data-view="employees">Показать всех сотрудников · ${totalPeople}</button>
-        </aside>
+          <button class="elt-btn-primary" data-action="add-structure-member">+ Добавить</button>
+        </div>
+      </header>
 
-        <!-- CENTER: graph -->
-        <section class="oc2-graph">
-          <div class="oc2-toolbar">
-            <div class="oc2-search oc2-search-wide">${searchIcon}<input class="oc2-search-input" data-structure-search="graph" placeholder="Поиск в структуре..." value="${state.structureSearch || ""}"></div>
-            <span class="oc2-chip">Уровни: 3</span>
-            <span class="oc2-chip oc2-chip-active">${totalPeople} сотрудников</span>
-            <div class="oc2-zoom">
-              <span>Масштаб: ${zoom}%</span>
-              <button data-oc-zoom="out" title="Уменьшить">−</button>
-              <button data-oc-zoom="in" title="Увеличить">+</button>
-            </div>
+      <div class="oc-layout">
+        <!-- Left: hierarchical list -->
+        <div class="oc-list-panel">
+          <div class="oc-list-head">Иерархия</div>
+          <div class="oc-list-body" id="ocListBody">
+            ${renderListNode(ceo, 0)}
           </div>
-          <div class="oc2-canvas-wrap">
-            <div class="oc2-canvas" style="transform:scale(${zoom / 100})">
-              <div class="oc2-node oc2-company">
-                <div class="oc2-company-icon">🏢</div>
-                <div><div class="oc2-node-name">Компания</div><div class="oc2-node-sub">Головной офис · ${totalPeople} сотрудников · ${totalDepts} отдела</div></div>
+          <div class="oc-selected-card" id="ocSelectedCard">
+            <!-- Avatar upload area -->
+            <div class="oc-sel-avatar-wrap">
+              <div class="oc-sel-avatar" id="ocSelAvatar" data-oc-avatar="${ceo.id}">
+                ${empPhoto(ceo.id) ? `<img class="oc-avatar-img" src="${empPhoto(ceo.id)}" alt="${ceo.fullName}">` : initials(ceo.fullName)}
+                <div class="oc-avatar-upload-hint">📷</div>
               </div>
-              <div class="oc2-conn-v"></div>
-              <div class="oc2-node oc2-ceo" data-oc-select="${ceo.id}">
-                ${renderAvatar(ceo, "oc2-ceo-av")}
-                <div><div class="oc2-node-name">${ceo.fullName}</div><div class="oc2-node-sub">${ceo.position || "Генеральный директор"} · ${totalPeople} чел.</div></div>
-                <span class="oc2-li-status ${ceoStatus.cls}">${ceoStatus.label}</span>
+              <div class="oc-sel-avatar-info">
+                <div class="oc-sel-name">${ceo.fullName}</div>
+                <div class="oc-sel-pos">${ceo.position || "Генеральный директор"}</div>
+                <label class="oc-upload-label" for="ocAvatarInput">Загрузить фото</label>
+                <div class="oc-upload-hint">JPG, PNG, WebP · до 2 МБ · 400×400 px</div>
               </div>
-              <div class="oc2-conn-v"></div>
-              <div class="oc2-depts">${deptCols}</div>
-              ${hiddenDepts > 0
-                ? `<button class="oc2-more-depts" data-action="oc-show-all-depts">Показать ещё отделы (${hiddenDepts})</button>`
-                : showAll && deptEntries.length > VISIBLE_DEPTS
-                  ? `<button class="oc2-more-depts" data-action="oc-show-all-depts">Свернуть отделы</button>`
-                  : ""}
             </div>
+            <input type="file" id="ocAvatarInput" accept="image/jpeg,image/png,image/webp" style="display:none" data-avatar-upload="${ceo.id}">
+            <div class="oc-upload-error" id="ocAvatarError" style="display:none"></div>
+            <div class="oc-sel-row"><span>Отдел</span><b>${ceo.department || "Управление"}</b></div>
+            <div class="oc-sel-row"><span>Подчинённых</span><b>${heads.length} руководителя</b></div>
+            <div class="oc-sel-row"><span>Всего в команде</span><b>${totalPeople} чел.</b></div>
           </div>
-        </section>
+        </div>
+
+        <!-- Right: visual org chart -->
+        <div class="oc-chart-panel" id="ocChartPanel">
+          <!-- CEO row -->
+          <div class="oc-chart-row oc-chart-row-ceo">
+            ${renderChartCard(ceo)}
+          </div>
+          <!-- Connector -->
+          <div class="oc-chart-connector-v"></div>
+          <div class="oc-chart-connector-h" style="width:${Math.max(1, ceoChildren.length - 1) * 180}px"></div>
+          <!-- Heads row -->
+          <div class="oc-chart-row">
+            ${ceoChildren.map(h => renderChartCard(h)).join("")}
+          </div>
+          <!-- Connector -->
+          <div class="oc-chart-connector-v"></div>
+          <!-- Employees row -->
+          <div class="oc-chart-row">
+            ${emps.map(e => renderChartCard(e)).join("")}
+          </div>
+        </div>
       </div>
     </div>
   `;
 }
 
-const CTR_TYPE_LABEL = { single_choice: "Один вариант", multiple_choice: "Несколько вариантов", open: "Открытый", scale: "Шкала" };
-const CTR_SERVICE_CATEGORIES = ["360", "Адаптация", "Performance"];
-const ctrIsService = (t) => t && CTR_SERVICE_CATEGORIES.includes(t.category);
-
-// Карточка вопроса. delAttr — data-атрибуты кнопки удаления (или null = read-only).
-function ctrQuestionCard(q, delAttr) {
-  let detail = "";
-  if (q.type === "single_choice" || q.type === "multiple_choice") {
-    detail = `<ul class="ctr-opts">${q.options.map((o) => `<li><span>${escapeHtml(o.text)}</span><em>${o.score} б.${o.is_correct ? " ✓" : ""}${o.is_red_flag ? " ⚑" : ""}</em></li>`).join("")}</ul>`;
-  } else if (q.type === "scale") {
-    detail = `<p class="elt-card-caption">Шкала ${q.scale_min}–${q.scale_max}</p>`;
-  } else if (q.type === "open") {
-    detail = `<p class="elt-card-caption">Открытый · AI-оценка${q.ai_reference ? ` · эталон: ${escapeHtml(q.ai_reference)}` : ""}</p>`;
-  }
-  return `<div class="ctr-question">
-    <div class="ctr-q-head">
-      <span class="ctr-q-type">${CTR_TYPE_LABEL[q.type] || q.type}</span>
-      ${q.competency ? `<span class="ctr-q-comp">${escapeHtml(q.competency)}</span>` : ""}
-      <span class="ctr-q-max">макс ${q.max_score}</span>
-      ${delAttr ? `<button class="ctr-q-del" ${delAttr}>✕</button>` : ""}
-    </div>
-    <h4>${escapeHtml(q.text)}</h4>
-    ${detail}
-  </div>`;
-}
-
-const CTR_KIND_LABEL = { common: "общая", professional: "проф" };
-
-function renderConstructorCompetencies(state) {
-  const comps = state.constructorComps || [];
-  const sel = state.constructorComp;
-  const loading = state.constructorCompsStatus === "loading" && !comps.length;
-
-  const list = comps.length
-    ? comps.map((c) => `<button class="elt-profile-row${sel && sel.id === c.id ? " selected" : ""}" data-select-competency="${c.id}">
-        <b>${escapeHtml(c.title)} <span class="ctr-kind-badge ${c.kind}">${CTR_KIND_LABEL[c.kind] || c.kind}</span></b>
-        <span>${c.questions_count} вопр.</span>
-      </button>`).join("")
-    : `<p class="elt-card-caption" style="padding:8px">${loading ? "Загрузка…" : "Компетенций пока нет — создайте или импортируйте базу."}</p>`;
-
-  const right = sel ? `
-    <div class="elt-card">
-      <div class="elt-card-head">
-        <div><h2>${escapeHtml(sel.title)} <span class="ctr-kind-badge ${sel.kind}">${CTR_KIND_LABEL[sel.kind] || sel.kind}</span></h2>
-          <span class="elt-card-caption">${sel.questions_count} вопросов · макс ${sel.max_score} б.${sel.description ? " · " + escapeHtml(sel.description) : ""}</span></div>
-        <div class="elt-row-actions">
-          <button class="elt-btn-primary" data-action="open-add-comp-question">+ Добавить вопрос</button>
-          <button class="elt-btn-danger" data-delete-competency="${sel.id}">Удалить</button>
-        </div>
-      </div>
-      <div class="ctr-questions">
-        ${sel.questions.length
-          ? sel.questions.map((q) => ctrQuestionCard(q, `data-delete-comp-question="${sel.id}|${q.id}"`)).join("")
-          : '<div class="ctr-empty"><p>Вопросов пока нет.</p><button class="elt-btn-primary" data-action="open-add-comp-question">+ Добавить первый вопрос</button></div>'}
-      </div>
-    </div>
-  ` : `<div class="elt-card ctr-empty-card"><div class="ctr-empty"><p>Выберите компетенцию слева или создайте новую. Вопросы компетенции переиспользуются во всех профилях.</p><button class="elt-btn-primary" data-action="open-create-competency">+ Создать компетенцию</button></div></div>`;
-
-  return { list, right, count: comps.length };
-}
-
-function renderConstructorProfiles(state) {
+export function renderConstructor(state) {
   const tests = state.constructorTests || [];
   const sel = state.constructorTest;
   const loading = state.constructorStatus === "loading" && !tests.length;
-  const query = state.constructorProfileQuery || "";
+  const typeLabel = { single_choice: "Один вариант", multiple_choice: "Несколько вариантов", open: "Открытый", scale: "Шкала" };
 
-  const emptyMsg = query
-    ? `Ничего не найдено по запросу «${escapeHtml(query)}».`
-    : "Профилей пока нет — создайте первый.";
-  const list = tests.length
-    ? tests.map((t) => `<button class="elt-profile-row${sel && sel.id === t.id ? " selected" : ""}" data-select-test="${t.id}"><b>${escapeHtml(t.title)}${ctrIsService(t) ? ' <span class="ctr-service-badge">сервисный</span>' : ''}</b><span>${escapeHtml(t.category || t.target_type)} · ${t.questions_count} вопр.</span></button>`).join("")
-    : `<p class="elt-card-caption" style="padding:8px">${loading ? "Загрузка…" : emptyMsg}</p>`;
+  const testList = tests.length
+    ? tests.map((t) => `<button class="elt-profile-row${sel && sel.id === t.id ? " selected" : ""}" data-select-test="${t.id}"><b>${t.title}</b><span>${t.category || t.target_type} · ${t.questions_count} вопр.</span></button>`).join("")
+    : `<p class="elt-card-caption" style="padding:8px">${loading ? "Загрузка…" : "Тестов пока нет — создайте первый."}</p>`;
 
-  const selIsService = ctrIsService(sel);
-  const comps = (sel && sel.competencies) || [];
-  const compChips = comps.length
-    ? comps.map((c) => `<div class="ctr-comp-chip">
-        <span class="ctr-comp-chip-name">${escapeHtml(c.title)}</span>
-        <span class="ctr-comp-chip-count">${c.questions_count} вопр.</span>
-        <button class="ctr-comp-chip-x" title="Убрать из профиля" data-remove-profile-comp="${c.competency_id}" data-test-id="${sel.id}">✕</button>
-      </div>`).join("")
-    : `<span class="elt-card-caption">Компетенций пока нет — добавьте, и вопросы подтянутся автоматически.</span>`;
+  const questionCard = (q) => {
+    let detail = "";
+    if (q.type === "single_choice" || q.type === "multiple_choice") {
+      detail = `<ul class="ctr-opts">${q.options.map((o) => `<li><span>${o.text}</span><em>${o.score} б.${o.is_correct ? " ✓" : ""}${o.is_red_flag ? " ⚑" : ""}</em></li>`).join("")}</ul>`;
+    } else if (q.type === "scale") {
+      detail = `<p class="elt-card-caption">Шкала ${q.scale_min}–${q.scale_max}</p>`;
+    } else if (q.type === "open") {
+      detail = `<p class="elt-card-caption">Открытый · AI-оценка${q.ai_reference ? ` · эталон: ${q.ai_reference}` : ""}</p>`;
+    }
+    return `<div class="ctr-question">
+      <div class="ctr-q-head">
+        <span class="ctr-q-type">${typeLabel[q.type] || q.type}</span>
+        ${q.competency ? `<span class="ctr-q-comp">${q.competency}</span>` : ""}
+        <span class="ctr-q-max">макс ${q.max_score}</span>
+        <button class="ctr-q-del" data-test-id="${sel.id}" data-delete-question="${q.id}">✕</button>
+      </div>
+      <h4>${q.text}</h4>
+      ${detail}
+    </div>`;
+  };
 
   const right = sel ? `
     <div class="elt-card">
       <div class="elt-card-head">
-        <div><h2>${escapeHtml(sel.title)}${selIsService ? ' <span class="ctr-service-badge">сервисный</span>' : ''}</h2><span class="elt-card-caption">${escapeHtml(sel.category || sel.target_type)} · ${sel.questions_count} вопросов · макс ${sel.max_score} б.</span></div>
-        ${selIsService
-          ? '<span class="ctr-service-lock" title="Сервисный профиль используется в 360 / Performance / Адаптации">🔒 Защищён от удаления</span>'
-          : `<button class="elt-btn-danger" data-delete-test="${sel.id}">Удалить профиль</button>`}
+        <div><h2>${sel.title}</h2><span class="elt-card-caption">${sel.category || sel.target_type} · ${sel.questions_count} вопросов · макс ${sel.max_score} б.</span></div>
+        <button class="elt-btn-danger" data-delete-test="${sel.id}">Удалить тест</button>
       </div>
-      <div class="ctr-comp-section">
-        <div class="ctr-section-head">Компетенции профиля<button class="elt-btn-ghost ctr-add-comp-btn" data-action="open-add-profile-comp">+ Добавить компетенцию</button></div>
-        <div class="ctr-comp-chips">${compChips}</div>
-      </div>
-      <div class="ctr-derived-head">Вопросы профиля <span>(из компетенций · редактируются в разделе «Компетенции»)</span></div>
       <div class="ctr-questions">
-        ${sel.questions.length
-          ? sel.questions.map((q) => ctrQuestionCard(q, null)).join("")
-          : '<div class="ctr-empty"><p>Вопросов нет — добавьте компетенции в профиль.</p></div>'}
+        ${sel.questions.length ? sel.questions.map(questionCard).join("") : '<p class="elt-card-caption" style="padding:8px">Вопросов нет. Добавьте первый ниже.</p>'}
       </div>
     </div>
-  ` : `<div class="elt-card ctr-empty-card"><div class="ctr-empty"><p>Выберите профиль слева или создайте новый. Профиль = набор компетенций, вопросы берутся из них.</p><button class="elt-btn-primary" data-action="open-create-test">+ Создать профиль</button></div></div>`;
-
-  const limited = tests.length >= 50;
-  const hint = limited
-    ? `<p class="ctr-search-hint">Показаны первые 50 — уточните поиск по названию.</p>`
-    : "";
-  const search = search0(query) + hint;
-
-  return { list, right, search, count: tests.length };
-}
-
-function search0(query) {
-  return `<div class="ctr-profile-search">
-    <input type="search" class="elt-input" data-profile-search placeholder="Поиск профиля по названию…" value="${escapeHtml(query)}" autocomplete="off">
-  </div>`;
-}
-
-export function renderConstructor(state) {
-  const mode = state.constructorMode || "profiles";
-  const isComp = mode === "competencies";
-  const view = isComp ? renderConstructorCompetencies(state) : renderConstructorProfiles(state);
-  const sideTitle = isComp ? "Компетенции" : "Профили";
-  const createAction = isComp ? "open-create-competency" : "open-create-test";
-  const createLabel = isComp ? "+ Создать компетенцию" : "+ Создать профиль";
+    <div class="elt-card">
+      <div class="elt-card-head"><h2>Добавить вопрос</h2><span class="elt-card-caption">динамически</span></div>
+      <form class="elt-form-grid" data-add-question-form data-test-id="${sel.id}">
+        <label class="elt-label elt-label-full">Текст вопроса<input class="elt-input" name="text" placeholder="Сформулируйте вопрос" required></label>
+        <label class="elt-label">Тип<select class="elt-select" name="type">
+          <option value="single_choice">Один вариант</option>
+          <option value="multiple_choice">Несколько вариантов</option>
+          <option value="scale">Шкала (1–5)</option>
+          <option value="open">Открытый (AI)</option>
+        </select></label>
+        <label class="elt-label">Компетенция<input class="elt-input" name="competency_name" placeholder="напр. Коммуникация"></label>
+        <div class="elt-label-full ctr-hint">Варианты — текст · балл · верный · red flag. Шкала — границы. Открытый — эталон/критерии для AI.</div>
+        ${[1, 2, 3, 4].map((i) => `<div class="elt-label-full ctr-opt-row">
+          <input class="elt-input" name="opt${i}" placeholder="Вариант ${i}">
+          <input class="elt-input ctr-score" name="score${i}" type="number" value="0" title="Балл">
+          <label class="ctr-chk"><input type="checkbox" name="correct${i}"> верный</label>
+          <label class="ctr-chk"><input type="checkbox" name="flag${i}"> red&nbsp;flag</label>
+        </div>`).join("")}
+        <label class="elt-label">Шкала: мин<input class="elt-input" name="scale_min" type="number" value="1"></label>
+        <label class="elt-label">Шкала: макс<input class="elt-input" name="scale_max" type="number" value="5"></label>
+        <label class="elt-label">Открытый: макс. балл<input class="elt-input" name="max_score" type="number" value="5"></label>
+        <label class="elt-label elt-label-full">Открытый: эталонный ответ<input class="elt-input" name="ai_reference" placeholder="Что считается хорошим ответом"></label>
+        <label class="elt-label elt-label-full">Открытый: критерии для AI<input class="elt-input" name="ai_criteria" placeholder="Критерии оценки"></label>
+        <div class="elt-label-full"><button class="elt-btn-primary" type="submit">+ Добавить вопрос</button></div>
+      </form>
+    </div>
+  ` : `<div class="elt-card"><p class="elt-card-caption" style="padding:24px">Выберите тест слева или создайте новый, чтобы добавлять вопросы.</p></div>`;
 
   return `
     <div class="elt-page-wrap">
       <div class="elt-page-header">
         <div class="elt-page-header-left">
           <span class="elt-mini-label">Конструктор</span>
-          <h1 class="elt-page-title">Конструктор оценок</h1>
-          <p class="elt-page-subtitle">Профиль должности собирается из компетенций; у компетенции — свой банк вопросов, переиспользуемый в профилях.</p>
+          <h1 class="elt-page-title">Конструктор тестов</h1>
+          <p class="elt-page-subtitle">Создавайте тесты и добавляйте вопросы (один/несколько вариантов, шкала, открытый). Всё хранится в API.</p>
         </div>
-        <div class="elt-page-actions">
-          <button class="elt-btn-ghost" data-action="open-import-library">Импорт базы</button>
-          <button class="elt-btn-primary" data-action="${createAction}">${createLabel}</button>
-        </div>
-      </div>
-      <div class="ctr-mode-toggle">
-        <button class="ctr-mode-btn${!isComp ? " active" : ""}" data-constructor-mode="profiles">Профили</button>
-        <button class="ctr-mode-btn${isComp ? " active" : ""}" data-constructor-mode="competencies">Компетенции</button>
       </div>
       <div class="elt-constructor-grid">
         <div class="elt-constructor-sidebar">
           <div class="elt-card">
-            <div class="elt-card-head"><h2>${sideTitle}</h2><span class="elt-card-caption">${view.count}</span></div>
-            ${view.search || ""}
-            <div class="elt-profile-rows">${view.list}</div>
+            <div class="elt-card-head"><h2>Тесты</h2><span class="elt-card-caption">${tests.length}</span></div>
+            <div class="elt-profile-rows">${testList}</div>
+          </div>
+          <div class="elt-card">
+            <div class="elt-card-head"><h2>Создать тест</h2></div>
+            <form class="elt-form-grid" data-create-test-form>
+              <label class="elt-label elt-label-full">Название<input class="elt-input" name="title" placeholder="напр. Оценка менеджера" required></label>
+              <label class="elt-label">Категория<input class="elt-input" name="category" placeholder="Коммерция"></label>
+              <label class="elt-label">Для кого<select class="elt-select" name="target_type"><option value="candidate">Кандидат</option><option value="employee">Сотрудник</option><option value="group">Группа</option></select></label>
+              <div class="elt-label-full"><button class="elt-btn-primary" type="submit">+ Создать тест</button></div>
+            </form>
           </div>
         </div>
-        <div class="elt-constructor-main">${view.right}</div>
+        <div class="elt-constructor-main">${right}</div>
       </div>
     </div>
   `;
 }
 
 export function renderVacancies(state) {
-  const hh = state.hhStatus || null;
-  const connected = Boolean(hh && hh.connected);
-  const live = connected ? (state.hhVacancies || []) : null;
-
-  // Кнопки-действия зависят от состояния подключения HH.
-  const hhActions = connected
-    ? [
-        { label: "Обновить из hh.ru", attrs: 'data-action="hh-refresh"' },
-        { label: "Отключить hh.ru", attrs: 'data-action="hh-disconnect"' },
-      ]
-    : [{ label: "Подключить hh.ru", primary: true, attrs: 'data-action="hh-connect"' }];
-
-  // ── Режим: подключённый HH → живые данные ──
-  if (connected) {
-    const loading = state.hhVacanciesStatus === "loading" && !live;
-    const totalResp = (live || []).reduce((s, v) => s + (v.responses || 0), 0);
-    const newResp = (live || []).reduce((s, v) => s + (v.new_responses || 0), 0);
-    return DashboardPageLayout({
-      title: "Вакансии",
-      subtitle: `hh.ru подключён · ${hh.employer_name || "работодатель"}${hh.account_name ? " · " + hh.account_name : ""}`,
-      meta: ["HeadHunter API", "живые данные"],
-      period: state.period,
-      actions: hhActions,
-      kpiCards: [
-        { label: "Активные вакансии", value: (live || []).length, caption: loading ? "загрузка…" : "из hh.ru", status: "neutral", iconName: "vacancies" },
-        { label: "Всего откликов", value: totalResp, caption: "по активным", status: "neutral", iconName: "candidates" },
-        { label: "Новые отклики", value: newResp, caption: "не разобраны", status: newResp > 0 ? "medium" : "good", iconName: "link" },
-        { label: "Работодатель", value: (live || []).length ? "hh.ru" : "—", caption: hh.employer_name || "", status: "good", iconName: "fit" },
-      ],
-      charts: [
-        { title: "Отклики по вакансиям", caption: "входящий поток (hh.ru)", items: (live || []).slice(0, 12).map((v) => [v.title, v.responses]) },
-      ],
-      table: hhVacanciesTableConfig(live || [], loading),
-    });
-  }
-
-  // ── Режим: HH не подключён → демо-обзор + приглашение подключить ──
   const low = state.vacancies.filter((vacancy) => getVacancyHealthStatus(vacancy) === "bad");
-  const banner = hh && !hh.configured
-    ? { title: "hh.ru не настроен на сервере", text: "Задайте HH_CLIENT_ID/HH_CLIENT_SECRET в .env, затем подключите кабинет.", status: "medium" }
-    : { title: "Подключите hh.ru", text: "Нажмите «Подключить hh.ru», авторизуйте кабинет работодателя — и вакансии с откликами подтянутся автоматически.", status: "medium", target: null };
   return DashboardPageLayout({
     title: "Вакансии",
-    subtitle: "Дашборд эффективности подбора. Подключите hh.ru для реальных данных.",
-    meta: ["HeadHunter", "ручные вакансии", "импорт"],
+    subtitle: "Дашборд эффективности подбора по источникам, конверсии и подходящим кандидатам.",
+    meta: ["HeadHunter", "API", "ручные вакансии", "импорт"],
     period: state.period,
-    actions: [...hhActions, { label: "Добавить вакансию" }],
+    actions: [
+      { label: "Подключить hh.ru" },
+      { label: "JSON API" },
+      { label: "Импорт" },
+      { label: "Добавить вакансию", primary: true }
+    ],
     filters: pageFilterConfig.vacancies,
     activeFiltersMap: (state.activeFilters && state.activeFilters.vacancies) || {},
     kpiCards: [
@@ -1179,546 +1646,139 @@ export function renderVacancies(state) {
       { title: "Подходящие кандидаты", caption: "качество", items: state.vacancies.map((item) => ({ label: item.title, value: item.fit, status: getFitStatus(item.fit * 8) })) }
     ],
     heatmap: vacancyHeatmap(state),
-    attentionItems: [banner],
+    attentionItems: [
+      { title: "Frontend-разработчик", text: "Мало оценок и нет устойчивой воронки.", status: "medium", target: "Вакансии:Frontend-разработчик" },
+      { title: "Менеджер по продажам", text: "Много откликов, но конверсия 39%. Нужно уточнить профиль.", status: "bad", target: "Вакансии:Менеджер по продажам" }
+    ],
     table: vacanciesTableConfig(state.vacancies)
   });
 }
 
-// Таблица живых вакансий из hh.ru.
-function hhVacanciesTableConfig(items, loading) {
-  return {
-    title: "Вакансии hh.ru",
-    caption: "активные вакансии работодателя",
-    columns: ["Вакансия", "Регион", "Отклики", "Новые", "Действия"],
-    rows: items.length
-      ? items.map((v) => [
-          escapeHtml(v.title),
-          escapeHtml(v.area || "—"),
-          v.responses,
-          v.new_responses ? `<b style="color:#F59E0B">${v.new_responses}</b>` : "0",
-          v.url ? `<a class="elt-action-pill" href="${v.url}" target="_blank" rel="noopener">Открыть на hh.ru ↗</a>` : "—",
-        ])
-      : [[loading ? "Загрузка из hh.ru…" : "Активных вакансий не найдено", "", "", "", ""]],
-  };
-}
-
-export function renderAssessments(state) {
+export function renderAssessments(state, professions) {
+  const catIcon = { recruiter: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>`, sales_manager: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>`, call_center: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.01 1.18 2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/></svg>`, coordinator: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>`, warehouse: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>` };
   const defaultIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>`;
-  const TARGET_LABEL = { candidate: "Кандидаты", employee: "Сотрудники", group: "Группа" };
-  const tests = state.testsApi || [];
-  const loading = !state.testsApi;
-  const SERVICE = ["360", "Адаптация", "Performance"];
-  const filter = state.profileTypeFilter || "all";
-  const shown = tests.filter((t) => filter === "all" || t.target_type === filter);
-
-  const pill = (val, label) => `<button class="elt-pill${filter === val ? ' active' : ''}" data-profile-filter="${val}">${label}</button>`;
-
-  let grid;
-  if (loading) {
-    grid = `<p class="elt-card-caption" style="padding:16px">Загрузка профилей…</p>`;
-  } else if (!shown.length) {
-    grid = `<div class="elt-card ctr-empty-card"><div class="ctr-empty"><p>Готовых профилей нет. Соберите их в Конструкторе или импортируйте базу.</p><button class="elt-btn-primary" data-view="constructor">Открыть Конструктор</button></div></div>`;
-  } else {
-    grid = `<div class="elt-profiles-grid">${shown.map((t) => {
-      const isService = SERVICE.includes(t.category);
-      return `<article class="elt-profile-card">
-        <div class="elt-profile-card-top">
-          <div class="elt-profile-icon-wrap">${defaultIcon}</div>
-          <span class="elt-profile-category">${escapeHtml(t.category || TARGET_LABEL[t.target_type] || t.target_type)}</span>
-        </div>
-        <h3 class="elt-profile-title">${escapeHtml(t.title)}${isService ? ' <span class="ctr-service-badge">сервисный</span>' : ''}</h3>
-        <p class="elt-profile-summary">${escapeHtml(t.summary || "Готовый профиль оценки.")}</p>
-        <div class="elt-profile-meta">
-          <span>${t.questions_count} вопросов</span>
-          <span>${TARGET_LABEL[t.target_type] || t.target_type}</span>
-        </div>
-        <div class="elt-profile-actions">
-          <button class="elt-btn-secondary" data-launch-profile="${t.id}">Запустить оценку</button>
-          <button class="elt-btn-ghost" data-open-profile-constructor="${t.id}">В конструкторе</button>
-        </div>
-      </article>`;
-    }).join('')}</div>`;
-  }
-
   return `
     <div class="elt-page-wrap">
       <div class="elt-page-header">
         <div class="elt-page-header-left">
           <span class="elt-mini-label">Профили</span>
           <h1 class="elt-page-title">Профили оценки профессий</h1>
-          <p class="elt-page-subtitle">Готовые профили из конструктора: запускайте оценку в один клик или открывайте для правки.</p>
+          <p class="elt-page-subtitle">Готовые профили ролей: компетенции, длительность, вопросы и рекомендации по интерпретации.</p>
         </div>
         <div class="elt-page-actions">
-          <button class="elt-btn-ghost" data-view="constructor">Конструктор</button>
-          <button class="elt-btn-primary" data-action="open-assess-wizard">+ Создать оценку</button>
+          <button class="elt-btn-primary" data-action="create-link">+ Создать ссылку</button>
         </div>
       </div>
       <div class="elt-filter-bar">
-        ${pill("all", "Все")}${pill("candidate", "Кандидаты")}${pill("employee", "Сотрудники")}${pill("group", "Группа")}
+        <button class="elt-pill${!state.profileTypeFilter || state.profileTypeFilter === 'candidate' ? ' active' : ''}" data-profile-filter="candidate">Кандидат</button>
+        <button class="elt-pill${state.profileTypeFilter === 'employee' ? ' active' : ''}" data-profile-filter="employee">Сотрудник</button>
+        <button class="elt-pill${state.profileTypeFilter === 'group' ? ' active' : ''}" data-profile-filter="group">Группа</button>
       </div>
-      ${grid}
+      <div class="elt-profiles-grid">
+        ${professions.filter(p => !state.profileTypeFilter || state.profileTypeFilter === 'candidate' ? p.type === 'candidate' : p.type === state.profileTypeFilter).map((profession) => `
+          <article class="elt-profile-card">
+            <div class="elt-profile-card-top">
+              <div class="elt-profile-icon-wrap">${catIcon[profession.id] || defaultIcon}</div>
+              <span class="elt-profile-category">${profession.category}</span>
+            </div>
+            <h3 class="elt-profile-title">${profession.title}</h3>
+            <p class="elt-profile-summary">${profession.summary}</p>
+            <div class="elt-profile-meta">
+              <span>12–15 мин</span>
+              <span>${profession.competencies.length + 4} вопросов</span>
+              <span>${profession.competencies.slice(0, 2).join(' · ')}</span>
+            </div>
+            <div class="elt-profile-actions">
+              <button class="elt-btn-secondary" data-action="create-link" data-profession="${profession.id}">Создать ссылку</button>
+              <button class="elt-btn-ghost" data-open-competency="${profession.id}">Компетенции</button>
+            </div>
+          </article>`).join('')}
+      </div>
     </div>
   `;
 }
 
 export function renderAdaptation(state) {
-  const ready = Boolean(state.employeesApi);
-  const failed = state.employeesStatus === "error";
-  const employees = ready ? state.employeesApi : [];
-
-  const daysSince = (d) => {
-    if (!d) return null;
-    const t = Date.parse(d);
-    if (Number.isNaN(t)) return null;
-    return Math.floor((Date.now() - t) / 86400000);
-  };
-  const withTenure = employees
-    .map((e) => ({ ...e, days: daysSince(e.startDate) }))
-    .filter((e) => e.days !== null);
-  const newEmps = withTenure.filter((e) => e.days <= 90).sort((a, b) => a.days - b.days);
-
-  // Пульс-опросы адаптации — все ссылки по опросам адаптации (одиночный «Адаптация
-  // сотрудника» и этапные «Адаптация · …»).
-  const links = (state.linksApi || []).filter(
-    (l) => (l.professionTitle || "").startsWith("Адаптация") && l.recipientType === "Сотрудник"
-  );
-  const surveysSent = links.length;
-  const surveysDone = links.filter((l) => l.status === "completed").length;
-
-  const atRisk = newEmps.filter((e) => e.turnoverRisk === "средний" || e.turnoverRisk === "повышенный" || (e.satisfaction > 0 && e.satisfaction < 60));
-  const passed = withTenure.filter((e) => e.days > 90 && e.fit >= 70).length;
-  const satVals = withTenure.map((e) => e.satisfaction).filter((v) => v > 0);
-  const avgSat = satVals.length ? Math.round(satVals.reduce((s, v) => s + v, 0) / satVals.length) : 0;
-
-  // «Этапы адаптации» — реальная воронка по чек-инам циклов: сколько опросов
-  // пройдено (completed) на каждом этапе 1/3/7/…/180 дней.
-  const STAGE_CADENCE = [[1, "1 день"], [3, "3 дня"], [7, "7 дней"], [14, "14 дней"], [30, "30 дней"], [60, "60 дней"], [90, "90 дней"], [180, "180 дней"]];
-  const allCheckins = (state.adaptationCycles || []).flatMap((c) => c.checkins || []);
-  // Клик по этапу открывает модалку с чек-инами этого этапа (target = «Адаптация:<этап>»).
-  const funnel = STAGE_CADENCE.map(([off, label]) => ({
-    label,
-    value: allCheckins.filter((x) => x.offset_days === off && x.status === "completed").length,
-    target: `Этап адаптации:${label}`
-  }));
-  const funnelHasData = allCheckins.length > 0;
-
-  // Новые сотрудники по отделам (реальный срез).
-  const byDept = {};
-  newEmps.forEach((e) => { const d = e.department || "Без отдела"; byDept[d] = (byDept[d] || 0) + 1; });
-  const deptItems = Object.entries(byDept).map(([d, c]) => [d, c]);
-
-  const subtitle = failed
-    ? "API недоступен — данные не загружены"
-    : ready
-      ? `Данные из API · ${newEmps.length} новых сотрудников (до 90 дней) · ${surveysSent} опросов`
-      : "Загрузка данных из API…";
-
-  const attentionItems = [];
-  atRisk.slice(0, 2).forEach((e) => attentionItems.push({
-    title: e.fullName,
-    text: `${e.days} дн. в компании · риск ${e.turnoverRisk}${e.satisfaction > 0 ? ` · удовлетворённость ${e.satisfaction}%` : ""}.`,
-    status: "bad", target: "Адаптация:В зоне риска"
-  }));
-  if (surveysSent > surveysDone) attentionItems.push({ title: `${surveysSent - surveysDone} опросов не завершены`, text: "Пульс-опрос адаптации отправлен, но ещё не пройден.", status: "medium", target: "Адаптация:В процессе" });
-
-  const content = DashboardPageLayout({
+  return DashboardPageLayout({
     title: "Адаптация",
-    subtitle,
+    subtitle: "Новые сотрудники, этапы 1/3/7/14/30/60/90 дней и причины риска.",
     meta: ["онбординг", "пульс-опросы", "риски"],
     period: state.period,
-    actions: [{ label: "Запустить опрос адаптации", primary: true, attrs: "data-action=\"open-assess-wizard\"" }],
+    actions: [{ label: "Запустить опрос адаптации", primary: true, attrs: "data-action=\"create-link\"" }],
     filters: pageFilterConfig.adaptation,
     activeFiltersMap: (state.activeFilters && state.activeFilters.adaptation) || {},
     kpiCards: [
-      { label: "Новые сотрудники", value: newEmps.length, caption: "до 90 дней", status: "neutral", target: "Адаптация:Новые сотрудники" },
-      { label: "Первые 30 дней", value: newEmps.filter((e) => e.days <= 30).length, caption: "критичный период", status: "medium", target: "Адаптация:В процессе" },
-      { label: "Опросы отправлены", value: surveysSent, caption: "пульс-опрос", status: "neutral", target: "Адаптация:Опросы отправлены" },
-      { label: "Опросы пройдены", value: surveysDone, caption: "ответили", status: "good", target: "Адаптация:Опросы пройдены" },
-      { label: "Прошли адаптацию", value: passed, caption: "90+ дней, fit≥70", status: "good", target: "Адаптация:Прошли" },
-      { label: "В зоне риска", value: atRisk.length, caption: "срочно смотреть", status: "bad", target: "Адаптация:В зоне риска" },
-      { label: "Удовлетворённость", value: `${avgSat}%`, caption: "средняя", status: getFitStatus(avgSat), target: "Адаптация:Вовлеченность" }
+      { label: "Новые сотрудники", value: 14, caption: "до 90 дней", status: "neutral", target: "Адаптация:Новые сотрудники" },
+      { label: "Прошли адаптацию", value: 4, caption: "успешно", status: "good", target: "Адаптация:Прошли" },
+      { label: "В процессе", value: 9, caption: "этапы активны", status: "neutral", target: "Адаптация:В процессе" },
+      { label: "Не прошли", value: 1, caption: "нужен разбор", status: "bad", target: "Адаптация:Не прошли" },
+      { label: "В зоне риска", value: 3, caption: "срочно смотреть", status: "bad", target: "Адаптация:В зоне риска" },
+      { label: "Проблема зарплаты", value: 2, caption: "ожидания", status: "medium", target: "Адаптация:Зарплата" },
+      { label: "Руководитель", value: 2, caption: "коммуникация", status: "medium", target: "Адаптация:Руководитель" },
+      { label: "Низкая вовлеченность", value: 3, caption: "опросы", status: "bad", target: "Адаптация:Вовлеченность" }
     ],
     charts: [
-      { title: "Этапы адаптации", caption: funnelHasData ? "пройдено опросов по этапам" : "циклов адаптации пока нет", type: "funnel", items: funnelHasData ? funnel : [["Нет данных", 0]] },
-      { title: "Новые по отделам", caption: "срез найма", items: deptItems.length ? deptItems : [["Нет новых сотрудников", 0]] }
+      { title: "Этапы адаптации", caption: "воронка 90 дней", type: "funnel", items: [["1 день", 14], ["3 день", 13], ["7 день", 12], ["14 день", 9], ["30 день", 5], ["60 день", 4], ["90 день", 4]] },
+      { title: "Причины риска", caption: "пульс-опросы", items: [["Задачи", 3], ["Зарплата", 2], ["График", 1], ["Руководитель", 2], ["Коллектив", 1], ["Условия", 1]] }
     ],
     heatmap: employeeHeatmap(state),
-    attentionItems,
-    // В таблице — сотрудники с известным стажем (новички сверху). Если стаж
-    // нигде не указан — показываем всех сотрудников.
-    table: employeesTableConfig(
-      withTenure.length
-        ? withTenure.slice().sort((a, b) => a.days - b.days)
-        : employees
-    )
+    attentionItems: [{ title: "Анна Иванова", text: "Несоответствие зарплаты и низкая понятность задач на 7-й день.", status: "bad", target: "Адаптация:Анна Иванова" }],
+    table: employeesTableConfig(state.employees)
   });
-
-  return content + renderAdaptationTimeline(state);
-}
-
-// Таймлайн циклов адаптации (этапы 1/3/7/…/180 со статусами).
-function renderAdaptationTimeline(state) {
-  const cycles = state.adaptationCycles || [];
-  const statusLabel = {
-    completed: "пройден", sent: "отправлен", scheduled: "ожидается",
-    missed: "просрочен", skipped: "пропущен",
-  };
-  const stageShort = (s) => (s || "").replace("Адаптация · ", "");
-
-  let body;
-  if (state.adaptationStatus === "error") {
-    body = `<p class="elt-card-caption" style="padding:8px">API недоступен — таймлайн не загружен.</p>`;
-  } else if (!state.adaptationCycles) {
-    body = `<p class="elt-card-caption" style="padding:8px">Загрузка…</p>`;
-  } else if (!cycles.length) {
-    body = `<p class="elt-card-caption" style="padding:8px">Циклов адаптации пока нет. Они создаются автоматически по дате выхода сотрудника.</p>`;
-  } else {
-    // Активные/в процессе — сверху.
-    const ordered = cycles.slice().sort((a, b) => (a.status === "active" ? -1 : 1) - (b.status === "active" ? -1 : 1));
-    body = `<div class="adapt-rows">${ordered.map((c) => `
-      <div class="adapt-row ${c.risk ? "risk" : ""}">
-        <div class="adapt-row-head">
-          <div class="adapt-row-who"><b>${c.full_name}</b><span>выход ${new Date(c.start_date).toLocaleDateString("ru-RU")} · ${c.completed}/${c.total} пройдено</span></div>
-          ${c.risk ? `<span class="adapt-badge risk">зона риска</span>` : c.status === "completed" ? `<span class="adapt-badge done">завершён</span>` : `<span class="adapt-badge active">в процессе</span>`}
-        </div>
-        <div class="adapt-stages">
-          ${c.checkins.map((x) => {
-            const cls = `st-${x.status}${x.risk_flag ? " risk" : ""}`;
-            const val = x.result_percent != null ? ` ${x.result_percent}%` : "";
-            const rem = (x.status === "sent" && x.reminders_sent) ? ` ↻${x.reminders_sent}` : "";
-            // Пройденный этап → клик открывает ответы; отправленный → открывает опрос.
-            const open = (x.status === "completed" && x.session_id)
-              ? ` data-open-stage-answers="${c.person_id}|${x.session_id}"`
-              : (x.status === "sent" && x.token ? ` data-open-assess="${x.token}"` : "");
-            const hint = x.status === "completed" ? " · смотреть ответы" : "";
-            return `<button type="button" class="adapt-stage ${cls}"${open} title="${stageShort(x.stage)} · ${statusLabel[x.status] || x.status}${val}${rem ? ` · напоминаний: ${x.reminders_sent}` : ""}${hint}">
-              <span class="adapt-stage-day">${x.offset_days}д</span>
-              <span class="adapt-stage-st">${statusLabel[x.status] || x.status}${val}${rem}</span>
-            </button>`;
-          }).join("")}
-        </div>
-      </div>`).join("")}</div>`;
-  }
-
-  // Панель сигналов руководителю (риск/пропуск).
-  const alerts = state.adaptationAlerts || [];
-  const kindLabel = { risk: "низкий балл", missed: "пропустил опрос" };
-  const alertsPanel = alerts.length ? `<article class="elt-panel adapt-panel adapt-alerts">
-    <div class="elt-panel-head"><div class="elt-panel-head-left"><h2>Сигналы руководителю</h2></div><span class="elt-panel-badge">${alerts.length}</span></div>
-    <div class="adapt-alert-list">${alerts.map((a) => `
-      <div class="adapt-alert ${a.kind}">
-        <span class="adapt-alert-dot"></span>
-        <div class="adapt-alert-text">
-          <b>${a.full_name}</b> — ${kindLabel[a.kind] || a.kind} на этапе «${a.stage}» (день ${a.offset_days})${a.result_percent != null ? ` · ${a.result_percent}%` : ""}
-          <span>руководитель: ${a.manager_name || "—"}</span>
-        </div>
-      </div>`).join("")}</div>
-  </article>` : "";
-
-  // Разовые опросы адаптации (запущены вручную, вне цикла).
-  const standalone = state.adaptationStandalone || [];
-  const sLabel = { completed: "пройден", sent: "отправлен" };
-  const standalonePanel = standalone.length ? `<article class="elt-panel adapt-panel adapt-standalone-panel">
-    <div class="elt-panel-head"><div class="elt-panel-head-left"><h2>Разовые опросы адаптации</h2></div><span class="elt-panel-badge">${standalone.length}</span></div>
-    <div class="adapt-standalone-list">${standalone.map((s) => {
-      const cls = `st-${s.status}${s.risk_flag ? " risk" : ""}`;
-      const open = (s.status === "completed" && s.session_id)
-        ? ` data-open-stage-answers="${s.person_id}|${s.session_id}"`
-        : (s.status === "sent" && s.token ? ` data-open-assess="${s.token}"` : "");
-      return `<button type="button" class="adapt-standalone ${cls}"${open}>
-        <span class="adapt-standalone-name">${s.full_name}</span>
-        <span class="adapt-standalone-survey">${s.stage}</span>
-        <span class="adapt-standalone-st">${sLabel[s.status] || s.status}${s.result_percent != null ? ` · ${s.result_percent}%` : ""}${s.status === "completed" && s.session_id ? " · смотреть ответы" : ""}</span>
-      </button>`;
-    }).join("")}</div>
-  </article>` : "";
-
-  return `<section class="elt-dashboard adapt-section">
-    ${alertsPanel}
-    <article class="elt-panel adapt-panel">
-      <div class="elt-panel-head">
-        <div class="elt-panel-head-left"><h2>Таймлайн адаптации</h2></div>
-        <button class="elt-btn-ghost" data-action="adapt-run-due">Обработать дозревшие</button>
-      </div>
-      ${body}
-    </article>
-    ${standalonePanel}
-  </section>`;
-}
-
-// Модалка «Этап адаптации»: чек-ины всех циклов на этом этапе (кто прошёл,
-// результат, ссылка на ответы / опрос). Вызывается из воронки «Этапы адаптации».
-function renderAdaptationStageList(state, metricName) {
-  const offset = parseInt(metricName, 10);
-  const statusLabel = {
-    completed: "пройден", sent: "отправлен", scheduled: "ожидается",
-    missed: "просрочен", skipped: "пропущен",
-  };
-  const cycles = state.adaptationCycles || [];
-  // Собираем чек-ины этого этапа из всех циклов + их владельцев.
-  const rows = [];
-  cycles.forEach((c) => {
-    (c.checkins || []).forEach((x) => {
-      if (x.offset_days === offset) {
-        rows.push({ name: c.full_name, person_id: c.person_id, ...x });
-      }
-    });
-  });
-  if (!rows.length) {
-    return `<p class="elt-card-caption" style="padding:12px">На этом этапе пока нет данных — ни один цикл адаптации до него не дошёл.</p>`;
-  }
-  // Сводка по статусам.
-  const done = rows.filter((r) => r.status === "completed");
-  const avg = done.length
-    ? Math.round(done.reduce((s, r) => s + (r.result_percent || 0), 0) / done.length)
-    : null;
-  const order = { completed: 0, sent: 1, missed: 2, scheduled: 3, skipped: 4 };
-  rows.sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9));
-
-  const summary = `<div class="adapt-stage-summary">
-    <span><b>${rows.length}</b> сотрудник(ов) на этапе</span>
-    <span><b>${done.length}</b> прошли</span>
-    ${avg != null ? `<span>средний балл <b>${avg}%</b></span>` : ""}
-  </div>`;
-
-  const list = rows.map((r) => {
-    const val = r.result_percent != null ? `${r.result_percent}%` : "—";
-    const open = (r.status === "completed" && r.session_id)
-      ? ` data-open-stage-answers="${r.person_id}|${r.session_id}"`
-      : (r.status === "sent" && r.token ? ` data-open-assess="${r.token}"` : "");
-    const action = (r.status === "completed" && r.session_id)
-      ? `<span class="adapt-stage-link">Смотреть ответы →</span>`
-      : (r.status === "sent" && r.token ? `<span class="adapt-stage-link">Открыть опрос →</span>` : "");
-    const clickable = open ? " clickable" : "";
-    return `<button type="button" class="adapt-stage-li st-${r.status}${r.risk_flag ? " risk" : ""}${clickable}"${open}>
-      <span class="adapt-stage-li-name">${r.name}</span>
-      <span class="adapt-stage-li-status">${statusLabel[r.status] || r.status}${r.risk_flag ? " ⚠" : ""}</span>
-      <span class="adapt-stage-li-val">${val}</span>
-      <span class="adapt-stage-li-action">${action}</span>
-    </button>`;
-  }).join("");
-
-  return `${summary}<div class="adapt-stage-list">${list}</div>`;
 }
 
 export function renderThreeSixty(state) {
   const locked = state.company.tariff !== "TalentStudio";
-  const ready = Boolean(state.employeesApi);
-  const failed = state.employeesStatus === "error";
-  const employees = ready ? state.employeesApi : [];
-
-  // Реальные оценочные ссылки по тестам 360 (включая ролевые «… · Коллеги» и т.д.).
-  const links = (state.linksApi || []).filter(
-    (l) => (l.professionTitle || "").startsWith("Оценка 360°") && l.recipientType === "Сотрудник"
-  );
-  const completedLinks = links.filter((l) => l.status === "completed");
-  const active = links.length - completedLinks.length;
-  const participants = new Set(links.map((l) => l.fullName)).size;
-
-  const pcts = completedLinks.map((l) => l.percent).filter((p) => typeof p === "number");
-  const avgPct = pcts.length ? Math.round(pcts.reduce((s, p) => s + p, 0) / pcts.length) : 0;
-  const avgScore5 = pcts.length ? (avgPct / 20).toFixed(1) : "—";
-
-  // Зоны развития — оценённые сотрудники с низким соответствием.
-  const devZones = employees.filter((e) => e.fit != null && e.fit < 70).length;
-
-  // Соответствие по отделам (средний fit только по оценённым).
-  const deptAgg = {};
-  employees.forEach((e) => {
-    const d = e.department || "Без отдела";
-    if (!deptAgg[d]) deptAgg[d] = { sum: 0, n: 0 };
-    if (e.fit != null) { deptAgg[d].sum += e.fit; deptAgg[d].n += 1; }
-  });
-  const deptItems = Object.entries(deptAgg)
-    .filter(([, v]) => v.n > 0)
-    .map(([d, v]) => [d, Math.round(v.sum / v.n)]);
-
-  // Статусы 360-ссылок (реальная воронка прохождения).
-  const statusItems = [
-    ["Отправлено", links.length],
-    ["Открыто", links.filter((l) => l.status === "opened" || l.status === "started").length],
-    ["Завершено", completedLinks.length]
-  ];
-
-  const subtitle = failed
-    ? "API недоступен — данные не загружены"
-    : ready
-      ? `Данные из API · ${links.length} циклов 360 · ${participants} участников`
-      : "Загрузка данных из API…";
-
-  const attentionItems = [];
-  if (active > 0) attentionItems.push({ title: `${active} активных 360`, text: "Оценки отправлены, ждём прохождения участниками.", status: "medium", target: "Оценка 360:Активные" });
-  if (devZones > 0) attentionItems.push({ title: `${devZones} сотрудников с зонами развития`, text: "Соответствие ниже 70% — сформируйте планы развития.", status: "medium", target: "Оценка 360:Зоны развития" });
-
   const content = DashboardPageLayout({
     title: "Оценка 360",
-    subtitle,
+    subtitle: "Самооценка, руководитель, коллеги, подчиненные и расхождения восприятия.",
     meta: ["TalentStudio", "1 раз в год", "обратная связь"],
     period: state.period,
-    actions: [{ label: "Запустить 360", primary: true, attrs: locked ? "data-open-locked=\"Оценка 360 доступна на тарифе TalentStudio.\"" : "data-action=\"open-assess-wizard\"" }],
+    actions: [{ label: "Запустить 360", primary: true, attrs: locked ? "data-open-locked=\"Оценка 360 доступна на тарифе TalentStudio.\"" : "data-action=\"create-link\"" }],
     filters: pageFilterConfig["360"],
     activeFiltersMap: (state.activeFilters && state.activeFilters["360"]) || {},
     kpiCards: [
-      { label: "Активные 360", value: active, caption: "в процессе", status: locked ? "noData" : "neutral", target: "Оценка 360:Активные" },
-      { label: "Завершены", value: completedLinks.length, caption: "пройдено", status: "medium", target: "Оценка 360:Завершены" },
-      { label: "Средний балл", value: avgScore5, caption: "из 5", status: avgPct ? getFitStatus(avgPct) : "neutral", target: "Оценка 360:Средний балл" },
-      { label: "Участники", value: participants, caption: "сотрудников", status: "neutral", target: "Оценка 360:Участники" },
-      { label: "Зоны развития", value: devZones, caption: "fit ниже 70%", status: "medium", target: "Оценка 360:Зоны развития" }
+      { label: "Активные 360", value: 5, caption: "циклов", status: locked ? "noData" : "neutral", target: "Оценка 360:Активные" },
+      { label: "Завершены", value: 2, caption: "цикла", status: "medium", target: "Оценка 360:Завершены" },
+      { label: "Средний балл", value: "4.1", caption: "из 5", status: "good", target: "Оценка 360:Средний балл" },
+      { label: "Расхождение", value: "0.8", caption: "самооценка", status: "medium", target: "Оценка 360:Расхождение" },
+      { label: "Зоны развития", value: 4, caption: "компетенции", status: "medium", target: "Оценка 360:Зоны развития" }
     ],
     charts: [
-      { title: "Прохождение 360", caption: "статусы ссылок", items: statusItems },
-      { title: "Соответствие по отделам", caption: "средний fit, %", items: deptItems.length ? deptItems : [["Нет данных", 0]], note: "Оценку 360 рекомендуется проводить не чаще одного раза в год, чтобы избежать усталости участников." }
+      { title: "Структура оценок", caption: "участники", items: [["Самооценка", 5], ["Руководитель", 3], ["Коллеги", 4], ["Подчиненные", 2]] },
+      { title: "Расхождения", caption: "самооценка vs внешняя", items: [["Коммуникация", 0.8], ["Лидерство", 1.1], ["Ответственность", 0.4], ["Развитие", 0.9]], note: "Оценку 360 рекомендуется проводить не чаще одного раза в год, чтобы избежать усталости участников." }
     ],
     heatmap: employeeHeatmap(state),
-    attentionItems,
-    table: employeesTableConfig(employees)
+    attentionItems: [{ title: "Сильное расхождение", text: "У руководителя продаж самооценка выше внешней оценки на 1.1 балла.", status: "medium", target: "Оценка 360:Расхождение" }],
+    table: employeesTableConfig(state.employees)
   });
-
-  // ── Сводный 360-отчёт по оцениваемому ──
-  const subjMap = {};
-  links.forEach((l) => { if (l.subjectPersonId) subjMap[l.subjectPersonId] = true; });
-  const subjects = Object.keys(subjMap).map((id) => ({
-    id,
-    name: (employees.find((e) => e.id === id) || {}).fullName
-      || (links.find((l) => l.subjectPersonId === id && l.fullName) || {}).fullName
-      || "Сотрудник",
-  }));
-  const selected = state.threeSixtySubject;
-  const rep = state.threeSixtyReport;
-  const roleRu = { manager: "Руководитель", peer: "Коллеги", report: "Подчинённые" };
-
-  let reportBody;
-  if (!subjects.length) {
-    reportBody = `<p class="elt-card-caption" style="padding:8px">Пока нет запущенных 360-оценок. Запустите через «Запустить 360».</p>`;
-  } else if (!selected) {
-    reportBody = `<p class="elt-card-caption" style="padding:8px">Выберите сотрудника, чтобы увидеть сводку.</p>`;
-  } else if (!rep) {
-    reportBody = `<p class="elt-card-caption" style="padding:8px">Загрузка…</p>`;
-  } else if (rep.error) {
-    reportBody = `<p class="elt-card-caption" style="padding:8px">Не удалось загрузить отчёт.</p>`;
-  } else {
-    const raterLine = [
-      rep.has_self ? "Самооценка ✓" : null,
-      ...Object.entries(rep.rater_counts || {}).map(([r, c]) => `${roleRu[r] || r}: ${c}`),
-    ].filter(Boolean).join(" · ");
-    const gapTxt = rep.gap_overall != null ? `${rep.gap_overall > 0 ? "+" : ""}${rep.gap_overall}` : "—";
-    const gapCls = rep.gap_overall == null ? "" : rep.gap_overall > 10 ? "high" : rep.gap_overall < -10 ? "low" : "";
-    reportBody = `
-      <div class="ts360-summary">
-        <div class="ts360-overall"><span>Самооценка</span><b>${rep.self_overall ?? "—"}${rep.self_overall != null ? "%" : ""}</b></div>
-        <div class="ts360-overall"><span>Внешняя</span><b>${rep.external_overall ?? "—"}${rep.external_overall != null ? "%" : ""}</b></div>
-        <div class="ts360-overall ts360-gap ${gapCls}"><span>Расхождение</span><b>${gapTxt}</b></div>
-      </div>
-      <div class="ts360-raters">${raterLine || "нет оценщиков"}</div>
-      <div class="ts360-comps">
-        ${rep.competencies.map((c) => `<div class="ts360-comp">
-          <span class="ts360-comp-name">${c.competency}</span>
-          <div class="ts360-bars">
-            <div class="ts360-bar"><i style="width:${c.self_percent || 0}%;background:#1E5BFF"></i></div>
-            <div class="ts360-bar"><i style="width:${c.external_percent || 0}%;background:#00B89C"></i></div>
-          </div>
-          <span class="ts360-comp-vals">я ${c.self_percent ?? "—"} / внеш ${c.external_percent ?? "—"}${c.gap != null ? ` · <b class="${c.gap > 10 ? "ts360-h" : c.gap < -10 ? "ts360-l" : ""}">${c.gap > 0 ? "+" : ""}${c.gap}</b>` : ""}</span>
-        </div>`).join("")}
-      </div>`;
-  }
-
-  const report360 = `<section class="elt-dashboard ts360-section">
-    <article class="elt-panel ts360-panel">
-      <div class="elt-panel-head"><div class="elt-panel-head-left"><h2>Сводный 360-отчёт</h2></div><span class="elt-panel-badge">самооценка vs внешняя</span></div>
-      <div class="ts360-subjects">
-        ${subjects.map((s) => `<button type="button" class="ts360-subj ${selected === s.id ? "active" : ""}" data-open360="${s.id}">${s.name}</button>`).join("")}
-      </div>
-      ${reportBody}
-    </article>
-  </section>`;
-
-  const full = content + report360;
-  return locked ? `<div class="guardedFeature">${full}<div class="lockedOverlay"><b>Оценка 360 доступна на TalentStudio</b><p>Раздел виден как будущий модуль, но запуск оценок пока заблокирован.</p><button class="blueButton" data-open-tariff-picker>Изменить тариф</button></div></div>` : full;
+  return locked ? `<div class="guardedFeature">${content}<div class="lockedOverlay"><b>Оценка 360 доступна на TalentStudio</b><p>Раздел виден как будущий модуль, но запуск оценок пока заблокирован.</p><button class="blueButton" data-open-tariff-picker>Изменить тариф</button></div></div>` : content;
 }
 
 export function renderPerformance(state) {
-  const ready = Boolean(state.employeesApi);
-  const failed = state.employeesStatus === "error";
-  const employees = ready ? state.employeesApi : [];
-
-  // Учитываем только оценённых сотрудников (fit != null). Остальные — «не оценён».
-  const assessed = employees.filter((e) => e.fit !== null && e.fit !== undefined);
-  const notAssessed = employees.length - assessed.length;
-
-  // Результативность = соответствие должности (fit); потенциал — по
-  // удовлетворённости и риску ухода (реальные поля сотрудника).
-  const perf = (e) => e.fit;
-  const pot = (e) => {
-    let p = e.satisfaction || 0;
-    if (e.turnoverRisk === "повышенный") p -= 15;
-    else if (e.turnoverRisk === "средний") p -= 7;
-    return Math.max(0, Math.min(100, p));
-  };
-  const hi = (v) => v >= 80;
-  const lo = (v) => v < 60;
-
-  const highPerf = assessed.filter((e) => hi(perf(e))).length;
-  const lowPerf = assessed.filter((e) => lo(perf(e))).length;
-  const hipo = assessed.filter((e) => hi(perf(e)) && hi(pot(e))).length;
-  const reserve = assessed.filter((e) => hi(pot(e)) && !lo(perf(e))).length;
-
-  // 9-box сегменты (только по оценённым)
-  const seg = { hipo: 0, perspective: 0, stable: 0, develop: 0, risk: 0 };
-  assessed.forEach((e) => {
-    const P = perf(e), T = pot(e);
-    if (hi(P) && hi(T)) seg.hipo++;
-    else if (lo(P) && lo(T)) seg.risk++;
-    else if (hi(P) || hi(T)) seg.perspective++;
-    else if (lo(P) || lo(T)) seg.develop++;
-    else seg.stable++;
-  });
-
-  const avg = (arr) => (arr.length ? Math.round(arr.reduce((s, x) => s + x, 0) / arr.length) : 0);
-  const avgPerf = avg(assessed.map(perf));
-  const avgPot = avg(assessed.map(pot));
-
-  // Цикл Performance Review — из реальных оценочных ссылок по этому тесту.
-  const prLinks = (state.linksApi || []).filter(
-    (l) => l.professionTitle === "Performance Review" && l.recipientType === "Сотрудник"
-  );
-  const inCycle = prLinks.length;
-  const completed = prLinks.filter((l) => l.status === "completed").length;
-
-  const subtitle = failed
-    ? "API недоступен — данные не загружены"
-    : ready
-      ? `Данные из API · оценено ${assessed.length} из ${employees.length} · ${inCycle} в цикле review`
-      : "Загрузка данных из API…";
-
-  const attentionItems = [];
-  if (lowPerf > 0) attentionItems.push({ title: `${lowPerf} с низкой результативностью`, text: "Нужен разбор причин и план улучшения.", status: "bad", target: "Performance Review:Низкий performance" });
-  if (hipo > 0) attentionItems.push({ title: `${hipo} HiPo-сотрудников`, text: "Высокий performance и потенциал — спланируйте развитие и удержание.", status: "good", target: "Performance Review:HiPo" });
-  if (inCycle > completed) attentionItems.push({ title: `${inCycle - completed} review не завершены`, text: "Ссылки отправлены, но оценка ещё не пройдена.", status: "medium", target: "Performance Review:Завершили" });
-
   return DashboardPageLayout({
     title: "Performance Review",
-    subtitle,
+    subtitle: "Циклы review, performance/potential, 9-box и рекомендации по развитию.",
     meta: ["performance", "potential", "кадровый резерв"],
     period: state.period,
-    actions: [{ label: "Запустить review", primary: true, attrs: "data-action=\"open-assess-wizard\"" }],
+    actions: [{ label: "Запустить review", primary: true, attrs: "data-action=\"create-link\"" }],
     filters: pageFilterConfig.performance,
     activeFiltersMap: (state.activeFilters && state.activeFilters.performance) || {},
     kpiCards: [
-      { label: "В цикле", value: inCycle, caption: "review отправлено", status: "neutral", target: "Performance Review:В цикле" },
-      { label: "Завершили", value: completed, caption: "review пройдено", status: "medium", target: "Performance Review:Завершили" },
-      { label: "Высокий performance", value: highPerf, caption: "80%+", status: "good", target: "Performance Review:Высокий performance" },
-      { label: "Низкий performance", value: lowPerf, caption: "ниже 60%", status: "bad", target: "Performance Review:Низкий performance" },
-      { label: "Высокий потенциал", value: hipo, caption: "HiPo", status: "good", target: "Performance Review:HiPo" },
-      { label: "Кадровый резерв", value: reserve, caption: "готовить", status: "good", target: "Performance Review:Кадровый резерв" },
-      { label: "Не оценён", value: notAssessed, caption: "нет профильной оценки", status: "neutral", target: "Performance Review:Не оценён" }
+      { label: "В цикле", value: 42, caption: "сотрудника", status: "neutral", target: "Performance Review:В цикле" },
+      { label: "Завершили", value: 28, caption: "review", status: "medium", target: "Performance Review:Завершили" },
+      { label: "Высокий performance", value: 12, caption: "результат", status: "good", target: "Performance Review:Высокий performance" },
+      { label: "Низкий performance", value: 4, caption: "риск", status: "bad", target: "Performance Review:Низкий performance" },
+      { label: "Высокий потенциал", value: 9, caption: "HiPo", status: "good", target: "Performance Review:HiPo" },
+      { label: "Кадровый резерв", value: 6, caption: "готовить", status: "good", target: "Performance Review:Кадровый резерв" }
     ],
     charts: [
-      { title: "9-box matrix", caption: "сегменты", items: [["HiPo", seg.hipo], ["Перспективные", seg.perspective], ["Стабильные", seg.stable], ["Зона развития", seg.develop], ["Зона риска", seg.risk]] },
-      { title: "Performance / Potential", caption: "средние и сегменты", items: [["Ср. результативность", avgPerf], ["Ср. потенциал", avgPot], ["HiPo", hipo], ["Резерв", reserve]] }
+      { title: "9-box matrix", caption: "сегменты", items: [["HiPo / High", 6], ["HiPo / Medium", 5], ["Стабильные", 18], ["Зона развития", 9], ["Зона риска", 4]] },
+      { title: "Performance / Potential", caption: "распределение", items: [["Результативность", 78], ["Потенциал", 71], ["ИПР", 19], ["Резерв", 6]] }
     ],
     heatmap: employeeHeatmap(state),
-    attentionItems,
-    table: employeesTableConfig(employees)
+    attentionItems: [{ title: "Калибровка оценок", text: "Нужно сравнять шкалы продаж и операционного блока.", status: "medium", target: "Performance Review:Калибровка" }],
+    table: employeesTableConfig(state.employees)
   });
 }
 
@@ -1749,7 +1809,7 @@ export function renderLinks(state, professions) {
             const rows = filter === "all" ? allRows : allRows.filter((link) => typeOf(link) === filter);
             const caption = loading ? "загрузка…" : `${rows.length} ссылок`;
             const filterBtn = (value, label) => `<button class="${filter === value ? "active" : ""}" data-links-filter="${value}">${label}</button>`;
-            const filterBar = `<div class="filterBar compact" style="padding-top:12px;padding-left:16px">${filterBtn("all", "Все")}${filterBtn("Кандидат", "Кандидаты")}${filterBtn("Сотрудник", "Сотрудники")}</div>`;
+            const filterBar = `<div class="filterBar compact" style="padding-top:12px;padding-left:16px">${filterBtn("all", "Все")}${filterBtn("Кандидат", "Только кандидаты")}${filterBtn("Сотрудник", "Только сотрудники")}</div>`;
             const body = rows.length
               ? rows.map((link) => `<tr><td>${link.fullName || typeOf(link)}</td><td><span class="elt-status-badge ${typeOf(link) === "Сотрудник" ? "status-medium" : "status-neutral"}">${typeOf(link)}</span></td><td>${link.professionTitle}${link.percent != null ? ` · <b>${link.percent}%</b>` : ""}</td><td>${link.email || link.phone || "<span class='elt-warn-text'>нет контакта</span>"}</td><td><code class="elt-code">${location.origin}${location.pathname}#/assess/${link.token}</code>${link.warning ? `<small class="elt-warn-text">${link.warning}</small>` : ''}</td><td><span class="elt-status-badge elt-status-${link.status}">${statusText(link.status)}</span></td><td><div class="elt-row-actions">${link.status === "completed" ? "" : `<button class="elt-btn-ghost" data-open-assess="${link.token}">Открыть</button>`}<button class="elt-btn-ghost">Скопировать</button>${!link.fromApi && canCancel(link) ? `<button class="elt-btn-danger" data-cancel-link="${link.token}">Отменить</button>` : ''}</div></td></tr>`).join('')
               : `<tr><td colspan="7" style="text-align:center;color:#94A3B8;padding:24px">${loading ? "Загрузка оценок…" : allRows.length ? "Нет оценок для выбранного фильтра." : "Оценок пока нет. Создайте оценку кнопкой «Создать оценку»."}</td></tr>`;
@@ -1768,75 +1828,44 @@ export function renderLinks(state, professions) {
 }
 
 export function renderReports(state) {
-  const ready = Boolean(state.reportsApi);
-  const failed = state.reportsStatus === "error";
-  const reports = ready ? state.reportsApi : [];
-
-  const candidates = reports.filter((r) => r.respondent_type === "candidate");
-  const employees = reports.filter((r) => r.respondent_type === "employee");
-  const avg = reports.length
-    ? Math.round(reports.reduce((s, r) => s + (r.percent || 0), 0) / reports.length)
-    : 0;
-
-  // Структура по тестам (реально).
-  const byTest = {};
-  reports.forEach((r) => {
-    const k = r.test_title || r.category || "Без названия";
-    byTest[k] = (byTest[k] || 0) + 1;
-  });
-  const byTestItems = Object.entries(byTest).sort((a, b) => b[1] - a[1]).map(([k, v]) => [k, v]);
-
-  // Динамика завершённых отчётов по датам (последние дни с данными).
-  const byDate = {};
-  reports.forEach((r) => {
-    if (!r.submitted_at) return;
-    byDate[r.submitted_at.slice(0, 10)] = (byDate[r.submitted_at.slice(0, 10)] || 0) + 1;
-  });
-  const byDateItems = Object.entries(byDate)
-    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
-    .slice(-7)
-    .map(([d, v]) => [new Date(d).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }), v]);
-
-  const subtitle = failed
-    ? "API недоступен — отчёты не загружены"
-    : ready
-      ? `Данные из API · ${reports.length} готовых отчётов`
-      : "Загрузка отчётов…";
-
+  const completed = state.sessions.filter((item) => item.status === "completed");
   return DashboardPageLayout({
     title: "Отчеты",
-    subtitle,
-    meta: ["кандидаты", "сотрудники", "360", "адаптация", "review"],
+    subtitle: "HR-отчеты, ответы, PDF и история результатов по всем типам оценок.",
+    meta: ["кандидаты", "сотрудники", "группы", "360", "review"],
     period: state.period,
-    actions: [{ label: "Создать оценку", primary: true, attrs: "data-action=\"open-assess-wizard\"" }],
+    actions: [{ label: "Экспорт PDF" }, { label: "Создать оценку", primary: true, attrs: "data-action=\"create-link\"" }],
     filters: pageFilterConfig.reports,
     activeFiltersMap: (state.activeFilters && state.activeFilters.reports) || {},
     kpiCards: [
-      { label: "Готовые отчёты", value: reports.length, caption: "завершённые оценки", status: "neutral" },
-      { label: "Кандидаты", value: candidates.length, caption: "отчётов", status: "neutral" },
-      { label: "Сотрудники", value: employees.length, caption: "отчётов", status: "neutral" },
-      { label: "Средний балл", value: `${avg}%`, caption: "по всем отчётам", status: getFitStatus(avg) }
+      { label: "Готовые отчеты", value: completed.length, caption: "за период", status: "neutral", target: "Отчеты:Готовые" },
+      { label: "Кандидаты", value: completed.filter((item) => item.person.assessmentType === "Кандидат").length, caption: "отчеты", status: "neutral", target: "Отчеты:Кандидаты" },
+      { label: "Сотрудники", value: completed.filter((item) => item.person.assessmentType === "Сотрудник").length, caption: "отчеты", status: "neutral", target: "Отчеты:Сотрудники" },
+      { label: "PDF скачаны", value: 18, caption: "действия HR", status: "good", target: "Отчеты:PDF" },
+      { label: "Нужна проверка", value: 6, caption: "спорные результаты", status: "bad", target: "Отчеты:Проверка" },
+      { label: "Ответы открыты", value: 22, caption: "просмотры", status: "neutral", target: "Отчеты:Ответы" }
     ],
     charts: [
-      { title: "Отчёты по тестам", caption: "структура", items: byTestItems.length ? byTestItems : [["Нет отчётов", 0]] },
-      { title: "Динамика по датам", caption: "когда завершали оценку", items: byDateItems.length ? byDateItems : [["—", 0]] }
+      { title: "Отчеты по типам", caption: "структура", items: [["Кандидаты", 24], ["Сотрудники", 12], ["Групповые", 4], ["360", 2], ["Адаптация", 7], ["Review", 5]] },
+      { title: "Динамика отчетов", caption: "по дням", items: [["Пн", 4], ["Вт", 7], ["Ср", 5], ["Чт", 8], ["Пт", 6], ["Сб", 2], ["Вс", 1]] }
     ],
-    attentionItems: [],
-    table: reportsTableConfig(reports)
+    heatmap: reportsHeatmap(state),
+    attentionItems: [
+      { title: "6 отчетов требуют проверки", text: "Есть спорные результаты и низкая достоверность ответов.", status: "bad", target: "Отчеты:Проверка" },
+      { title: "2 отчета без PDF", text: "Нужно сформировать экспорт для руководителя.", status: "neutral", target: "Отчеты:PDF" }
+    ],
+    table: reportsTableConfig(state)
   });
 }
 
-export function renderSupport(state = {}) {
-  const company = state.company || {};
-  const contactName = company.contactName || "";
-  const contactEmail = company.contactEmail || "";
+export function renderSupport() {
   return `
     <div class="elt-page-wrap">
       <div class="elt-page-header">
         <div class="elt-page-header-left">
           <span class="elt-mini-label">Поддержка</span>
           <h1 class="elt-page-title">Помощь и заявки</h1>
-          <p class="elt-page-subtitle">Срочные заявки рассматриваются быстрее, предложения по улучшению попадают в продуктовый backlog. Обращение уходит в Telegram команде поддержки.</p>
+          <p class="elt-page-subtitle">Срочные заявки рассматриваются быстрее, предложения по улучшению попадают в продуктовый backlog.</p>
         </div>
       </div>
       <div class="elt-support-grid">
@@ -1846,39 +1875,30 @@ export function renderSupport(state = {}) {
             <h2>Критичная проблема</h2>
             <p>Если не открывается оценка, не формируется отчет, списались оценки или не работает доступ.</p>
             <div class="elt-support-sla">Срок: в течение суток</div>
-            <button class="elt-btn-primary" data-support-pick="urgent">Оставить срочную заявку</button>
+            <button class="elt-btn-primary">Оставить срочную заявку</button>
           </div>
           <div class="elt-card elt-support-card">
             <div class="elt-support-badge elt-support-badge-neutral">Обычная заявка</div>
             <h2>Вопрос по сервису</h2>
             <p>Настройки, тарифы, ссылки, отчеты, личный кабинет, работа с кандидатами и сотрудниками.</p>
             <div class="elt-support-sla">Срок: в рабочем порядке</div>
-            <button class="elt-btn-secondary" data-support-pick="normal">Оставить заявку</button>
+            <button class="elt-btn-secondary">Оставить заявку</button>
           </div>
           <div class="elt-card elt-support-card">
             <div class="elt-support-badge elt-support-badge-idea">Предложение</div>
             <h2>Улучшение сервиса</h2>
             <p>Идеи по новым отчетам, профилям, графикам, интеграциям или логике оценки.</p>
             <div class="elt-support-sla">Срок: 1–30 рабочих дней</div>
-            <button class="elt-btn-ghost" data-support-pick="idea">Предложить улучшение</button>
+            <button class="elt-btn-ghost">Предложить улучшение</button>
           </div>
         </div>
         <div class="elt-card elt-support-form">
           <div class="elt-card-head"><h2>Форма обращения</h2></div>
           <div class="elt-form-grid">
-            <label class="elt-label">Тип обращения<select class="elt-select" data-support-type>
-              <option value="urgent">Срочная заявка</option>
-              <option value="normal" selected>Обычная заявка</option>
-              <option value="idea">Предложение по улучшению</option>
-            </select></label>
-            <label class="elt-label">Тема<input class="elt-input" data-support-subject placeholder="Коротко опишите вопрос"></label>
-            <label class="elt-label elt-label-full">Описание<textarea class="elt-textarea" data-support-description placeholder="Что произошло, кого касается, какой ожидаемый результат"></textarea></label>
-            <input type="hidden" data-support-name value="${contactName}">
-            <input type="hidden" data-support-email value="${contactEmail}">
-            <div class="elt-support-actions">
-              <button class="elt-btn-primary" data-action="support-send">Отправить обращение</button>
-              <span class="elt-support-status" data-support-status></span>
-            </div>
+            <label class="elt-label">Тип обращения<select class="elt-select"><option>Срочная заявка</option><option>Обычная заявка</option><option>Предложение по улучшению</option></select></label>
+            <label class="elt-label">Тема<input class="elt-input" placeholder="Коротко опишите вопрос"></label>
+            <label class="elt-label elt-label-full">Описание<textarea class="elt-textarea" placeholder="Что произошло, кого касается, какой ожидаемый результат"></textarea></label>
+            <div><button class="elt-btn-primary">Отправить обращение</button></div>
           </div>
         </div>
       </div>
@@ -1977,7 +1997,7 @@ export function renderReport(state, session) {
     <section class="reportPage">
       <div class="reportToolbar noPrint"><button class="button subtle" data-view="reports">Назад</button><div><button class="button subtle">Ответы</button><button class="button subtle">Интерпретация</button><button class="button subtle">${aiAccess(state.company.tariff)}</button><button class="blueButton" data-action="print-report">Скачать PDF</button></div></div>
       <article class="reportSheet">
-        <header class="reportHeader"><img src="/assets/eltera_logo_horizontal_on_light.svg" alt="Eltera"><div><b>${new Date(session.completedAt).toLocaleDateString("ru-RU")} · конфиденциально</b><span>Отчет оценки ${session.person.assessmentType.toLowerCase()}</span></div></header>
+        <header class="reportHeader"><img src="/public/assets/eltera_logo_horizontal_on_light.png" alt="Eltera"><div><b>${new Date(session.completedAt).toLocaleDateString("ru-RU")} · конфиденциально</b><span>Отчет оценки ${session.person.assessmentType.toLowerCase()}</span></div></header>
         <h1>${session.person.fullName || "Участник"}: рекомендация для HRD, руководителя и собственника</h1><p class="reportLead">${session.professionTitle}. Решение: ${result.recommendation.toLowerCase()}.</p>
         <section class="decisionBox ${statusClass}"><div class="decisionScore">${result.percent}%<span>соответствие роли</span></div><div><h2>Итоговое решение: ${result.recommendation}</h2><p>${decisionText(result)}</p></div></section>
         <section class="reportStats">${stat("Готовность", readiness(result))}${stat("Риск ошибки найма", `${Math.max(8, 100 - result.percent)}%`)}${stat("Достоверность", `${Math.max(55, 96 - result.redFlags * 12)}%`)}${stat("Следующий этап", "45 мин")}</section>
@@ -2180,124 +2200,47 @@ export function renderSettings(state) {
   `;
 }
 
-// ─── Прохождение теста с бэка: стартовый экран + пошаговый мастер ──────────────
-function assessIsAnswered(q, answers) {
-  const v = answers[q.question_version_id];
-  if (q.type === "multiple_choice") return Array.isArray(v) && v.length > 0;
-  if (q.type === "open") return typeof v === "string" && v.trim().length > 0;
-  return v !== undefined && v !== null && v !== "";
-}
-
-function assessFmtClock(sec) {
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
-const ASSESS_CLOCK_SVG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>`;
-const ASSESS_BARS_SVG = `<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="20" x2="6" y2="13"/><line x1="12" y1="20" x2="12" y2="8"/><line x1="18" y1="20" x2="18" y2="4"/></svg>`;
-
-function renderAssessOptions(q, answers) {
-  const qid = q.question_version_id;
-  const cur = answers[qid];
-  if (q.type === "single_choice") {
-    return `<div class="assessOpts">${q.options.map((o) => `<label class="assessOpt${cur === o.id ? " selected" : ""}"><input type="radio" name="q_${qid}" value="${o.id}" data-assess-input data-qid="${qid}" data-qtype="single_choice" ${cur === o.id ? "checked" : ""}><span class="assessOptMark"></span><span class="assessOptText">${o.text}</span></label>`).join("")}</div>`;
-  }
-  if (q.type === "multiple_choice") {
-    const arr = Array.isArray(cur) ? cur : [];
-    return `<p class="assessHint">Выберите все подходящие варианты</p><div class="assessOpts">${q.options.map((o) => `<label class="assessOpt${arr.includes(o.id) ? " selected" : ""}"><input type="checkbox" value="${o.id}" data-assess-input data-qid="${qid}" data-qtype="multiple_choice" ${arr.includes(o.id) ? "checked" : ""}><span class="assessOptMark square"></span><span class="assessOptText">${o.text}</span></label>`).join("")}</div>`;
-  }
-  if (q.type === "scale") {
-    const min = q.scale_min ?? 1;
-    const max = q.scale_max ?? 5;
-    let cells = "";
+function renderAssessQuestionApi(question, index, total) {
+  const head = `<div class="questionHead"><span>${question.competency || "Компетенция"}</span><b>${index + 1}/${total}</b></div>`;
+  const qid = question.question_version_id;
+  let body = "";
+  if (question.type === "single_choice") {
+    body = `<div class="answers">${question.options.map((o) => `<label class="answer"><input type="radio" required name="${qid}" value="${o.id}"><span>${o.text}</span></label>`).join("")}</div>`;
+  } else if (question.type === "multiple_choice") {
+    body = `<div class="answers"><p class="answersHint">Выберите все подходящие варианты</p>${question.options.map((o) => `<label class="answer"><input type="checkbox" name="m_${qid}" value="${o.id}"><span>${o.text}</span></label>`).join("")}</div>`;
+  } else if (question.type === "scale") {
+    const min = question.scale_min ?? 1;
+    const max = question.scale_max ?? 5;
+    const cells = [];
     for (let v = min; v <= max; v++) {
-      cells += `<label class="assessScaleCell${Number(cur) === v ? " selected" : ""}"><input type="radio" name="q_${qid}" value="${v}" data-assess-input data-qid="${qid}" data-qtype="scale" ${Number(cur) === v ? "checked" : ""}><span>${v}</span></label>`;
+      cells.push(`<label class="scaleCell"><input type="radio" required name="${qid}" value="${v}"><span>${v}</span></label>`);
     }
-    return `<div class="assessScale">${cells}</div>`;
+    body = `<div class="scaleRow">${cells.join("")}</div>`;
+  } else {
+    body = `<textarea class="openAnswer" name="o_${qid}" rows="4" placeholder="Ваш ответ"></textarea>`;
   }
-  return `<textarea class="assessOpen" data-assess-input data-qid="${qid}" data-qtype="open" rows="5" placeholder="Ваш ответ">${typeof cur === "string" ? cur : ""}</textarea>`;
+  return `<article class="questionCard"><div>${head}</div><h3>${question.text}</h3>${body}</article>`;
 }
 
-function renderAssessFlow(link, apiForm, cand) {
-  const total = apiForm.questions.length;
-  const answers = cand.answers || {};
-  const title = apiForm.title || link.professionTitle || "Оценка";
-  const minutes = apiForm.duration_min || 25;
-
-  // 360: кого оценивает респондент (для оценщиков, не для самооценки).
-  const roleRu = { manager: "как руководитель", peer: "как коллега", report: "как подчинённый" };
-  const subjectBanner = apiForm.subject_name
-    ? `<div class="assessSubject"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5.5" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M2.5 14c0-3 2.5-5 5.5-5s5.5 2 5.5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Вы оцениваете: <b>${apiForm.subject_name}</b>${apiForm.rater_role && roleRu[apiForm.rater_role] ? ` · ${roleRu[apiForm.rater_role]}` : ""}</div>`
-    : "";
-
-  // ── Стартовый экран (первый этап): имя, e-mail, инфо о тесте ──
-  if (cand.stage !== "questions") {
-    const name = cand.name != null ? cand.name : (apiForm.full_name || link.fullName || "");
-    const email = cand.email != null ? cand.email : (apiForm.email || link.email || "");
-    return `<div class="candidatePage assessPage"><main class="assessIntro">
-      <div class="assessIntroIcon">${ASSESS_BARS_SVG}</div>
-      <h1 class="assessIntroTitle">${title}</h1>
-      <p class="assessIntroSub">Оценка компетенций</p>
-      ${subjectBanner}
-      <div class="assessInfoBox"><ul>
-        <li>Время на прохождение: <b>${minutes} минут</b></li>
-        <li>Вопросов: <b>${total}</b></li>
-        <li>Ваши ответы конфиденциальны</li>
-        <li>Баллы не отображаются во время оценки</li>
-      </ul></div>
-      <label class="assessField"><span>Ваше имя</span><input id="assessName" value="${name}" placeholder="Иванов Иван Иванович"></label>
-      <label class="assessField"><span>Email (необязательно)</span><input id="assessEmail" type="email" value="${email}" placeholder="ivanov@example.com"></label>
-      <button class="assessStartBtn" data-assess-start>Начать оценку →</button>
-    </main></div>`;
-  }
-
-  // ── Пошаговый мастер: один вопрос на экран ──
-  const idx = Math.min(cand.qIndex || 0, total - 1);
-  const q = apiForm.questions[idx];
-  const pct = Math.round(((idx + 1) / total) * 100);
-  const answered = assessIsAnswered(q, answers);
-  const isLast = idx === total - 1;
-  const remaining = Math.max(0, Math.floor(((cand.deadlineTs || 0) - Date.now()) / 1000));
-  const dots = apiForm.questions.map((qq, i) => `<span class="assessDot${i === idx ? " active" : ""}${assessIsAnswered(qq, answers) ? " done" : ""}"></span>`).join("");
-  const nextDisabled = q.type !== "open" && !answered;
-  return `<div class="candidatePage assessPage"><main class="assessWizard">
-    <div class="assessTopbar">
-      <div class="assessTopLeft"><h1>${title}</h1><span class="assessQCount">Вопрос ${idx + 1} из ${total}</span></div>
-      <div class="assessTimer" id="assessTimer">${ASSESS_CLOCK_SVG}<span>${assessFmtClock(remaining)}</span></div>
-    </div>
-    <div class="assessProgress"><div class="assessProgressFill" style="width:${pct}%"></div></div>
-    ${subjectBanner}
-    <article class="assessQCard">
-      <h2>${q.text}</h2>
-      ${renderAssessOptions(q, answers)}
-    </article>
-    <div class="assessNav">
-      <button class="assessNavBtn" data-assess-prev ${idx === 0 ? "disabled" : ""}>‹ Назад</button>
-      <div class="assessDots">${dots}</div>
-      <button class="assessNavBtn primary" data-assess-next ${nextDisabled ? "disabled" : ""}>${isLast ? "Завершить" : "Далее ›"}</button>
-    </div>
-    <div class="assessNote">Все ваши ответы конфиденциальны и будут использованы только для оценки компетенций.</div>
-  </main></div>`;
-}
-
-export function renderCandidateAssessment(link, profession, questions, answers, competencyTitleById, apiForm, formError, cand) {
+export function renderCandidateAssessment(link, profession, questions, answers, competencyTitleById, apiForm, formError) {
   if (!link) return `<div class="candidatePage"><div class="candidateCard"><h1>Ссылка недействительна</h1><p>Ссылка отменена, истекла или не найдена.</p><a class="blueButton" href="#/">На главную</a></div></div>`;
 
-  // Тест с бэка: стартовый экран + пошаговый мастер.
+  // Тест с бэка: отрисовываем реальные вопросы конкретного теста (все типы).
   if (apiForm !== undefined) {
     const title = (apiForm && apiForm.title) || link.professionTitle || "Оценка";
+    const header = `<header class="candidateHeader"><img src="/public/assets/eltera_logo_horizontal_on_light.png" alt="Eltera"></header>`;
     if (formError) {
-      return `<div class="candidatePage"><main class="candidateCard"><h1>${title}</h1><p>${formError}</p><a class="blueButton" href="#/">На главную</a></main></div>`;
+      return `<div class="candidatePage">${header}<main class="candidateCard"><h1>${title}</h1><p>${formError}</p><a class="blueButton" href="#/">На главную</a></main></div>`;
     }
     if (!apiForm) {
-      return `<div class="candidatePage"><main class="candidateCard"><h1>${title}</h1><p>Загружаем тест…</p></main></div>`;
+      return `<div class="candidatePage">${header}<main class="candidateCard"><h1>${title}</h1><p>Загружаем тест…</p></main></div>`;
     }
-    return renderAssessFlow(link, apiForm, cand || {});
+    const total = apiForm.questions.length;
+    return `<div class="candidatePage">${header}<main class="candidateCard"><span class="miniLabel">${link.recipientType || link.assessmentType || "Кандидат"} · ${apiForm.title}</span><h1>${apiForm.title}</h1><p>${apiForm.summary || "Заполните данные и ответьте на вопросы. Компания получит отчет после завершения оценки."}</p><form class="candidateForm" data-candidate-form><label>ФИО<input name="fullName" required value="${apiForm.full_name || link.fullName || ""}" placeholder="Иванов Иван"></label><label>Телефон<input name="phone" value="${apiForm.phone || link.phone || ""}" placeholder="+7..."></label><label>Email<input name="email" value="${apiForm.email || link.email || ""}" placeholder="name@example.com"></label><label>Город<input name="city" placeholder="Москва"></label><label class="checkboxLine"><input type="checkbox" required><span>Согласен на обработку персональных данных</span></label><div class="questionList compact">${apiForm.questions.map((q, i) => renderAssessQuestionApi(q, i, total)).join("")}</div><button class="blueButton wide" type="submit">Завершить оценку</button></form></main></div>`;
   }
 
   return `
-    <div class="candidatePage"><header class="candidateHeader"><img src="/assets/eltera_logo_horizontal_on_light.svg" alt="Eltera"></header><main class="candidateCard"><span class="miniLabel">${link.recipientType} · ${link.professionTitle || profession.title}</span><h1>${link.professionTitle || profession.title}</h1><p>Заполните данные и ответьте на вопросы. Компания получит отчет после завершения оценки.</p><form class="candidateForm" data-candidate-form><label>ФИО<input name="fullName" required value="${link.fullName || ""}" placeholder="Иванов Иван"></label><label>Телефон<input name="phone" value="${link.phone || ""}" placeholder="+7..."></label><label>Email<input name="email" value="${link.email || ""}" placeholder="name@example.com"></label><label>Город<input name="city" placeholder="Москва"></label><label class="checkboxLine"><input type="checkbox" required><span>Согласен на обработку персональных данных</span></label><div class="questionList compact">${questions.map((question, index) => `<article class="questionCard"><div class="questionHead"><span>${competencyTitleById[question.competencyId] || question.competencyId}</span><b>${index + 1}/${questions.length}</b></div><h3>${question.text}</h3><div class="answers">${question.answers.map((answer, answerIndex) => `<label class="answer"><input type="radio" required name="${question.id}" value="${answerIndex}" ${answers[question.id] === answerIndex ? "checked" : ""}><span>${answer.text}</span></label>`).join("")}</div></article>`).join("")}</div><button class="blueButton wide" type="submit">Завершить оценку</button></form></main></div>
+    <div class="candidatePage"><header class="candidateHeader"><img src="/public/assets/eltera_logo_horizontal_on_light.png" alt="Eltera"></header><main class="candidateCard"><span class="miniLabel">${link.recipientType} · ${link.professionTitle || profession.title}</span><h1>${link.professionTitle || profession.title}</h1><p>Заполните данные и ответьте на вопросы. Компания получит отчет после завершения оценки.</p><form class="candidateForm" data-candidate-form><label>ФИО<input name="fullName" required value="${link.fullName || ""}" placeholder="Иванов Иван"></label><label>Телефон<input name="phone" value="${link.phone || ""}" placeholder="+7..."></label><label>Email<input name="email" value="${link.email || ""}" placeholder="name@example.com"></label><label>Город<input name="city" placeholder="Москва"></label><label class="checkboxLine"><input type="checkbox" required><span>Согласен на обработку персональных данных</span></label><div class="questionList compact">${questions.map((question, index) => `<article class="questionCard"><div class="questionHead"><span>${competencyTitleById[question.competencyId] || question.competencyId}</span><b>${index + 1}/${questions.length}</b></div><h3>${question.text}</h3><div class="answers">${question.answers.map((answer, answerIndex) => `<label class="answer"><input type="radio" required name="${question.id}" value="${answerIndex}" ${answers[question.id] === answerIndex ? "checked" : ""}><span>${answer.text}</span></label>`).join("")}</div></article>`).join("")}</div><button class="blueButton wide" type="submit">Завершить оценку</button></form></main></div>
   `;
 }
 
@@ -2310,11 +2253,6 @@ function renderModal(state) {
 
   if (state.modal?.type === "list") {
     const [scope, metricName] = state.modal.target.split(":");
-    // Этап адаптации (клик по воронке) — отдельная модалка с чек-инами этапа.
-    // Отдельный scope, чтобы не пересекаться с дрилл-дауном KPI-карточек («Адаптация»).
-    if (scope === "Этап адаптации") {
-      return `<div class="modalBackdrop"><div class="modal modalWide">${mHead(`Этап адаптации: ${metricName}`, '🧭')}<div class="modal-inner">${renderAdaptationStageList(state, metricName)}</div></div></div>`;
-    }
     const people = peopleForModal(state, scope, metricName);
     const icons = { 'Кандидаты': '👤', 'Сотрудники': '🏢', 'Вакансии': '📋', 'Отчеты': '📊' };
     return `<div class="modalBackdrop"><div class="modal modalWide">${mHead(`${scope}: ${metricName}`, icons[scope] || '📊')}<div class="modal-inner">${renderPeopleTable(people, scope)}</div></div></div>`;
@@ -2349,84 +2287,17 @@ function renderModal(state) {
       </div>
     </form></div>`;
   }
-  if (state.modal?.type === "import-employees" || state.modal?.type === "import-candidates") {
-    const m = state.modal;
-    const cfg = IMPORT_MODALS[m.type];
-    let inner;
-    if (m.status === "done" && m.result) {
-      const r = m.result;
-      const errs = r.errors || [];
-      inner = `
-        <div class="elt-import-result">
-          <div class="elt-import-summary">
-            <div class="elt-import-stat ok"><b>${r.created}</b><span>добавлено</span></div>
-            <div class="elt-import-stat"><b>${r.skipped}</b><span>пропущено</span></div>
-            <div class="elt-import-stat ${errs.length ? 'warn' : ''}"><b>${errs.length}</b><span>с ошибками</span></div>
-          </div>
-          ${r.created_names && r.created_names.length
-            ? `<p class="elt-card-caption">Новые: ${r.created_names.slice(0, 8).map(n => escapeHtml(n)).join(', ')}${r.created_names.length > 8 ? ` и ещё ${r.created_names.length - 8}` : ''}</p>`
-            : ''}
-          ${errs.length
-            ? `<div class="elt-import-errors">${errs.map(e => `<div class="elt-import-err"><span>строка ${e.row}</span>${escapeHtml(e.reason)}</div>`).join('')}</div>`
-            : '<p class="elt-import-allok">Все строки обработаны без ошибок.</p>'}
-          <div class="elt-import-actions">
-            <button class="elt-btn-ghost" data-action="${m.type}">Импортировать ещё</button>
-            <button class="elt-btn-primary" data-action="close-modal">Готово</button>
-          </div>
-        </div>`;
-    } else {
-      const importing = m.status === "importing";
-      inner = `
-        <p class="modal-subtitle">Массовое добавление из Excel. Колонки: ${cfg.columns}.</p>
-        ${m.error ? `<div class="elt-import-error-box">${escapeHtml(m.error)}</div>` : ''}
-        <div class="elt-import-flow">
-          <div class="elt-import-step"><span class="elt-import-num">1</span><div><b>Скачать Excel-шаблон</b><p>Заполните по примеру. ${cfg.hint}</p><a class="elt-btn-ghost" href="${cfg.templateUrl()}" download>Скачать шаблон</a></div></div>
-          <div class="elt-import-step"><span class="elt-import-num">2</span><div><b>Заполнить и загрузить</b><p>Выберите заполненный файл со списком ${cfg.fileNoun}.</p><label class="elt-file-label">Excel-файл<input type="file" accept=".xlsx,.xlsm" data-import-file></label></div></div>
-          <div class="elt-import-step"><span class="elt-import-num">3</span><div><b>Импортировать</b><p>Записи появятся в списке и станут доступны для оценки.</p><button class="elt-btn-primary" data-action="${cfg.runAction}" ${importing ? 'disabled' : ''}>${importing ? 'Импортируем…' : 'Импортировать'}</button></div></div>
-        </div>`;
-    }
+  if (state.modal?.type === "import-employees") {
     return `<div class="modalBackdrop"><div class="modal modalWide">
-      ${mHead(cfg.title, '📥')}
-      <div class="modal-inner">${inner}</div>
-    </div></div>`;
-  }
-  if (state.modal?.type === "import-library") {
-    const m = state.modal;
-    let inner;
-    if (m.status === "done" && m.result) {
-      const r = m.result;
-      const errs = r.errors || [];
-      const stat = (n, label) => `<div class="elt-import-stat"><b>${n}</b><span>${label}</span></div>`;
-      inner = `
-        <div class="elt-import-result">
-          <div class="elt-import-summary">
-            ${stat(r.competencies_created + r.competencies_updated, "компетенций")}
-            ${stat(r.questions_created, "вопросов добавлено")}
-            ${stat(r.profiles_created + r.profiles_updated, "профилей")}
-          </div>
-          <p class="elt-card-caption">Компетенции: +${r.competencies_created} новых, ${r.competencies_updated} обновлено · Вопросы: +${r.questions_created}, ${r.questions_skipped} уже были · Профили: +${r.profiles_created}, ${r.profiles_updated} обновлено</p>
-          ${errs.length
-            ? `<div class="elt-import-errors">${errs.slice(0, 30).map(e => `<div class="elt-import-err">${escapeHtml(e)}</div>`).join("")}</div>`
-            : '<p class="elt-import-allok">Загружено без ошибок.</p>'}
-          <div class="elt-import-actions">
-            <button class="elt-btn-ghost" data-action="open-import-library">Импортировать ещё</button>
-            <button class="elt-btn-primary" data-action="close-modal">Готово</button>
-          </div>
-        </div>`;
-    } else {
-      const importing = m.status === "importing";
-      inner = `
-        <p class="modal-subtitle">Массовая загрузка базы оценки из одного Excel: 3 листа — Компетенции, Вопросы, Профили должностей. Повторная загрузка обновляет, а не дублирует.</p>
-        ${m.error ? `<div class="elt-import-error-box">${escapeHtml(m.error)}</div>` : ''}
+      ${mHead('Импорт сотрудников', '📥')}
+      <div class="modal-inner">
+        <p class="modal-subtitle">Массовое добавление сотрудников из Excel: ФИО, должность, отдел, руководитель, проект.</p>
         <div class="elt-import-flow">
-          <div class="elt-import-step"><span class="elt-import-num">1</span><div><b>Скачать шаблон (3 листа)</b><p>Заполните компетенции, вопросы с вариантами и профили. На листе «Инструкция» — как связывать по ID.</p><a class="elt-btn-ghost" href="${libraryImportTemplateUrl()}" download>Скачать шаблон</a></div></div>
-          <div class="elt-import-step"><span class="elt-import-num">2</span><div><b>Загрузить файл</b><p>Выберите заполненный .xlsx.</p><label class="elt-file-label">Excel-файл<input type="file" accept=".xlsx,.xlsm" data-import-file></label></div></div>
-          <div class="elt-import-step"><span class="elt-import-num">3</span><div><b>Импортировать</b><p>Профили появятся в Конструкторе и в мастере «Создать оценку».</p><button class="elt-btn-primary" data-action="run-library-import" ${importing ? 'disabled' : ''}>${importing ? 'Импортируем…' : 'Импортировать'}</button></div></div>
-        </div>`;
-    }
-    return `<div class="modalBackdrop"><div class="modal modalWide">
-      ${mHead('Импорт базы компетенций и профилей', '📚')}
-      <div class="modal-inner">${inner}</div>
+          <div class="elt-import-step"><span class="elt-import-num">1</span><div><b>Скачать Excel-шаблон</b><p>Колонки: ФИО, должность, отдел, руководитель, проект.</p><a class="elt-btn-ghost" href="/assets/eltera-employees-import-template.xlsx" download>Скачать шаблон</a></div></div>
+          <div class="elt-import-step"><span class="elt-import-num">2</span><div><b>Заполнить и загрузить</b><p>Выберите заполненный файл со списком сотрудников.</p><label class="elt-file-label">Excel-файл<input type="file" accept=".xlsx,.xls" data-import-employees-file></label></div></div>
+          <div class="elt-import-step"><span class="elt-import-num">3</span><div><b>Импортировать</b><p>Сотрудники появятся в списке и станут доступны для оценки.</p><button class="elt-btn-primary" data-action="run-employee-import">Импортировать</button></div></div>
+        </div>
+      </div>
     </div></div>`;
   }
   if (state.modal?.type === "card") {
@@ -2445,41 +2316,23 @@ function renderModal(state) {
   }
   if (state.modal?.type === "answers") {
     const data = state.answersData;
-    const list = state.answersList;
-    const personId = state.modal.id;
-    const multiple = list && list.count > 1;
     let body;
-
-    if (list && !list.count) {
-      body = `<p class="modal-subtitle">${(list.full_name || "")}</p>
-        <p class="modal-subtitle">Пройденных тестов нет — ответов пока нет.</p>`;
-    } else if (multiple && !state.modal.sessionId) {
-      // Несколько тестов — предлагаем выбрать, по какому смотреть ответы.
-      body = `<p class="modal-subtitle">${list.full_name || ""} · выберите тест:</p>
-        <div class="answersTestPick">
-          ${list.items.map((it) => `<button class="answersTestPickItem" data-answer-session="${personId}|${it.session_id}">
-            <span class="answersTestPickName">${it.test_title || it.category || "Тест"}</span>
-            <span class="answersTestPickPct">${StatusBadge(`${it.percent}%`, getFitStatus(it.percent))}</span>
-          </button>`).join("")}
-        </div>`;
-    } else if (!data) {
+    if (!data) {
       body = `<p class="modal-subtitle">Загрузка ответов…</p>`;
     } else if (data.error) {
       body = `<p class="modal-subtitle">Не удалось загрузить ответы (бэкенд недоступен).</p>`;
     } else if (!data.answers || !data.answers.length) {
-      body = `${multiple ? `<button class="button subtle" data-answer-back>← к списку тестов</button>` : ""}
-        <p class="modal-subtitle">${data.candidate || ""}${data.test_title ? " · " + data.test_title : ""}</p>
-        <p class="modal-subtitle">Ответы по этому тесту не сохранены.</p>`;
+      body = `<p class="modal-subtitle">${data.candidate || ""}${data.test_title ? " · " + data.test_title : ""}</p>
+        <p class="modal-subtitle">Ответы по этому кандидату не сохранены.</p>`;
     } else {
-      body = `${multiple ? `<button class="button subtle" data-answer-back>← к списку тестов</button>` : ""}
-        <p class="modal-subtitle">${data.candidate || ""}${data.test_title ? " · " + data.test_title : ""} · ${data.percent}%</p>
+      body = `<p class="modal-subtitle">${data.candidate || ""}${data.test_title ? " · " + data.test_title : ""} · ${data.percent}%</p>
         <div class="answersPreview">${data.answers.map((a, i) => {
           const color = a.red_flag ? "#DC2626" : a.correct === true ? "#16A34A" : a.correct === false ? "#DC2626" : "";
           const score = a.max_score ? ` · ${a.score}/${a.max_score}` : "";
           return `<div><span>${i + 1}</span><b>${a.question}</b><em style="${color ? `color:${color}` : ""}">${a.answer || "—"}${score}</em></div>`;
         }).join("")}</div>`;
     }
-    return `<div class="modalBackdrop"><div class="modal modalWide">${mHead('Ответы по оценке', '📝')}<div class="modal-inner">${body}</div></div></div>`;
+    return `<div class="modalBackdrop"><div class="modal modalWide">${mHead('Ответы кандидата', '📝')}<div class="modal-inner">${body}</div></div></div>`;
   }
   if (state.modal?.type === "competency") {
     const profile = assessmentProfile(state.modal.id);
@@ -2555,104 +2408,6 @@ function renderModal(state) {
           <label class="elt-label elt-label-full">Профиль оценки<select class="elt-select" name="professionId" ${ready ? "" : "disabled"}>${profileOptions}</select></label>
         </div>
         <button class="elt-btn-primary" type="submit" style="margin-top:8px;width:100%" ${ready ? "" : "disabled"}>Отправить оценку</button>
-      </div>
-    </form></div>`;
-  }
-
-  if (state.modal?.type === "create-test") {
-    return `<div class="modalBackdrop"><form class="modal" data-create-test-form>
-      ${mHead('Создать тест', '🧩')}
-      <div class="modal-inner">
-        <p class="modal-subtitle">Тест появится в списке слева — затем добавьте в него вопросы.</p>
-        <div class="elt-form-grid">
-          <label class="elt-label elt-label-full">Название<input class="elt-input" name="title" placeholder="напр. Оценка менеджера" required></label>
-          <label class="elt-label">Категория<input class="elt-input" name="category" placeholder="Коммерция"></label>
-          <label class="elt-label">Для кого<select class="elt-select" name="target_type"><option value="candidate">Кандидат</option><option value="employee">Сотрудник</option><option value="group">Группа</option></select></label>
-        </div>
-        <button class="elt-btn-primary" type="submit" style="margin-top:8px;width:100%">+ Создать профиль</button>
-      </div>
-    </form></div>`;
-  }
-
-  if (state.modal?.type === "create-competency") {
-    return `<div class="modalBackdrop"><form class="modal" data-create-competency-form>
-      ${mHead('Создать компетенцию', '🧠')}
-      <div class="modal-inner">
-        <p class="modal-subtitle">Компетенция появится в библиотеке — затем добавьте в неё вопросы и включите в профили.</p>
-        <div class="elt-form-grid">
-          <label class="elt-label elt-label-full">Название<input class="elt-input" name="title" placeholder="напр. Работа с возражениями" required></label>
-          <label class="elt-label">Тип<select class="elt-select" name="kind"><option value="professional">Профессиональная</option><option value="common">Общая</option></select></label>
-          <label class="elt-label elt-label-full">Описание<input class="elt-input" name="description" placeholder="Коротко, что измеряет"></label>
-        </div>
-        <button class="elt-btn-primary" type="submit" style="margin-top:8px;width:100%">+ Создать компетенцию</button>
-      </div>
-    </form></div>`;
-  }
-
-  if (state.modal?.type === "pick-competency") {
-    const all = state.constructorComps || [];
-    const test = state.constructorTest;
-    const usedIds = new Set(((test && test.competencies) || []).map((c) => c.competency_id));
-    const available = all.filter((c) => !usedIds.has(c.id));
-    const rows = available.length
-      ? available.map((c) => `<button class="ctr-pick-row" data-add-profile-comp="${c.id}" data-test-id="${state.modal.testId}">
-          <span class="ctr-pick-name">${escapeHtml(c.title)} <span class="ctr-kind-badge ${c.kind}">${CTR_KIND_LABEL[c.kind] || c.kind}</span></span>
-          <span class="ctr-pick-count">${c.questions_count} вопр. →</span>
-        </button>`).join("")
-      : `<div class="ctr-empty"><p>Все компетенции уже добавлены или библиотека пуста.</p><button class="elt-btn-ghost" data-action="open-create-competency">+ Создать компетенцию</button></div>`;
-    return `<div class="modalBackdrop"><div class="modal modalWide">
-      ${mHead('Добавить компетенцию в профиль', '➕')}
-      <div class="modal-inner">
-        <p class="modal-subtitle">Выберите компетенцию — её вопросы попадут в профиль автоматически.</p>
-        <div class="ctr-pick-list">${rows}</div>
-      </div>
-    </div></div>`;
-  }
-
-  if (state.modal?.type === "add-question") {
-    const forComp = Boolean(state.modal.competencyId);
-    return `<div class="modalBackdrop"><form class="modal modalWide ctr-q-form" data-qtype="single_choice" data-add-question-form data-test-id="${state.modal.testId || ''}" data-competency-id="${state.modal.competencyId || ''}">
-      ${mHead(forComp ? 'Добавить вопрос в компетенцию' : 'Добавить вопрос', '➕')}
-      <div class="modal-inner">
-        <div class="elt-form-grid">
-          <label class="elt-label elt-label-full">Текст вопроса<input class="elt-input" name="text" placeholder="Сформулируйте вопрос" required></label>
-          <label class="elt-label${forComp ? ' elt-label-full' : ''}">Тип<select class="elt-select" name="type" data-question-type>
-            <option value="single_choice">Один вариант</option>
-            <option value="multiple_choice">Несколько вариантов</option>
-            <option value="scale">Шкала (1–5)</option>
-            <option value="open">Открытый (AI)</option>
-          </select></label>
-          ${forComp ? '' : '<label class="elt-label">Компетенция<input class="elt-input" name="competency_name" placeholder="напр. Коммуникация"></label>'}
-        </div>
-
-        <div class="ctr-section" data-for="choice">
-          <div class="ctr-section-head">Варианты ответа<span>текст · балл · верный · red flag</span></div>
-          ${[1, 2, 3, 4].map((i) => `<div class="ctr-opt-row">
-            <input class="elt-input" name="opt${i}" placeholder="Вариант ${i}">
-            <input class="elt-input ctr-score" name="score${i}" type="number" value="0" title="Балл">
-            <label class="ctr-chk"><input type="checkbox" name="correct${i}"> верный</label>
-            <label class="ctr-chk"><input type="checkbox" name="flag${i}"> red&nbsp;flag</label>
-          </div>`).join("")}
-        </div>
-
-        <div class="ctr-section" data-for="scale">
-          <div class="ctr-section-head">Шкала</div>
-          <div class="elt-form-grid">
-            <label class="elt-label">Минимум<input class="elt-input" name="scale_min" type="number" value="1"></label>
-            <label class="elt-label">Максимум<input class="elt-input" name="scale_max" type="number" value="5"></label>
-          </div>
-        </div>
-
-        <div class="ctr-section" data-for="open">
-          <div class="ctr-section-head">Открытый ответ · AI-оценка</div>
-          <div class="elt-form-grid">
-            <label class="elt-label">Макс. балл<input class="elt-input" name="max_score" type="number" value="5"></label>
-            <label class="elt-label elt-label-full">Эталонный ответ<input class="elt-input" name="ai_reference" placeholder="Что считается хорошим ответом"></label>
-            <label class="elt-label elt-label-full">Критерии для AI<input class="elt-input" name="ai_criteria" placeholder="Критерии оценки"></label>
-          </div>
-        </div>
-
-        <button class="elt-btn-primary" type="submit" style="margin-top:12px;width:100%">+ Добавить вопрос</button>
       </div>
     </form></div>`;
   }
@@ -2819,7 +2574,7 @@ function renderPeopleTable(people, scope = "Кандидаты") {
     const date = item.completedAt ? new Date(item.completedAt).toLocaleDateString('ru-RU') : (item.startDate || '—');
     const isEmp = item.id?.startsWith('emp-');
     const actions = empScope
-      ? `<button class="button subtle" data-open-card="${item.id}">Карточка</button>${!isEmp ? `<button class="button subtle" data-open-answers="${item.id}">Ответы</button>` : ""}`
+      ? `<button class="button subtle" data-open-card="${item.id}">Карточка</button>`
       : `${item.status === "completed" ? `<button class="button subtle" data-pdf-id="${item.id}">PDF</button>` : ""}<button class="button subtle" data-open-card="${item.id}">Карточка</button><button class="button subtle" data-open-answers="${item.id}">Ответы</button>${!isEmp ? CandidateKebab(item.id) : ''}`;
     return `<tr><td class="modal-td-name">${personName(item)}</td><td class="modal-td-role">${item.vacancy || item.position || item.professionTitle || '—'}</td><td><span class="modal-score modal-score-${cat}">${score}%</span></td><td><span class="modal-badge modal-badge-${cat}">${stage}</span></td><td class="modal-td-date">${date}</td><td><div class="rowActions">${actions}</div></td></tr>`;
   }).join('') || `<tr><td colspan="6" style="text-align:center;padding:24px;color:rgba(230,242,255,.35)">Нет данных для выбранного фильтра.</td></tr>`}</tbody></table>`;
@@ -3026,16 +2781,12 @@ function candidatesTableConfig(candidates) {
       StatusBadge(sourceTag(item.source), "neutral"),
       StatusBadge(item.stage, statusForLabel(item.stage, item.result.percent)),
       item.status === "completed"
-        ? `пройдена · ${item.result.percent}%`
+        ? `пройдена · ${item.result.percent}`
         : item.assessmentSent
-          ? "отправлена"
+          ? `отправлена · ${item.result.percent}`
           : "не отправлена",
-      (item.assessed ?? (item.status === "completed"))
-        ? StatusBadge(`${item.result.percent}%`, getFitStatus(item.result.percent))
-        : StatusBadge("Не оценён", "neutral"),
-      (item.assessed ?? (item.status === "completed"))
-        ? StatusBadge(item.result.redFlags ? "средний" : "низкий", item.result.redFlags ? "medium" : "good")
-        : StatusBadge("—", "neutral"),
+      StatusBadge(`${item.result.percent}%`, getFitStatus(item.result.percent)),
+      StatusBadge(item.result.redFlags ? "средний" : "низкий", item.result.redFlags ? "medium" : "good"),
       new Date(item.completedAt).toLocaleDateString("ru-RU"),
       "Рекрутер",
       `<div class="rowActionsWrap">${ActionButtonGroup([
@@ -3079,12 +2830,11 @@ function employeesTableConfig(employees) {
       item.department,
       item.manager,
       item.position.includes("Руководитель") ? "руководитель" : item.startDate > "2026-03-01" ? "новый" : "офисный",
-      StatusBadge(fitLabel(item.fit), getFitStatus(item.fit)),
-      StatusBadge(item.turnoverRisk, item.turnoverRisk === "низкий" ? "good" : item.turnoverRisk === "средний" ? "medium" : item.turnoverRisk === "—" ? "neutral" : "bad"),
+      StatusBadge(`${item.fit}%`, getFitStatus(item.fit)),
+      StatusBadge(item.turnoverRisk, item.turnoverRisk === "низкий" ? "good" : item.turnoverRisk === "средний" ? "medium" : "bad"),
       item.recommendation,
       ActionButtonGroup([
-        { label: "Карточка", attrs: `data-open-card="${item.id}"` },
-        { label: "Ответы", attrs: `data-open-answers="${item.id}"` }
+        { label: "Карточка", attrs: `data-open-card="${item.id}"` }
       ])
     ])
   };
@@ -3131,23 +2881,22 @@ function reportsHeatmap() {
   };
 }
 
-function reportsTableConfig(reports) {
-  const typeRu = (t) => (t === "employee" ? "Сотрудник" : "Кандидат");
+function reportsTableConfig(state) {
+  const completed = state.sessions.filter((item) => item.status === "completed");
   return {
-    title: "Реестр отчётов",
-    caption: "ответы и карточка доступны из строки",
-    columns: ["Дата", "Тип", "ФИО", "Тест", "Балл", "Действия"],
-    rows: reports.map((r) => [
-      r.submitted_at ? new Date(r.submitted_at).toLocaleDateString("ru-RU") : "—",
-      typeRu(r.respondent_type),
-      r.full_name,
-      r.test_title || r.category || "—",
-      StatusBadge(`${r.percent}%`, getFitStatus(r.percent)),
+    title: "Реестр отчетов",
+    caption: "PDF, ответы и карточка доступны из строки",
+    columns: ["Дата", "Тип", "ФИО / группа", "Вакансия / отдел", "Статус", "Действия"],
+    rows: completed.map((session) => [
+      new Date(session.completedAt).toLocaleDateString("ru-RU"),
+      session.person.assessmentType,
+      session.person.fullName,
+      session.vacancy || session.professionTitle,
+      StatusBadge(session.result.recommendation, session.result.percent >= 80 ? "good" : session.result.percent >= 60 ? "medium" : "bad"),
       ActionButtonGroup([
-        // PDF-отчёт есть только для кандидатов (эндпоинт /candidates/{id}/report).
-        ...(r.respondent_type === "candidate" && r.person_id ? [{ label: "PDF", attrs: `data-pdf-id="${r.person_id}"` }] : []),
-        { label: "Ответы", attrs: `data-open-answers="${r.person_id}"` },
-        { label: "Карточка", attrs: `data-open-card="${r.person_id}"` }
+        { label: "PDF", attrs: `data-report-id="${session.id}"` },
+        { label: "Ответы", attrs: `data-open-answers="${session.id}"` },
+        { label: "Открыть", attrs: `data-open-card="${session.id}"` }
       ])
     ])
   };
@@ -3169,78 +2918,14 @@ function miniBars(items) {
 }
 
 function peopleForModal(state, scope, metricName) {
-  const employeeScopes = ["Сотрудники", "Адаптация", "Оценка 360", "Performance Review"];
-  if (employeeScopes.includes(scope)) {
+  if (scope === "Сотрудники" || scope === "Адаптация" || scope === "Оценка 360" || scope === "Performance Review") {
     const emps = state.employeesApi || [];
-    const links = state.linksApi || [];
-    const m = (metricName || "");
-    const has = (s) => m.toLowerCase().includes(s.toLowerCase());
-
-    // Сотрудники — участники ссылок конкретного теста (опц. фильтр по статусу).
-    const linkPeople = (title, statusFn) => {
-      const names = new Set(
-        links
-          .filter((l) => l.professionTitle === title && l.recipientType === "Сотрудник" && (!statusFn || statusFn(l)))
-          .map((l) => l.fullName)
-      );
-      return emps.filter((e) => names.has(e.fullName));
-    };
-    const pot = (e) => {
-      let p = e.satisfaction || 0;
-      if (e.turnoverRisk === "повышенный") p -= 15;
-      else if (e.turnoverRisk === "средний") p -= 7;
-      return Math.max(0, Math.min(100, p));
-    };
-    const daysSince = (d) => {
-      if (!d) return null;
-      const t = Date.parse(d);
-      return Number.isNaN(t) ? null : Math.floor((Date.now() - t) / 86400000);
-    };
-
-    if (scope === "Performance Review") {
-      if (has("не оцен")) return emps.filter((e) => e.fit == null);
-      if (has("цикл")) return linkPeople("Performance Review");
-      if (has("Завершил")) return linkPeople("Performance Review", (l) => l.status === "completed");
-      if (has("HiPo") || has("потенциал")) return emps.filter((e) => e.fit >= 80 && pot(e) >= 80);
-      if (has("резерв")) return emps.filter((e) => pot(e) >= 80 && e.fit >= 60);
-      if (has("Высок")) return emps.filter((e) => e.fit >= 80);
-      if (has("Низк")) return emps.filter((e) => e.fit != null && e.fit < 60);
-      return emps;
-    }
-
-    if (scope === "Оценка 360") {
-      if (has("Активн")) return linkPeople("Оценка 360°", (l) => l.status !== "completed");
-      if (has("Завершен")) return linkPeople("Оценка 360°", (l) => l.status === "completed");
-      if (has("Участник") || has("балл")) return linkPeople("Оценка 360°");
-      if (has("разв")) return emps.filter((e) => e.fit != null && e.fit < 70);
-      return emps;
-    }
-
-    if (scope === "Адаптация") {
-      const newEmps = emps.filter((e) => { const d = daysSince(e.startDate); return d !== null && d <= 90; });
-      if (has("Новые")) return newEmps;
-      if (has("процесс") || has("30")) return emps.filter((e) => { const d = daysSince(e.startDate); return d !== null && d <= 30; });
-      if (has("Опрос")) return linkPeople("Адаптация сотрудника", has("пройден") ? (l) => l.status === "completed" : null);
-      if (has("Прошл")) return emps.filter((e) => { const d = daysSince(e.startDate); return d !== null && d > 90 && e.fit >= 70; });
-      if (has("риск") || has("зоне")) return newEmps.filter((e) => e.turnoverRisk === "средний" || e.turnoverRisk === "повышенный" || (e.satisfaction > 0 && e.satisfaction < 60));
-      if (has("Вовлеч") || has("удовлет")) return emps.filter((e) => e.satisfaction > 0);
-      return newEmps.length ? newEmps : emps;
-    }
-
-    // scope === "Сотрудники" — в т.ч. дрилл-даун из «Состояния отделов»
-    // (metricName вида «Отдел продаж Риск увольнения»).
-    const deptNames = [...new Set([
-      ...(state.departments || []).map((d) => d.name),
-      ...emps.map((e) => e.department),
-    ])].filter(Boolean);
-    const dept = deptNames.find((name) => m.includes(name));
-    const pool = dept ? emps.filter((e) => e.department === dept) : emps;
-    if (has("Высок")) return pool.filter((e) => e.fit >= 80);
-    if (has("Средн")) return pool.filter((e) => e.fit >= 60 && e.fit < 80);
-    if (has("Низк")) return pool.filter((e) => e.fit < 60);
-    if (has("Выгорание")) return pool.filter((e) => e.burnout && !["—", "нет", ""].includes(String(e.burnout).toLowerCase()));
-    if (has("риск") || has("зоне")) return pool.filter(employeeAtRisk);
-    return pool;
+    if (metricName.includes("Высокий")) return emps.filter((e) => e.fit >= 80);
+    if (metricName.includes("Средний")) return emps.filter((e) => e.fit >= 60 && e.fit < 80);
+    if (metricName.includes("Низкий")) return emps.filter((e) => e.fit < 60);
+    if (metricName.includes("Выгорание")) return emps.filter((e) => e.burnout && !["—", "нет", ""].includes(String(e.burnout).toLowerCase()));
+    if (metricName.includes("риск") || metricName.includes("В зоне")) return emps.filter((e) => e.turnoverRisk !== "низкий" || e.fit < 70);
+    return emps;
   }
   // Кандидаты: при наличии данных из API фильтруем их, иначе — демо-сид.
   const usingApi = Boolean(state.candidateStats && state.candidatesApi);
@@ -3273,45 +2958,14 @@ function personName(item) {
   return item?.person?.fullName || item?.fullName || "Участник";
 }
 
-// «Не оценён», если профильной оценки не было (fit = null/undefined).
-function fitLabel(fit) {
-  return (fit === null || fit === undefined) ? "не оценён" : `${fit}%`;
-}
-
 function employeeCardApi(d) {
-  const riskRu = { none: "—", low: "низкий", medium: "средний", high: "повышенный" };
-  const noFit = d.fit === null || d.fit === undefined;
-  const fitColor = noFit ? "#6E7C97" : d.fit >= 80 ? "#16A34A" : d.fit >= 60 ? "#F59E0B" : "#DC2626";
-  const statusWord = (p) => (p >= 80 ? "высокий" : p >= 60 ? "средний" : "низкий");
-
-  // Блок оценок по каждому тесту + средняя оценка и статус.
-  const a = d.assessments;
-  let assessHtml;
-  if (a === undefined) {
-    assessHtml = `<p class="modal-subtitle" style="margin-top:12px">Загрузка оценок…</p>`;
-  } else if (!a || !a.count) {
-    assessHtml = `<div class="emp-assess"><div class="emp-assess-head"><span>Оценки по тестам</span></div><p class="emp-assess-empty">Сотрудник пока не проходил тесты.</p></div>`;
-  } else {
-    assessHtml = `<div class="emp-assess">
-      <div class="emp-assess-head">
-        <span>Средняя оценка <em>· ${a.count} ${a.count === 1 ? "тест" : a.count < 5 ? "теста" : "тестов"}</em></span>
-        <span class="emp-assess-avg">${a.average_percent}% ${StatusBadge(statusWord(a.average_percent), getFitStatus(a.average_percent))}</span>
-      </div>
-      <div class="emp-assess-list">
-        ${a.items.map((it) => `<div class="emp-assess-row">
-          <span class="emp-assess-test">${it.test_title || it.category || "Тест"}</span>
-          <span class="emp-assess-pct">${StatusBadge(`${it.percent}%`, getFitStatus(it.percent))}</span>
-        </div>`).join("")}
-      </div>
-      <button class="button subtle emp-assess-answers" data-open-answers="${d.id}">Посмотреть ответы по тесту →</button>
-    </div>`;
-  }
-
+  const riskRu = { low: "низкий", medium: "средний", high: "повышенный" };
+  const fitColor = (d.fit ?? 0) >= 80 ? "#16A34A" : (d.fit ?? 0) >= 60 ? "#F59E0B" : "#DC2626";
   return `<div class="personCard">
     <b>${d.full_name}</b>
     <span>${d.position || "Сотрудник"}${d.department ? " · " + d.department : ""}</span>
     <dl>
-      <dt>Соответствие должности</dt><dd style="color:${fitColor};font-weight:600">${fitLabel(d.fit)}</dd>
+      <dt>Соответствие</dt><dd style="color:${fitColor};font-weight:600">${d.fit ?? 0}%</dd>
       <dt>Руководитель</dt><dd>${d.manager || "—"}</dd>
       <dt>Проект</dt><dd>${d.project || "—"}</dd>
       <dt>Риск увольнения</dt><dd>${riskRu[d.turnover_risk] || d.turnover_risk || "—"}</dd>
@@ -3319,7 +2973,6 @@ function employeeCardApi(d) {
       <dt>Удовлетворённость</dt><dd>${d.satisfaction != null ? d.satisfaction + "%" : "—"}</dd>
       <dt>Рекомендация</dt><dd>${d.recommendation || "—"}</dd>
     </dl>
-    ${assessHtml}
   </div>`;
 }
 
@@ -3513,7 +3166,7 @@ export function renderDevPortal(library) {
     <div class="devPortal">
       <div class="devPortalHeader">
         <div class="devPortalLogo">
-          <img src="/assets/eltera_logo_horizontal_on_dark.svg?v=5" alt="Eltera" height="28">
+          <img src="/public/assets/eltera_logo_horizontal_on_dark.png?v=5" alt="Eltera" height="28">
           <span class="devPortalBadge">Dev Portal</span>
         </div>
         <div class="devPortalActions">
@@ -3690,12 +3343,7 @@ function renderAssessmentWizard(state) {
     deptCounts[d] = (deptCounts[d] || 0) + 1;
   });
   const departments = Object.entries(deptCounts).map(([name, count]) => ({ name, employees: count }));
-  // Мастер оценивает сотрудников — показываем только тесты для сотрудников.
-  const professions = (state.testsApi || [])
-    .filter((t) => t.target_type === "employee")
-    .map((t) => ({ id: t.id, title: t.title, category: t.category || "тест" }));
-  // Сопоставление типов оценки с готовыми тестами для сотрудников.
-  const TYPE_TEST_TITLE = { "360": "Оценка 360°", review: "Performance Review", adaptation: "Адаптация сотрудника" };
+  const professions = (state.testsApi || []).map((t) => ({ id: t.id, title: t.title, category: t.category || "тест" }));
   const isTalentStudio = state.company?.tariff === "TalentStudio";
 
   // ── Step indicator ──────────────────────────────────────────────────────────
@@ -3759,7 +3407,6 @@ function renderAssessmentWizard(state) {
         { id: "review",    icon: svgReview,     title: "Performance Review",   desc: "Оценка результативности и потенциала. Формирует 9-box и кадровый резерв.",  soon: false },
         { id: "360",       icon: svg360,        title: "Оценка 360°",          desc: "Самооценка + руководитель + коллеги + подчинённые. Разные роли, разные веса.", soon: false },
         { id: "standard",  icon: svgCompetency, title: "Оценка компетенций",   desc: "Профиль компетенций, психологические и профессиональные блоки.",            soon: false },
-        { id: "adaptation",icon: svgEngage,     title: "Адаптация",            desc: "Пульс-опрос адаптации: понятность задач, поддержка, ресурсы, ожидания.",     soon: false },
         { id: "potential", icon: svgPotential,  title: "Оценка потенциала",    desc: "Анализ потенциала роста и карьерных перспектив сотрудника.",                 soon: true  },
         { id: "ipr",       icon: svgCompetency, title: "ИПР / план развития",  desc: "Индивидуальный план развития на основе результатов оценки.",                 soon: true  },
         { id: "risk",      icon: svgRisk,       title: "Оценка рисков",        desc: "Выявление рисков удержания, выгорания и снижения эффективности.",            soon: true  },
@@ -3767,7 +3414,6 @@ function renderAssessmentWizard(state) {
       group: [
         { id: "review",    icon: svgReview,     title: "Групповой Performance Review", desc: "Оценка результативности группы. Отчёты по каждому + сравнение.",  soon: false },
         { id: "standard",  icon: svgCompetency, title: "Оценка компетенций группы",    desc: "Массовый запуск оценки компетенций для выбранных сотрудников.",   soon: false },
-        { id: "adaptation",icon: svgEngage,     title: "Адаптация группы",             desc: "Пульс-опрос адаптации для выбранных новых сотрудников.",          soon: false },
         { id: "360",       icon: svg360,        title: "Массовый запуск 360°",         desc: "Индивидуальные 360 для каждого. Отчёты формируются отдельно.",     soon: false },
         { id: "ninebox",   icon: svgNineBox,    title: "9-Box группы",                 desc: "Расстановка группы по матрице Performance × Potential.",           soon: true  },
         { id: "assessment",icon: svgGroup,      title: "Ассессмент группы",            desc: "Структурированная оценка для кадрового резерва.",                  soon: true  },
@@ -3776,7 +3422,6 @@ function renderAssessmentWizard(state) {
       dept: [
         { id: "review",    icon: svgReview,     title: "Performance Review отдела",       desc: "Оценка результативности всех сотрудников отдела.",                    soon: false },
         { id: "standard",  icon: svgCompetency, title: "Оценка эффективности отдела",     desc: "Массовый запуск оценки компетенций по всему отделу.",                 soon: false },
-        { id: "adaptation",icon: svgEngage,     title: "Адаптация отдела",                desc: "Пульс-опрос адаптации по новым сотрудникам отдела.",                  soon: false },
         { id: "360",       icon: svg360,        title: "Массовый запуск 360° по отделу",  desc: "Индивидуальные 360 для каждого сотрудника отдела.",                   soon: false },
         { id: "climate",   icon: svgClimate,    title: "Оценка климата",                  desc: "Анонимный опрос удовлетворённости и психологического климата.",        soon: true  },
         { id: "engagement",icon: svgEngage,     title: "Оценка вовлечённости",            desc: "Измерение вовлечённости и мотивации сотрудников отдела.",              soon: true  },
@@ -3850,104 +3495,158 @@ function renderAssessmentWizard(state) {
         ${['3 дня','7 дней','14 дней','30 дней'].map(d=>`<button class="aw-deadline-btn ${deadline===d?'selected':''}" data-aw-deadline="${d}">${d}</button>`).join('')}
       </div></div>`;
 
-    // ── 360: выбор оцениваемого + оценщиков по ролям ──
-    if (assessType === '360') {
-      const subject = w.subject || null;
-      const raters = w.raters || {};
-      const roleLabels = { manager: 'Рук.', peer: 'Коллега', report: 'Подч.' };
-      const ini = (e) => e.fullName.split(' ').slice(0, 2).map((x) => x[0]).join('');
-      const subjEmp = employees.find((e) => e.id === subject);
-      const raterCount = Object.keys(raters).length;
-      const canSend = !!subject && raterCount > 0 && !!deadline;
-
-      const assessedHtml = `<div class="aw-emp-select">
-        <span class="aw-field-label">Кого оцениваем</span>
-        <div class="aw-emp-list">
-          ${employees.length ? employees.map((e) => `<button class="aw-emp-row ${subject === e.id ? 'selected' : ''}" data-aw-subject="${e.id}">
-            <div class="aw-emp-avatar">${ini(e)}</div>
-            <div class="aw-emp-info"><strong>${e.fullName}</strong><span>${e.position} · ${e.department}</span></div>
-            <div class="aw-emp-check"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5l3.5 3.5 5.5-5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          </button>`).join('') : '<div class="aw-emp-empty">Нет сотрудников</div>'}
-        </div></div>`;
-
-      const ratersHtml = `<div class="aw-emp-select">
-        <span class="aw-field-label">Оценщики и роли ${raterCount ? `· выбрано ${raterCount}` : ''}</span>
-        <span class="aw-pr-scale-desc">Выберите роль для каждого оценщика. Самооценка добавляется автоматически.</span>
-        <div class="aw-emp-list">
-          ${employees.filter((e) => e.id !== subject).map((e) => {
-            const role = raters[e.id];
-            return `<div class="aw-rater-row ${role ? 'selected' : ''}">
-              <div class="aw-emp-avatar">${ini(e)}</div>
-              <div class="aw-emp-info"><strong>${e.fullName}</strong><span>${e.position}</span></div>
-              <div class="aw-rater-roles">
-                ${['manager', 'peer', 'report'].map((r) => `<button class="aw-role-pill ${role === r ? 'on' : ''}" data-aw-rater-role="${e.id}|${r}">${roleLabels[r]}</button>`).join('')}
-              </div>
-            </div>`;
-          }).join('')}
-        </div></div>`;
-
+    // ── 3a: Performance Review ────────────────────────────────────────────────────────────────
+    if (assessType === 'review') {
+      const prVals = w.prValues || {};
+      const prScales = [
+        { key: 'performance', label: 'Результативность', desc: 'Насколько сотрудник достигает целей и KPI', opts: ['Низкая','Ниже ожиданий','Соответствует','Выше ожиданий','Исключительная'] },
+        { key: 'potential',   label: 'Потенциал',        desc: 'Способность к росту и развитию',        opts: ['Низкий','Ограниченный','Умеренный','Высокий','Исключительный'] }
+      ];
+      const pi = prVals.performance ?? -1;
+      const po = prVals.potential ?? -1;
+      const nineBoxMap = {
+        '00':'Зона риска','01':'Зона риска','10':'Зона риска','11':'Зона развития',
+        '02':'Стабильный','20':'Стабильный','12':'Стабильный','21':'Стабильный','22':'Стабильный',
+        '03':'Стабильный','30':'Стабильный','13':'Перспективный','31':'Перспективный',
+        '04':'HiPo','40':'HiPo','14':'HiPo','41':'HiPo','23':'Перспективный','32':'Перспективный',
+        '24':'HiPo','42':'HiPo','33':'Перспективный','34':'HiPo','43':'HiPo','44':'HiPo'
+      };
+      const nbLabel = pi >= 0 && po >= 0 ? (nineBoxMap[`${pi}${po}`] || 'Стабильный') : null;
+      const nbColor = nbLabel === 'HiPo' ? '#00E5D4' : nbLabel === 'Перспективный' ? '#1E5BFF' : nbLabel === 'Зона риска' ? '#e07070' : '#6b7a99';
+      const sendCount = scope === 'dept' ? (departments.find(d=>d.name===deptSelected)?.employees||0) : selected.length;
+      const canSend = (scope === 'dept' ? !!deptSelected : selected.length > 0) && pi >= 0 && po >= 0 && !!deadline;
       bodyHtml = `
         <div class="aw-step3-layout">
-          <div class="aw-step3-left">${assessedHtml}</div>
+          <div class="aw-step3-left">
+            <span class="aw-field-label">${scope==='dept'?'Отдел':scope==='group'?'Сотрудники (мультивыбор)':'Сотрудник'}</span>
+            ${empSelectHtml('Поиск по имени, должности...', 'Выбрано')}
+          </div>
           <div class="aw-step3-right">
-            ${ratersHtml}
+            <div class="aw-pr-scales">
+              ${prScales.map(s => `
+                <div class="aw-pr-scale">
+                  <span class="aw-field-label">${s.label}</span>
+                  <span class="aw-pr-scale-desc">${s.desc}</span>
+                  <div class="aw-pr-opts">
+                    ${s.opts.map((opt,idx) => `<button class="aw-pr-opt ${prVals[s.key]===idx?'selected':''}" data-aw-pr-key="${s.key}" data-aw-pr-val="${idx}">${opt}</button>`).join('')}
+                  </div>
+                </div>`).join('')}
+            </div>
+            ${nbLabel ? `<div class="aw-ninebox-preview">
+              <span class="aw-field-label">9-Box категория</span>
+              <div class="aw-ninebox-badge" style="background:${nbColor}20;border:1px solid ${nbColor}40;color:${nbColor}">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="3.5" height="3.5" rx=".7" stroke="currentColor" stroke-width="1.2"/><rect x="5.3" y="1" width="3.5" height="3.5" rx=".7" stroke="currentColor" stroke-width="1.2"/><rect x="9.5" y="1" width="3.5" height="3.5" rx=".7" stroke="currentColor" stroke-width="1.2"/><rect x="1" y="5.3" width="3.5" height="3.5" rx=".7" stroke="currentColor" stroke-width="1.2"/><rect x="5.3" y="5.3" width="3.5" height="3.5" rx=".7" stroke="currentColor" stroke-width="1.2"/><rect x="9.5" y="5.3" width="3.5" height="3.5" rx=".7" stroke="currentColor" stroke-width="1.2"/><rect x="1" y="9.5" width="3.5" height="3.5" rx=".7" stroke="currentColor" stroke-width="1.2"/><rect x="5.3" y="9.5" width="3.5" height="3.5" rx=".7" stroke="currentColor" stroke-width="1.2"/><rect x="9.5" y="9.5" width="3.5" height="3.5" rx=".7" stroke="currentColor" stroke-width="1.2"/></svg>
+                ${nbLabel}
+              </div></div>` : ''}
             ${deadlineHtml}
-            ${canSend ? `<div class="aw-send-preview"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11z" stroke="currentColor" stroke-width="1.3"/><path d="M7 4.5v3l2 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Будет отправлено <strong>${raterCount + 1}</strong> ссылок (самооценка + ${raterCount})</div>` : ''}
+            ${canSend ? `<div class="aw-send-preview"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11z" stroke="currentColor" stroke-width="1.3"/><path d="M7 4.5v3l2 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Будет запущено <strong>${sendCount}</strong> ревью</div>` : ''}
           </div>
         </div>
         <div class="aw-footer">
           <button class="elt-btn-ghost" data-aw-back="2">← Назад</button>
-          <button class="blueButton" data-aw-send-360r ${!canSend ? 'disabled' : ''}>
+          <button class="blueButton" data-aw-send-review ${!canSend?'disabled':''}>
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 6.5L11.5 1.5l-5 10-1-4.5-4.5-0.5z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Запустить 360°${subjEmp ? ` · ${subjEmp.fullName}` : ''}
+            Запустить ревью${sendCount>1?` (${sendCount})`:''}
           </button>
         </div>`;
+
+    // ── 3b: Оценка 360 ────────────────────────────────────────────────────────────────
+    } else if (assessType === '360') {
+      const roles360 = w.roles360 || { self: true, manager: false, peers: 0, reports: 0 };
+      const totalRaters = (roles360.self?1:0) + (roles360.manager?1:0) + roles360.peers + roles360.reports;
+      const canSend = selected.length > 0 && totalRaters >= 2 && !!deadline;
+      bodyHtml = `
+        <div class="aw-step3-layout">
+          <div class="aw-step3-left">
+            <span class="aw-field-label">Кого оцениваем</span>
+            ${empSelectHtml('Кого оцениваем? Поиск по имени...', 'Оцениваемых')}
+          </div>
+          <div class="aw-step3-right">
+            <div class="aw-360-roles">
+              <span class="aw-field-label">Роли оценщиков</span>
+              <span class="aw-pr-scale-desc">Минимум 2 роли. Каждая роль получает отдельную ссылку.</span>
+              <div class="aw-role-list">
+                <div class="aw-role-row ${roles360.self?'':'off'}">
+                  <div class="aw-role-info">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M2 14c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                    <div><strong>Самооценка</strong><span>Сотрудник оценивает себя сам</span></div>
+                  </div>
+                  <button class="aw-role-toggle ${roles360.self?'on':''}" data-aw-role="self" data-aw-role-val="toggle">${roles360.self?'Вкл':'Выкл'}</button>
+                </div>
+                <div class="aw-role-row ${roles360.manager?'':'off'}">
+                  <div class="aw-role-info">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2l1.5 3 3.5.5-2.5 2.5.6 3.5L8 10l-3.1 1.5.6-3.5L3 5.5 6.5 5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+                    <div><strong>Руководитель</strong><span>Прямой руководитель</span></div>
+                  </div>
+                  <button class="aw-role-toggle ${roles360.manager?'on':''}" data-aw-role="manager" data-aw-role-val="toggle">${roles360.manager?'Вкл':'Выкл'}</button>
+                </div>
+                <div class="aw-role-row ${roles360.peers>0?'':'off'}">
+                  <div class="aw-role-info">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.4"/><circle cx="11" cy="5" r="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M1 14c0-2.21 1.79-4 4-4M15 14c0-2.21-1.79-4-4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                    <div><strong>Коллеги</strong><span>Сотрудники одного уровня</span></div>
+                  </div>
+                  <div class="aw-role-counter">
+                    <button class="aw-cnt-btn" data-aw-role="peers" data-aw-role-val="dec">−</button>
+                    <span class="aw-cnt-val">${roles360.peers}</span>
+                    <button class="aw-cnt-btn" data-aw-role="peers" data-aw-role-val="inc">+</button>
+                  </div>
+                </div>
+                <div class="aw-role-row ${roles360.reports>0?'':'off'}">
+                  <div class="aw-role-info">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M2 14c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M8 9v5M5.5 11.5l2.5-2.5 2.5 2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <div><strong>Подчинённые</strong><span>Сотрудники в подчинении</span></div>
+                  </div>
+                  <div class="aw-role-counter">
+                    <button class="aw-cnt-btn" data-aw-role="reports" data-aw-role-val="dec">−</button>
+                    <span class="aw-cnt-val">${roles360.reports}</span>
+                    <button class="aw-cnt-btn" data-aw-role="reports" data-aw-role-val="inc">+</button>
+                  </div>
+                </div>
+              </div>
+              ${totalRaters >= 2
+                ? `<div class="aw-360-summary">Всего оценщиков на 1 чел.: <strong>${totalRaters}</strong> · Ссылок: <strong>${selected.length * totalRaters}</strong></div>`
+                : `<div class="aw-360-warn">Выберите минимум 2 роли</div>`}
+            </div>
+            ${deadlineHtml}
+            ${canSend ? `<div class="aw-send-preview"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11z" stroke="currentColor" stroke-width="1.3"/><path d="M7 4.5v3l2 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Будет отправлено <strong>${selected.length * totalRaters}</strong> ссылок</div>` : ''}
+          </div>
+        </div>
+        <div class="aw-footer">
+          <button class="elt-btn-ghost" data-aw-back="2">← Назад</button>
+          <button class="blueButton" data-aw-send-360 ${!canSend?'disabled':''}>
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 6.5L11.5 1.5l-5 10-1-4.5-4.5-0.5z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            ${scope==='dept'?'Запустить 360° по отделу':scope==='group'?'Запустить массовый 360°':'Запустить 360°'}${selected.length>0?` (${selected.length})`:''}
+          </button>
+        </div>`;
+
+    // ── 3c: Стандартная оценка ────────────────────────────────────────────────────────────────
     } else {
-    // ── Единый шаг настройки для всех типов оценки сотрудников ──
-    // Тест берётся: для «Оценки компетенций» — выбранный профиль; для
-    // Адаптации/Performance Review — соответствующий готовый тест.
-    const isStandard = assessType === 'standard';
-    const isAdapt = assessType === 'adaptation';
-    const presetTitle = TYPE_TEST_TITLE[assessType] || null;
-    const profListHtml = isStandard
-      ? `<div class="aw-prof-select">
-          <span class="aw-field-label">Профиль оценки (тест для сотрудника)</span>
-          <div class="aw-prof-grid">
-            ${professions.length
-              ? professions.map(p => `<button class="aw-prof-btn ${profId===p.id?'selected':''}" data-aw-prof="${p.id}"><strong>${p.title}</strong><span>${p.category}</span></button>`).join('')
-              : '<div class="aw-360-warn">Нет тестов для сотрудников. Создайте тест в Конструкторе.</div>'}
-          </div></div>`
-      : isAdapt
-        ? `<div class="aw-prof-select">
-            <span class="aw-field-label">Цикл адаптации</span>
-            <div class="aw-fixed-test"><strong>Онбординг-пульс</strong><span>этапы 1 / 3 / 7 / 14 / 30 / 60 / 90 / 180 дней · первый опрос уходит сразу</span></div>
-          </div>`
-        : `<div class="aw-prof-select">
-            <span class="aw-field-label">Тест</span>
-            <div class="aw-fixed-test"><strong>${presetTitle || 'Тест'}</strong><span>готовый тест для сотрудников · 5 вопросов</span></div>
-          </div>`;
-    const canSend = (scope==='dept'?!!deptSelected:selected.length>0) && (!isStandard || !!profId) && (isAdapt || !!deadline);
-    const sendCount = scope==='dept'?(departments.find(d=>d.name===deptSelected)?.employees||0):selected.length;
-    const sendLabel = isAdapt ? 'Запустить адаптацию' : scope==='dept' ? 'Запустить по отделу' : scope==='group' ? 'Запустить массово' : 'Отправить оценку';
-    bodyHtml = `
-      <div class="aw-step3-layout">
-        <div class="aw-step3-left">
-          <span class="aw-field-label">${scope==='dept'?'Отдел':scope==='group'?'Сотрудники (мультивыбор)':'Сотрудник'}</span>
-          ${empSelectHtml('Поиск по имени, должности, отделу...', 'Выбрано')}
+      const profListHtml = `<div class="aw-prof-select">
+        <span class="aw-field-label">Профиль оценки</span>
+        <div class="aw-prof-grid">
+          ${professions.slice(0,6).map(p=>`<button class="aw-prof-btn ${profId===p.id?'selected':''}" data-aw-prof="${p.id}"><strong>${p.title}</strong><span>${p.category}</span></button>`).join('')}
+        </div></div>`;
+      const canSend = (scope==='dept'?!!deptSelected:selected.length>0) && !!profId && !!deadline;
+      const sendCount = scope==='dept'?(departments.find(d=>d.name===deptSelected)?.employees||0):selected.length;
+      bodyHtml = `
+        <div class="aw-step3-layout">
+          <div class="aw-step3-left">
+            <span class="aw-field-label">${scope==='dept'?'Отдел':scope==='group'?'Сотрудники (мультивыбор)':'Сотрудник'}</span>
+            ${empSelectHtml('Поиск по имени, должности, отделу...', 'Выбрано')}
+          </div>
+          <div class="aw-step3-right">
+            ${profListHtml}
+            ${deadlineHtml}
+            ${canSend?`<div class="aw-send-preview"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11z" stroke="currentColor" stroke-width="1.3"/><path d="M7 4.5v3l2 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Будет отправлено <strong>${sendCount}</strong> ссылок</div>`:''}
+          </div>
         </div>
-        <div class="aw-step3-right">
-          ${profListHtml}
-          ${isAdapt ? '' : deadlineHtml}
-          ${canSend?`<div class="aw-send-preview"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11z" stroke="currentColor" stroke-width="1.3"/><path d="M7 4.5v3l2 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>${isAdapt ? `Будет запущена адаптация для <strong>${sendCount}</strong> сотрудник(ов)` : `Будет отправлено <strong>${sendCount}</strong> ссылок`}</div>`:''}
-        </div>
-      </div>
-      <div class="aw-footer">
-        <button class="elt-btn-ghost" data-aw-back="2">← Назад</button>
-        <button class="blueButton" data-aw-send ${!canSend?'disabled':''}>
-          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 6.5L11.5 1.5l-5 10-1-4.5-4.5-0.5z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          ${sendLabel}${sendCount>1?` (${sendCount})`:''}
-        </button>
-      </div>`;
+        <div class="aw-footer">
+          <button class="elt-btn-ghost" data-aw-back="2">← Назад</button>
+          <button class="blueButton" data-aw-send ${!canSend?'disabled':''}>
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 6.5L11.5 1.5l-5 10-1-4.5-4.5-0.5z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            ${assessType==='review'?(scope==='one'?'Запустить ревью':(scope==='group'?'Запустить групповой ревью':'Запустить ревью отдела')):'Отправить оценку'}${sendCount>1?` (${sendCount})`:''}
+          </button>
+        </div>`;
     }
   }
 
