@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: eltera-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: eltera
+      POSTGRES_PASSWORD: eltera
+      POSTGRES_DB: eltera
+    ports:
+      - "5432:5432"
+    volumes:
+      - eltera_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eltera -d eltera"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  eltera_pgdata:

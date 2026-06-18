@@ -1,0 +1,327 @@
+2026-06-12 12:55:32,158 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-12 12:55:32,203 INFO sqlalchemy.engine.Engine SELECT tests.id, tests.title 
+FROM tests 
+WHERE tests.title IN (?, ?, ?, ?)
+2026-06-12 12:55:32,206 INFO sqlalchemy.engine.Engine [generated in 0.00314s] ('Адаптация · Интеграция', 'Адаптация · Итог', 'Адаптация · Старт', 'Адаптация · Закрепление')
+2026-06-12 12:55:32,212 INFO sqlalchemy.engine.Engine SELECT adaptation_cycles.person_id 
+FROM adaptation_cycles
+2026-06-12 12:55:32,215 INFO sqlalchemy.engine.Engine [generated in 0.00298s] ()
+2026-06-12 12:55:32,221 INFO sqlalchemy.engine.Engine SELECT employee_profiles.person_id, employee_profiles.department_id, employee_profiles.position, employee_profiles.manager_id, employee_profiles.project, employee_profiles.start_date, employee_profiles.employment_type, employee_profiles.turnover_risk, employee_profiles.burnout, employee_profiles.satisfaction, employee_profiles.recommendation, employee_profiles.fit, people.id, people.organization_id, people.last_name, people.first_name, people.patronymic, people.full_name, people.email, people.phone, people.city, people.created_at, people.updated_at 
+FROM employee_profiles JOIN people ON people.id = employee_profiles.person_id 
+WHERE employee_profiles.start_date IS NOT NULL
+2026-06-12 12:55:32,222 INFO sqlalchemy.engine.Engine [generated in 0.00080s] ()
+2026-06-12 12:55:32,226 INFO sqlalchemy.engine.Engine SELECT employee_profiles.person_id AS employee_profiles_person_id, employee_profiles.department_id AS employee_profiles_department_id, employee_profiles.position AS employee_profiles_position, employee_profiles.manager_id AS employee_profiles_manager_id, employee_profiles.project AS employee_profiles_project, employee_profiles.start_date AS employee_profiles_start_date, employee_profiles.employment_type AS employee_profiles_employment_type, employee_profiles.turnover_risk AS employee_profiles_turnover_risk, employee_profiles.burnout AS employee_profiles_burnout, employee_profiles.satisfaction AS employee_profiles_satisfaction, employee_profiles.recommendation AS employee_profiles_recommendation, employee_profiles.fit AS employee_profiles_fit 
+FROM employee_profiles 
+WHERE employee_profiles.person_id IN (?, ?, ?, ?)
+2026-06-12 12:55:32,227 INFO sqlalchemy.engine.Engine [generated in 0.00077s] ('2d94d2c65f9b4e99b7a78931cda3dc31', '88a4293ff8074951bc1a17b1958fd84a', 'c8fe2c4aa6474fdfbb91c6265ae72e02', '3967f5350a5847b69d2a34608a2ced47')
+2026-06-12 12:55:32,230 INFO sqlalchemy.engine.Engine SELECT candidate_profiles.person_id AS candidate_profiles_person_id, candidate_profiles.vacancy_id AS candidate_profiles_vacancy_id, candidate_profiles.source AS candidate_profiles_source, candidate_profiles.selection_type AS candidate_profiles_selection_type, candidate_profiles.stage AS candidate_profiles_stage, candidate_profiles.responsible_user_id AS candidate_profiles_responsible_user_id, candidate_profiles.applied_at AS candidate_profiles_applied_at, candidate_profiles.notes AS candidate_profiles_notes 
+FROM candidate_profiles 
+WHERE candidate_profiles.person_id IN (?, ?, ?, ?)
+2026-06-12 12:55:32,230 INFO sqlalchemy.engine.Engine [generated in 0.00063s] ('2d94d2c65f9b4e99b7a78931cda3dc31', '88a4293ff8074951bc1a17b1958fd84a', 'c8fe2c4aa6474fdfbb91c6265ae72e02', '3967f5350a5847b69d2a34608a2ced47')
+2026-06-12 12:55:32,234 INFO sqlalchemy.engine.Engine COMMIT
+2026-06-12 12:55:32,238 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-12 12:55:32,241 INFO sqlalchemy.engine.Engine SELECT adaptation_checkins.id, adaptation_checkins.cycle_id, adaptation_checkins.person_id, adaptation_checkins.offset_days, adaptation_checkins.due_date, adaptation_checkins.stage, adaptation_checkins.test_id, adaptation_checkins.link_id, adaptation_checkins.session_id, adaptation_checkins.status, adaptation_checkins.result_percent, adaptation_checkins.risk_flag, adaptation_checkins.sent_at, adaptation_checkins.completed_at, adaptation_checkins.reminders_sent, adaptation_checkins.last_reminder_at 
+FROM adaptation_checkins 
+WHERE adaptation_checkins.status = ? AND adaptation_checkins.link_id IS NOT NULL
+2026-06-12 12:55:32,241 INFO sqlalchemy.engine.Engine [generated in 0.00100s] ('sent',)
+2026-06-12 12:55:32,246 INFO sqlalchemy.engine.Engine SELECT assessment_sessions.id, assessment_sessions.organization_id, assessment_sessions.person_id, assessment_sessions.link_id, assessment_sessions.test_id, assessment_sessions.test_version_id, assessment_sessions.respondent_type, assessment_sessions.vacancy_id, assessment_sessions.status, assessment_sessions.score, assessment_sessions.max_score, assessment_sessions.percent, assessment_sessions.red_flags, assessment_sessions.unanswered_count, assessment_sessions.recommendation_level, assessment_sessions.recommendation_text, assessment_sessions.report_narrative, assessment_sessions.answers_snapshot, assessment_sessions.started_at, assessment_sessions.submitted_at, assessment_sessions.scored_at, assessment_sessions.created_at 
+FROM assessment_sessions 
+WHERE assessment_sessions.link_id IN (?) AND assessment_sessions.status IN (?, ?, ?)
+2026-06-12 12:55:32,246 INFO sqlalchemy.engine.Engine [generated in 0.00069s] ('09b4e37d42224c33aa71b7af284f18df', 'scored', 'reviewed', 'submitted')
+2026-06-12 12:55:32,248 INFO sqlalchemy.engine.Engine COMMIT
+2026-06-12 12:55:32,251 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-12 12:55:32,253 INFO sqlalchemy.engine.Engine SELECT adaptation_checkins.id, adaptation_checkins.cycle_id, adaptation_checkins.person_id, adaptation_checkins.offset_days, adaptation_checkins.due_date, adaptation_checkins.stage, adaptation_checkins.test_id, adaptation_checkins.link_id, adaptation_checkins.session_id, adaptation_checkins.status, adaptation_checkins.result_percent, adaptation_checkins.risk_flag, adaptation_checkins.sent_at, adaptation_checkins.completed_at, adaptation_checkins.reminders_sent, adaptation_checkins.last_reminder_at 
+FROM adaptation_checkins JOIN adaptation_cycles ON adaptation_cycles.id = adaptation_checkins.cycle_id 
+WHERE adaptation_cycles.status = ? AND adaptation_checkins.status = ? AND adaptation_checkins.due_date <= ?
+2026-06-12 12:55:32,253 INFO sqlalchemy.engine.Engine [generated in 0.00057s] ('active', 'scheduled', '2026-06-12')
+2026-06-12 12:55:32,255 INFO sqlalchemy.engine.Engine COMMIT
+2026-06-12 12:55:32,259 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-12 12:55:32,260 INFO sqlalchemy.engine.Engine SELECT adaptation_checkins.id, adaptation_checkins.cycle_id, adaptation_checkins.person_id, adaptation_checkins.offset_days, adaptation_checkins.due_date, adaptation_checkins.stage, adaptation_checkins.test_id, adaptation_checkins.link_id, adaptation_checkins.session_id, adaptation_checkins.status, adaptation_checkins.result_percent, adaptation_checkins.risk_flag, adaptation_checkins.sent_at, adaptation_checkins.completed_at, adaptation_checkins.reminders_sent, adaptation_checkins.last_reminder_at 
+FROM adaptation_checkins 
+WHERE adaptation_checkins.status = ?
+2026-06-12 12:55:32,261 INFO sqlalchemy.engine.Engine [generated in 0.00055s] ('sent',)
+2026-06-12 12:55:32,263 INFO sqlalchemy.engine.Engine COMMIT
+2026-06-12 12:55:32,265 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-12 12:55:32,266 INFO sqlalchemy.engine.Engine SELECT adaptation_checkins.id, adaptation_checkins.cycle_id, adaptation_checkins.person_id, adaptation_checkins.offset_days, adaptation_checkins.due_date, adaptation_checkins.stage, adaptation_checkins.test_id, adaptation_checkins.link_id, adaptation_checkins.session_id, adaptation_checkins.status, adaptation_checkins.result_percent, adaptation_checkins.risk_flag, adaptation_checkins.sent_at, adaptation_checkins.completed_at, adaptation_checkins.reminders_sent, adaptation_checkins.last_reminder_at 
+FROM adaptation_checkins 
+WHERE adaptation_checkins.status = ? AND adaptation_checkins.due_date < ?
+2026-06-12 12:55:32,267 INFO sqlalchemy.engine.Engine [generated in 0.00050s] ('sent', '2026-05-29')
+2026-06-12 12:55:32,269 INFO sqlalchemy.engine.Engine COMMIT
+2026-06-12 12:55:32,271 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-12 12:55:32,273 INFO sqlalchemy.engine.Engine SELECT adaptation_cycles.id, adaptation_cycles.organization_id, adaptation_cycles.person_id, adaptation_cycles.start_date, adaptation_cycles.status, adaptation_cycles.created_at 
+FROM adaptation_cycles 
+WHERE adaptation_cycles.status = ?
+2026-06-12 12:55:32,274 INFO sqlalchemy.engine.Engine [generated in 0.00068s] ('active',)
+2026-06-12 12:55:32,277 INFO sqlalchemy.engine.Engine SELECT adaptation_checkins.cycle_id AS adaptation_checkins_cycle_id, adaptation_checkins.id AS adaptation_checkins_id, adaptation_checkins.person_id AS adaptation_checkins_person_id, adaptation_checkins.offset_days AS adaptation_checkins_offset_days, adaptation_checkins.due_date AS adaptation_checkins_due_date, adaptation_checkins.stage AS adaptation_checkins_stage, adaptation_checkins.test_id AS adaptation_checkins_test_id, adaptation_checkins.link_id AS adaptation_checkins_link_id, adaptation_checkins.session_id AS adaptation_checkins_session_id, adaptation_checkins.status AS adaptation_checkins_status, adaptation_checkins.result_percent AS adaptation_checkins_result_percent, adaptation_checkins.risk_flag AS adaptation_checkins_risk_flag, adaptation_checkins.sent_at AS adaptation_checkins_sent_at, adaptation_checkins.completed_at AS adaptation_checkins_completed_at, adaptation_checkins.reminders_sent AS adaptation_checkins_reminders_sent, adaptation_checkins.last_reminder_at AS adaptation_checkins_last_reminder_at 
+FROM adaptation_checkins 
+WHERE adaptation_checkins.cycle_id IN (?) ORDER BY adaptation_checkins.offset_days
+2026-06-12 12:55:32,278 INFO sqlalchemy.engine.Engine [generated in 0.00080s] ('63e50afca940403a9509dab2cd552ace',)
+2026-06-12 12:55:32,281 INFO sqlalchemy.engine.Engine SELECT adaptation_checkins.status 
+FROM adaptation_checkins 
+WHERE adaptation_checkins.cycle_id = ?
+2026-06-12 12:55:32,281 INFO sqlalchemy.engine.Engine [generated in 0.00061s] ('63e50afca940403a9509dab2cd552ace',)
+2026-06-12 12:55:32,283 INFO sqlalchemy.engine.Engine COMMIT
+2026-06-12 12:55:53,799 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-12 12:55:53,802 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM employee_profiles JOIN people ON people.id = employee_profiles.person_id
+2026-06-12 12:55:53,802 INFO sqlalchemy.engine.Engine [generated in 0.00060s] ()
+2026-06-12 12:55:53,807 INFO sqlalchemy.engine.Engine SELECT people.id, people.organization_id, people.last_name, people.first_name, people.patronymic, people.full_name, people.email, people.phone, people.city, people.created_at, people.updated_at, employee_profiles.person_id, employee_profiles.department_id, employee_profiles.position, employee_profiles.manager_id, employee_profiles.project, employee_profiles.start_date, employee_profiles.employment_type, employee_profiles.turnover_risk, employee_profiles.burnout, employee_profiles.satisfaction, employee_profiles.recommendation, employee_profiles.fit, departments.name AS dept 
+FROM people JOIN employee_profiles ON employee_profiles.person_id = people.id LEFT OUTER JOIN departments ON departments.id = employee_profiles.department_id ORDER BY people.full_name ASC
+ LIMIT ? OFFSET ?
+2026-06-12 12:55:53,808 INFO sqlalchemy.engine.Engine [generated in 0.00078s] (100, 0)
+2026-06-12 12:55:53,811 INFO sqlalchemy.engine.Engine SELECT employee_profiles.person_id AS employee_profiles_person_id, employee_profiles.department_id AS employee_profiles_department_id, employee_profiles.position AS employee_profiles_position, employee_profiles.manager_id AS employee_profiles_manager_id, employee_profiles.project AS employee_profiles_project, employee_profiles.start_date AS employee_profiles_start_date, employee_profiles.employment_type AS employee_profiles_employment_type, employee_profiles.turnover_risk AS employee_profiles_turnover_risk, employee_profiles.burnout AS employee_profiles_burnout, employee_profiles.satisfaction AS employee_profiles_satisfaction, employee_profiles.recommendation AS employee_profiles_recommendation, employee_profiles.fit AS employee_profiles_fit 
+FROM employee_profiles 
+WHERE employee_profiles.person_id IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-06-12 12:55:53,811 INFO sqlalchemy.engine.Engine [cached since 21.59s ago] ('f813fceb46a64570bfb05929a6d8a986', 'ebeb9fa9577c4d73a4f4ecd5f576e476', '3967f5350a5847b69d2a34608a2ced47', '535a432b23344db894e964bbf8ddacd4', 'b76c1b1c4ded41a790b30cf05276c815', '88a4293ff8074951bc1a17b1958fd84a', 'ab390933b81e4c10b25226f7c2e876ab', '2d94d2c65f9b4e99b7a78931cda3dc31', '74efa60c31a041bab1a5f37364394f4a', 'c8fe2c4aa6474fdfbb91c6265ae72e02')
+2026-06-12 12:55:53,814 INFO sqlalchemy.engine.Engine SELECT candidate_profiles.person_id AS candidate_profiles_person_id, candidate_profiles.vacancy_id AS candidate_profiles_vacancy_id, candidate_profiles.source AS candidate_profiles_source, candidate_profiles.selection_type AS candidate_profiles_selection_type, candidate_profiles.stage AS candidate_profiles_stage, candidate_profiles.responsible_user_id AS candidate_profiles_responsible_user_id, candidate_profiles.applied_at AS candidate_profiles_applied_at, candidate_profiles.notes AS candidate_profiles_notes 
+FROM candidate_profiles 
+WHERE candidate_profiles.person_id IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-06-12 12:55:53,815 INFO sqlalchemy.engine.Engine [cached since 21.59s ago] ('f813fceb46a64570bfb05929a6d8a986', 'ebeb9fa9577c4d73a4f4ecd5f576e476', '3967f5350a5847b69d2a34608a2ced47', '535a432b23344db894e964bbf8ddacd4', 'b76c1b1c4ded41a790b30cf05276c815', '88a4293ff8074951bc1a17b1958fd84a', 'ab390933b81e4c10b25226f7c2e876ab', '2d94d2c65f9b4e99b7a78931cda3dc31', '74efa60c31a041bab1a5f37364394f4a', 'c8fe2c4aa6474fdfbb91c6265ae72e02')
+2026-06-12 12:55:53,817 INFO sqlalchemy.engine.Engine SELECT people.id, people.full_name 
+FROM people 
+WHERE people.id IN (?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-06-12 12:55:53,817 INFO sqlalchemy.engine.Engine [generated in 0.00104s] ('f813fceb46a64570bfb05929a6d8a986', 'ab390933b81e4c10b25226f7c2e876ab', 'f813fceb46a64570bfb05929a6d8a986', 'f813fceb46a64570bfb05929a6d8a986', 'ebeb9fa9577c4d73a4f4ecd5f576e476', 'f813fceb46a64570bfb05929a6d8a986', '535a432b23344db894e964bbf8ddacd4', 'f813fceb46a64570bfb05929a6d8a986', '74efa60c31a041bab1a5f37364394f4a')
+2026-06-12 12:55:53,819 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:60859 - "GET /api/employees?size=100 HTTP/1.1" 200 OK
+2026-06-12 12:55:53,863 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-12 12:55:53,865 INFO sqlalchemy.engine.Engine SELECT adaptation_cycles.id, adaptation_cycles.organization_id, adaptation_cycles.person_id, adaptation_cycles.start_date, adaptation_cycles.status, adaptation_cycles.created_at 
+FROM adaptation_cycles ORDER BY adaptation_cycles.start_date DESC
+2026-06-12 12:55:53,865 INFO sqlalchemy.engine.Engine [generated in 0.00061s] ()
+2026-06-12 12:55:53,868 INFO sqlalchemy.engine.Engine SELECT adaptation_checkins.cycle_id AS adaptation_checkins_cycle_id, adaptation_checkins.id AS adaptation_checkins_id, adaptation_checkins.person_id AS adaptation_checkins_person_id, adaptation_checkins.offset_days AS adaptation_checkins_offset_days, adaptation_checkins.due_date AS adaptation_checkins_due_date, adaptation_checkins.stage AS adaptation_checkins_stage, adaptation_checkins.test_id AS adaptation_checkins_test_id, adaptation_checkins.link_id AS adaptation_checkins_link_id, adaptation_checkins.session_id AS adaptation_checkins_session_id, adaptation_checkins.status AS adaptation_checkins_status, adaptation_checkins.result_percent AS adaptation_checkins_result_percent, adaptation_checkins.risk_flag AS adaptation_checkins_risk_flag, adaptation_checkins.sent_at AS adaptation_checkins_sent_at, adaptation_checkins.completed_at AS adaptation_checkins_completed_at, adaptation_checkins.reminders_sent AS adaptation_checkins_reminders_sent, adaptation_checkins.last_reminder_at AS adaptation_checkins_last_reminder_at 
+FROM adaptation_checkins 
+WHERE adaptation_checkins.cycle_id IN (?, ?, ?, ?) ORDER BY adaptation_checkins.offset_days
+2026-06-12 12:55:53,868 INFO sqlalchemy.engine.Engine [cached since 21.59s ago] ('63e50afca940403a9509dab2cd552ace', 'e5524bf7eaca4c4d80b30863a42339e5', 'c3b2c0d0e24a4c9ca67759b904c5de1a', 'edddcbacd3a34fe492b409054911e8b3')
+2026-06-12 12:55:53,871 INFO sqlalchemy.engine.Engine SELECT people.id, people.full_name 
+FROM people 
+WHERE people.id IN (?, ?, ?, ?)
+2026-06-12 12:55:53,872 INFO sqlalchemy.engine.Engine [cached since 0.05537s ago] ('2d94d2c65f9b4e99b7a78931cda3dc31', '88a4293ff8074951bc1a17b1958fd84a', 'c8fe2c4aa6474fdfbb91c6265ae72e02', '3967f5350a5847b69d2a34608a2ced47')
+2026-06-12 12:55:53,875 INFO sqlalchemy.engine.Engine SELECT assessment_links.id, assessment_links.token 
+FROM assessment_links 
+WHERE assessment_links.id IN (?, ?, ?, ?)
+2026-06-12 12:55:53,876 INFO sqlalchemy.engine.Engine [generated in 0.00144s] ('f9671877847a4c68bf258a20548c7143', 'd553eb1085fd4d928c1cdc7c4af9b07c', '385d709041b842e28e3becf336969b20', '09b4e37d42224c33aa71b7af284f18df')
+2026-06-12 12:55:53,879 INFO sqlalchemy.engine.Engine SELECT tests.id, tests.title 
+FROM tests 
+WHERE tests.category = ?
+2026-06-12 12:55:53,880 INFO sqlalchemy.engine.Engine [generated in 0.00114s] ('Адаптация',)
+2026-06-12 12:55:53,883 INFO sqlalchemy.engine.Engine SELECT assessment_links.id, assessment_links.organization_id, assessment_links.token, assessment_links.test_id, assessment_links.test_version_id, assessment_links.person_id, assessment_links.recipient_type, assessment_links.recipient_email, assessment_links.recipient_phone, assessment_links.vacancy_id, assessment_links.status, assessment_links.expires_at, assessment_links.subject_person_id, assessment_links.rater_role, assessment_links.created_by, assessment_links.created_at 
+FROM assessment_links 
+WHERE assessment_links.test_id IN (?, ?, ?, ?, ?) AND assessment_links.recipient_type = ? ORDER BY assessment_links.created_at DESC
+2026-06-12 12:55:53,884 INFO sqlalchemy.engine.Engine [generated in 0.00121s] ('68ba4ddea691431fbf9508b32c679035', '18cb07fc807f40488bb4cf4ff460236e', 'c9507374aba2437d978aff641b626a03', '2ed39695b51f499aaaa913610977bbad', '7dfcc92cc0ef486892e5b5601ba64b27', 'employee')
+2026-06-12 12:55:53,887 INFO sqlalchemy.engine.Engine SELECT adaptation_checkins.link_id 
+FROM adaptation_checkins 
+WHERE adaptation_checkins.link_id IS NOT NULL
+2026-06-12 12:55:53,889 INFO sqlalchemy.engine.Engine [generated in 0.00136s] ()
+2026-06-12 12:55:53,891 INFO sqlalchemy.engine.Engine SELECT assessment_sessions.id, assessment_sessions.organization_id, assessment_sessions.person_id, assessment_sessions.link_id, assessment_sessions.test_id, assessment_sessions.test_version_id, assessment_sessions.respondent_type, assessment_sessions.vacancy_id, assessment_sessions.status, assessment_sessions.score, assessment_sessions.max_score, assessment_sessions.percent, assessment_sessions.red_flags, assessment_sessions.unanswered_count, assessment_sessions.recommendation_level, assessment_sessions.recommendation_text, assessment_sessions.report_narrative, assessment_sessions.answers_snapshot, assessment_sessions.started_at, assessment_sessions.submitted_at, assessment_sessions.scored_at, assessment_sessions.created_at 
+FROM assessment_sessions 
+WHERE assessment_sessions.link_id IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND assessment_sessions.status IN (?, ?, ?)
+2026-06-12 12:55:53,892 INFO sqlalchemy.engine.Engine [cached since 21.65s ago] ('bc28215f235a40079b8129e67ab06529', '09b4e37d42224c33aa71b7af284f18df', '385d709041b842e28e3becf336969b20', 'd553eb1085fd4d928c1cdc7c4af9b07c', 'f9671877847a4c68bf258a20548c7143', '19a87fc98e734c20a269e29a2dd712aa', 'd3f002ca6fa44da5b4665e1df4d95094', '90eb099bcd104da897dc509ca04373d6', 'f07d87becf5540ee9f185aacb03c1a72', 'cc0c522294944486947ad0924513070f', '39bd24c54c224ac097466d635bfc9826', 'de7375194b794e848003d40b5da8ce74', 'f123782ddab249c89e368113189e6dfe', 'f5b5e7e3547b4ede8212e143950d7d67', 'scored', 'reviewed', 'submitted')
+2026-06-12 12:55:53,896 INFO sqlalchemy.engine.Engine SELECT session_competency_scores.session_id AS session_competency_scores_session_id, session_competency_scores.id AS session_competency_scores_id, session_competency_scores.competency_id AS session_competency_scores_competency_id, session_competency_scores.score AS session_competency_scores_score, session_competency_scores.max_score AS session_competency_scores_max_score, session_competency_scores.percent AS session_competency_scores_percent 
+FROM session_competency_scores 
+WHERE session_competency_scores.session_id IN (?, ?, ?, ?, ?, ?, ?, ?)
+2026-06-12 12:55:53,898 INFO sqlalchemy.engine.Engine [generated in 0.00132s] ('59bc4e0d3968475b9c583e48a367eb8b', '9c3079749b4149499b312108057a0363', '5cf7d820977d41fdb5d0889e66ee031b', 'cd0e72ffe9f24992abfdab291aac229c', '96c8fde92d6a437995b4bd23b2bc6b2f', 'ed9509d9baff4dd2a859a95edf313fd5', 'd857efec8dc04f91b8ada3530967f403', '1e78dbef3f7c49e892801e9bb3321971')
+2026-06-12 12:55:53,902 INFO sqlalchemy.engine.Engine SELECT session_answers.session_id AS session_answers_session_id, session_answers.id AS session_answers_id, session_answers.question_version_id AS session_answers_question_version_id, session_answers.answer_text AS session_answers_answer_text, session_answers.scale_value AS session_answers_scale_value, session_answers.awarded_score AS session_answers_awarded_score, session_answers.is_red_flag AS session_answers_is_red_flag, session_answers.ai_status AS session_answers_ai_status, session_answers.ai_score AS session_answers_ai_score, session_answers.ai_rationale AS session_answers_ai_rationale, session_answers.reviewed_score AS session_answers_reviewed_score, session_answers.reviewed_by AS session_answers_reviewed_by, session_answers.answered_at AS session_answers_answered_at 
+FROM session_answers 
+WHERE session_answers.session_id IN (?, ?, ?, ?, ?, ?, ?, ?)
+2026-06-12 12:55:53,903 INFO sqlalchemy.engine.Engine [generated in 0.00114s] ('59bc4e0d3968475b9c583e48a367eb8b', '9c3079749b4149499b312108057a0363', '5cf7d820977d41fdb5d0889e66ee031b', 'cd0e72ffe9f24992abfdab291aac229c', '96c8fde92d6a437995b4bd23b2bc6b2f', 'ed9509d9baff4dd2a859a95edf313fd5', 'd857efec8dc04f91b8ada3530967f403', '1e78dbef3f7c49e892801e9bb3321971')
+2026-06-12 12:55:53,909 INFO sqlalchemy.engine.Engine SELECT session_answer_options.session_answer_id AS session_answer_options_session_answer_id, session_answer_options.id AS session_answer_options_id, session_answer_options.answer_option_id AS session_answer_options_answer_option_id 
+FROM session_answer_options 
+WHERE session_answer_options.session_answer_id IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-06-12 12:55:53,910 INFO sqlalchemy.engine.Engine [generated in 0.00113s] ('ff3d07d443f04fd082eea819da07a9d3', 'c0ef16b4deb543c9b9b0b286f38b4d6c', '0ea713339c6948b9ad6cbd6223efb06e', '2dad453900f84aa2af1fcd3966339fc4', 'b02ba2e09a154de8902399993e1fbe26', '1ea92ab05ac14b298620b207963a9c59', 'fa728201806d4307aa9dbd51bbf9457a', '5e40d31727c24b44a0b34640f74894f6', 'fa76d5b469dd42f68cb51a12b47484fc', 'e3b61e97c1b74ba1a7b65bb8ec351bbd', '981dc5b11ce249378e28bde3b9b2968f', '4d9ce010483540f0af8911f12ec7a232', 'feb8160cc126459292f28a5fc05b6c47', '9b27e3ed780c4787a3fd2a2489a3f53d', 'ed2d95d745914ac4a385287de3b7065e', 'be100f8777754f958fdd8e5d0842fc08', '1ab2259b707441bdb8b406b9e5d84112', 'aebe37cdab07464e882c55cc5de9e72a', '9437b2f1f69d4d08abc9c49c86f1d602', '7991041c69cc476396dc853612a98c75', '8bbcf9e3b04e4e83960edb2bd56e2953', '26edc76cbf1f4becaca63c2273041cae', '58945d5962644fdbaa5aba7eaf9f0f60', '182eec8711144c1da5a2947904223df6', '5ad07dc426a6481096750270bfbd49a8', 'e5df6ddcf07d4e678a8c42696ac5adaf', '38543e7d18b7497eae8ec0bdffece9c3', '61c4bab44d39437caa15f5b48d01dfec', 'e27585b85252407f98a245043cda04ad', 'fc9dcfe507b649d2b78ac3976e64c1ee', 'c84c6ad252be4ed192af28cc920bb0de', 'a14fb9963135432d86cb3d69cb5904d7', '2bef3b3797fe49a2a7a294325058e36d', '09b06e22df17464aaf71bbebed7e79b3', '595f892fff36493ea1900fb0b11367c7', '800b9700b20f40169d86078e8b523c08', '5becf69db193404ab129b704af8e035a')
+2026-06-12 12:55:53,912 INFO sqlalchemy.engine.Engine SELECT people.id, people.full_name 
+FROM people 
+WHERE people.id IN (?, ?, ?, ?, ?)
+2026-06-12 12:55:53,914 INFO sqlalchemy.engine.Engine [cached since 0.09717s ago] ('f813fceb46a64570bfb05929a6d8a986', 'b76c1b1c4ded41a790b30cf05276c815', '74efa60c31a041bab1a5f37364394f4a', 'ebeb9fa9577c4d73a4f4ecd5f576e476', '535a432b23344db894e964bbf8ddacd4')
+2026-06-12 12:55:53,916 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:60859 - "GET /api/adaptation/cycles HTTP/1.1" 200 OK
+2026-06-12 12:56:02,084 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-12 12:56:02,085 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM employee_profiles JOIN people ON people.id = employee_profiles.person_id
+2026-06-12 12:56:02,086 INFO sqlalchemy.engine.Engine [cached since 8.284s ago] ()
+2026-06-12 12:56:02,089 INFO sqlalchemy.engine.Engine SELECT people.id, people.organization_id, people.last_name, people.first_name, people.patronymic, people.full_name, people.email, people.phone, people.city, people.created_at, people.updated_at, employee_profiles.person_id, employee_profiles.department_id, employee_profiles.position, employee_profiles.manager_id, employee_profiles.project, employee_profiles.start_date, employee_profiles.employment_type, employee_profiles.turnover_risk, employee_profiles.burnout, employee_profiles.satisfaction, employee_profiles.recommendation, employee_profiles.fit, departments.name AS dept 
+FROM people JOIN employee_profiles ON employee_profiles.person_id = people.id LEFT OUTER JOIN departments ON departments.id = employee_profiles.department_id ORDER BY people.full_name ASC
+ LIMIT ? OFFSET ?
+2026-06-12 12:56:02,090 INFO sqlalchemy.engine.Engine [cached since 8.283s ago] (100, 0)
+2026-06-12 12:56:02,093 INFO sqlalchemy.engine.Engine SELECT employee_profiles.person_id AS employee_profiles_person_id, employee_profiles.department_id AS employee_profiles_department_id, employee_profiles.position AS employee_profiles_position, employee_profiles.manager_id AS employee_profiles_manager_id, employee_profiles.project AS employee_profiles_project, employee_profiles.start_date AS employee_profiles_start_date, employee_profiles.employment_type AS employee_profiles_employment_type, employee_profiles.turnover_risk AS employee_profiles_turnover_risk, employee_profiles.burnout AS employee_profiles_burnout, employee_profiles.satisfaction AS employee_profiles_satisfaction, employee_profiles.recommendation AS employee_profiles_recommendation, employee_profiles.fit AS employee_profiles_fit 
+FROM employee_profiles 
+WHERE employee_profiles.person_id IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-06-12 12:56:02,094 INFO sqlalchemy.engine.Engine [cached since 29.87s ago] ('f813fceb46a64570bfb05929a6d8a986', 'ebeb9fa9577c4d73a4f4ecd5f576e476', '3967f5350a5847b69d2a34608a2ced47', '535a432b23344db894e964bbf8ddacd4', 'b76c1b1c4ded41a790b30cf05276c815', '88a4293ff8074951bc1a17b1958fd84a', 'ab390933b81e4c10b25226f7c2e876ab', '2d94d2c65f9b4e99b7a78931cda3dc31', '74efa60c31a041bab1a5f37364394f4a', 'c8fe2c4aa6474fdfbb91c6265ae72e02')
+2026-06-12 12:56:02,096 INFO sqlalchemy.engine.Engine SELECT candidate_profiles.person_id AS candidate_profiles_person_id, candidate_profiles.vacancy_id AS candidate_profiles_vacancy_id, candidate_profiles.source AS candidate_profiles_source, candidate_profiles.selection_type AS candidate_profiles_selection_type, candidate_profiles.stage AS candidate_profiles_stage, candidate_profiles.responsible_user_id AS candidate_profiles_responsible_user_id, candidate_profiles.applied_at AS candidate_profiles_applied_at, candidate_profiles.notes AS candidate_profiles_notes 
+FROM candidate_profiles 
+WHERE candidate_profiles.person_id IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-06-12 12:56:02,098 INFO sqlalchemy.engine.Engine [cached since 29.87s ago] ('f813fceb46a64570bfb05929a6d8a986', 'ebeb9fa9577c4d73a4f4ecd5f576e476', '3967f5350a5847b69d2a34608a2ced47', '535a432b23344db894e964bbf8ddacd4', 'b76c1b1c4ded41a790b30cf05276c815', '88a4293ff8074951bc1a17b1958fd84a', 'ab390933b81e4c10b25226f7c2e876ab', '2d94d2c65f9b4e99b7a78931cda3dc31', '74efa60c31a041bab1a5f37364394f4a', 'c8fe2c4aa6474fdfbb91c6265ae72e02')
+2026-06-12 12:56:02,102 INFO sqlalchemy.engine.Engine SELECT people.id, people.full_name 
+FROM people 
+WHERE people.id IN (?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-06-12 12:56:02,104 INFO sqlalchemy.engine.Engine [cached since 8.287s ago] ('f813fceb46a64570bfb05929a6d8a986', 'ab390933b81e4c10b25226f7c2e876ab', 'f813fceb46a64570bfb05929a6d8a986', 'f813fceb46a64570bfb05929a6d8a986', 'ebeb9fa9577c4d73a4f4ecd5f576e476', 'f813fceb46a64570bfb05929a6d8a986', '535a432b23344db894e964bbf8ddacd4', 'f813fceb46a64570bfb05929a6d8a986', '74efa60c31a041bab1a5f37364394f4a')
+2026-06-12 12:56:02,107 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:60865 - "GET /api/employees?size=100 HTTP/1.1" 200 OK
+2026-06-12 12:56:14,018 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-12 12:56:14,020 INFO sqlalchemy.engine.Engine SELECT people.id AS people_id, people.organization_id AS people_organization_id, people.last_name AS people_last_name, people.first_name AS people_first_name, people.patronymic AS people_patronymic, people.full_name AS people_full_name, people.email AS people_email, people.phone AS people_phone, people.city AS people_city, people.created_at AS people_created_at, people.updated_at AS people_updated_at 
+FROM people 
+WHERE people.id = ?
+2026-06-12 12:56:14,021 INFO sqlalchemy.engine.Engine [generated in 0.00094s] ('b76c1b1c4ded41a790b30cf05276c815',)
+2026-06-12 12:56:14,024 INFO sqlalchemy.engine.Engine SELECT employee_profiles.person_id AS employee_profiles_person_id, employee_profiles.department_id AS employee_profiles_department_id, employee_profiles.position AS employee_profiles_position, employee_profiles.manager_id AS employee_profiles_manager_id, employee_profiles.project AS employee_profiles_project, employee_profiles.start_date AS employee_profiles_start_date, employee_profiles.employment_type AS employee_profiles_employment_type, employee_profiles.turnover_risk AS employee_profiles_turnover_risk, employee_profiles.burnout AS employee_profiles_burnout, employee_profiles.satisfaction AS employee_profiles_satisfaction, employee_profiles.recommendation AS employee_profiles_recommendation, employee_profiles.fit AS employee_profiles_fit 
+FROM employee_profiles 
+WHERE employee_profiles.person_id IN (?)
+2026-06-12 12:56:14,026 INFO sqlalchemy.engine.Engine [cached since 41.8s ago] ('b76c1b1c4ded41a790b30cf05276c815',)
+2026-06-12 12:56:14,027 INFO sqlalchemy.engine.Engine SELECT candidate_profiles.person_id AS candidate_profiles_person_id, candidate_profiles.vacancy_id AS candidate_profiles_vacancy_id, candidate_profiles.source AS candidate_profiles_source, candidate_profiles.selection_type AS candidate_profiles_selection_type, candidate_profiles.stage AS candidate_profiles_stage, candidate_profiles.responsible_user_id AS candidate_profiles_responsible_user_id, candidate_profiles.applied_at AS candidate_profiles_applied_at, candidate_profiles.notes AS candidate_profiles_notes 
+FROM candidate_profiles 
+WHERE candidate_profiles.person_id IN (?)
+2026-06-12 12:56:14,029 INFO sqlalchemy.engine.Engine [cached since 41.8s ago] ('b76c1b1c4ded41a790b30cf05276c815',)
+2026-06-12 12:56:14,031 INFO sqlalchemy.engine.Engine SELECT adaptation_cycles.id, adaptation_cycles.organization_id, adaptation_cycles.person_id, adaptation_cycles.start_date, adaptation_cycles.status, adaptation_cycles.created_at 
+FROM adaptation_cycles 
+WHERE adaptation_cycles.person_id = ? AND adaptation_cycles.status = ?
+2026-06-12 12:56:14,032 INFO sqlalchemy.engine.Engine [generated in 0.00126s] ('b76c1b1c4ded41a790b30cf05276c815', 'active')
+2026-06-12 12:56:14,034 INFO sqlalchemy.engine.Engine SELECT tests.id, tests.title 
+FROM tests 
+WHERE tests.title IN (?, ?, ?, ?)
+2026-06-12 12:56:14,035 INFO sqlalchemy.engine.Engine [cached since 41.83s ago] ('Адаптация · Интеграция', 'Адаптация · Итог', 'Адаптация · Старт', 'Адаптация · Закрепление')
+2026-06-12 12:56:14,038 INFO sqlalchemy.engine.Engine INSERT INTO adaptation_cycles (id, organization_id, person_id, start_date, status, created_at) VALUES (?, ?, ?, ?, ?, ?)
+2026-06-12 12:56:14,039 INFO sqlalchemy.engine.Engine [generated in 0.00152s] ('d7ad4e24f89d484eadd5c6a84ca1c713', '5fc0c8304edf4e00941ef4b521d5f30e', 'b76c1b1c4ded41a790b30cf05276c815', '2026-06-12', 'active', '2026-06-12 09:56:14.038331')
+2026-06-12 12:56:14,044 INFO sqlalchemy.engine.Engine INSERT INTO adaptation_checkins (id, cycle_id, person_id, offset_days, due_date, stage, test_id, link_id, session_id, status, result_percent, risk_flag, sent_at, completed_at, reminders_sent, last_reminder_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ... 265 characters truncated ... , (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-06-12 12:56:14,045 INFO sqlalchemy.engine.Engine [generated in 0.00035s (insertmanyvalues) 1/1 (unordered)] ('015b3d753e2a486ea358a7a2e7cde20a', 'd7ad4e24f89d484eadd5c6a84ca1c713', 'b76c1b1c4ded41a790b30cf05276c815', 1, '2026-06-13', 'Адаптация · Старт', '18cb07fc807f40488bb4cf4ff460236e', None, None, 'scheduled', None, 0, None, None, 0, None, 'b603e14ef7664530b134ff3456e77bf5', 'd7ad4e24f89d484eadd5c6a84ca1c713', 'b76c1b1c4ded41a790b30cf05276c815', 3, '2026-06-15', 'Адаптация · Старт', '18cb07fc807f40488bb4cf4ff460236e', None, None, 'scheduled', None, 0, None, None, 0, None, '76b92c384d7a43fa9d2eb4e7e03f0e73', 'd7ad4e24f89d484eadd5c6a84ca1c713', 'b76c1b1c4ded41a790b30cf05276c815', 7, '2026-06-19', 'Адаптация · Старт', '18cb07fc807f40488bb4cf4ff460236e', None, None, 'scheduled', None, 0, None, None, 0, None, '0bec52dffbec4ce9b00663868d2a124b', 'd7ad4e24f89d484eadd5c6a84ca1c713' ... 28 parameters truncated ... 0, None, '46dfb7f6ab9349f89e2a43bf10abc698', 'd7ad4e24f89d484eadd5c6a84ca1c713', 'b76c1b1c4ded41a790b30cf05276c815', 60, '2026-08-11', 'Адаптация · Закрепление', '2ed39695b51f499aaaa913610977bbad', None, None, 'scheduled', None, 0, None, None, 0, None, '9818812d9f8441bbab682295a6070b47', 'd7ad4e24f89d484eadd5c6a84ca1c713', 'b76c1b1c4ded41a790b30cf05276c815', 90, '2026-09-10', 'Адаптация · Закрепление', '2ed39695b51f499aaaa913610977bbad', None, None, 'scheduled', None, 0, None, None, 0, None, '4260694570674e278ad0cd41e84315e5', 'd7ad4e24f89d484eadd5c6a84ca1c713', 'b76c1b1c4ded41a790b30cf05276c815', 180, '2026-12-09', 'Адаптация · Итог', '7dfcc92cc0ef486892e5b5601ba64b27', None, None, 'scheduled', None, 0, None, None, 0, None)
+2026-06-12 12:56:14,049 INFO sqlalchemy.engine.Engine SELECT tests.id AS tests_id, tests.organization_id AS tests_organization_id, tests."key" AS tests_key, tests.title AS tests_title, tests.category AS tests_category, tests.target_type AS tests_target_type, tests.summary AS tests_summary, tests.is_system AS tests_is_system, tests.current_version_id AS tests_current_version_id, tests.created_at AS tests_created_at, tests.updated_at AS tests_updated_at 
+FROM tests 
+WHERE tests.id = ?
+2026-06-12 12:56:14,050 INFO sqlalchemy.engine.Engine [generated in 0.00147s] ('18cb07fc807f40488bb4cf4ff460236e',)
+2026-06-12 12:56:14,053 INFO sqlalchemy.engine.Engine SELECT test_versions.id AS test_versions_id, test_versions.test_id AS test_versions_test_id, test_versions.version_no AS test_versions_version_no, test_versions.status AS test_versions_status, test_versions.notes AS test_versions_notes, test_versions.created_by AS test_versions_created_by, test_versions.published_at AS test_versions_published_at, test_versions.created_at AS test_versions_created_at 
+FROM test_versions 
+WHERE test_versions.id = ?
+2026-06-12 12:56:14,055 INFO sqlalchemy.engine.Engine [generated in 0.00139s] ('cc2b1e98dce94695aac687f80bd2ac3b',)
+2026-06-12 12:56:14,059 INFO sqlalchemy.engine.Engine INSERT INTO assessment_links (id, organization_id, token, test_id, test_version_id, person_id, recipient_type, recipient_email, recipient_phone, vacancy_id, status, expires_at, subject_person_id, rater_role, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-06-12 12:56:14,060 INFO sqlalchemy.engine.Engine [generated in 0.00155s] ('6bb29f1405bc4dd2bc6fa057da14a4cf', '5fc0c8304edf4e00941ef4b521d5f30e', 'f5qkMIsmh0IP-dP9', '18cb07fc807f40488bb4cf4ff460236e', 'cc2b1e98dce94695aac687f80bd2ac3b', 'b76c1b1c4ded41a790b30cf05276c815', 'employee', None, None, None, 'pending', None, None, None, None, '2026-06-12 09:56:14.059042')
+2026-06-12 12:56:14,062 INFO sqlalchemy.engine.Engine INSERT INTO assessment_link_events (id, link_id, event, created_at) VALUES (?, ?, ?, ?)
+2026-06-12 12:56:14,064 INFO sqlalchemy.engine.Engine [generated in 0.00138s] ('21510db4ee444cd3ad61cf4b76e653f4', '6bb29f1405bc4dd2bc6fa057da14a4cf', 'created', '2026-06-12 09:56:14.062854')
+2026-06-12 12:56:14,065 INFO sqlalchemy.engine.Engine COMMIT
+2026-06-12 12:56:14,087 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-12 12:56:14,089 INFO sqlalchemy.engine.Engine SELECT assessment_links.id, assessment_links.organization_id, assessment_links.token, assessment_links.test_id, assessment_links.test_version_id, assessment_links.person_id, assessment_links.recipient_type, assessment_links.recipient_email, assessment_links.recipient_phone, assessment_links.vacancy_id, assessment_links.status, assessment_links.expires_at, assessment_links.subject_person_id, assessment_links.rater_role, assessment_links.created_by, assessment_links.created_at 
+FROM assessment_links 
+WHERE assessment_links.id = ?
+2026-06-12 12:56:14,090 INFO sqlalchemy.engine.Engine [generated in 0.00110s] ('6bb29f1405bc4dd2bc6fa057da14a4cf',)
+2026-06-12 12:56:14,094 INFO sqlalchemy.engine.Engine UPDATE adaptation_checkins SET link_id=?, status=?, sent_at=? WHERE adaptation_checkins.id = ?
+2026-06-12 12:56:14,095 INFO sqlalchemy.engine.Engine [generated in 0.00148s] ('6bb29f1405bc4dd2bc6fa057da14a4cf', 'sent', '2026-06-12 09:56:14.093061', '015b3d753e2a486ea358a7a2e7cde20a')
+2026-06-12 12:56:14,098 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:60868 - "POST /api/adaptation/start HTTP/1.1" 200 OK
+2026-06-12 12:56:14,135 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-12 12:56:14,136 INFO sqlalchemy.engine.Engine SELECT adaptation_cycles.id, adaptation_cycles.organization_id, adaptation_cycles.person_id, adaptation_cycles.start_date, adaptation_cycles.status, adaptation_cycles.created_at 
+FROM adaptation_cycles ORDER BY adaptation_cycles.start_date DESC
+2026-06-12 12:56:14,137 INFO sqlalchemy.engine.Engine [cached since 20.27s ago] ()
+2026-06-12 12:56:14,140 INFO sqlalchemy.engine.Engine SELECT adaptation_checkins.cycle_id AS adaptation_checkins_cycle_id, adaptation_checkins.id AS adaptation_checkins_id, adaptation_checkins.person_id AS adaptation_checkins_person_id, adaptation_checkins.offset_days AS adaptation_checkins_offset_days, adaptation_checkins.due_date AS adaptation_checkins_due_date, adaptation_checkins.stage AS adaptation_checkins_stage, adaptation_checkins.test_id AS adaptation_checkins_test_id, adaptation_checkins.link_id AS adaptation_checkins_link_id, adaptation_checkins.session_id AS adaptation_checkins_session_id, adaptation_checkins.status AS adaptation_checkins_status, adaptation_checkins.result_percent AS adaptation_checkins_result_percent, adaptation_checkins.risk_flag AS adaptation_checkins_risk_flag, adaptation_checkins.sent_at AS adaptation_checkins_sent_at, adaptation_checkins.completed_at AS adaptation_checkins_completed_at, adaptation_checkins.reminders_sent AS adaptation_checkins_reminders_sent, adaptation_checkins.last_reminder_at AS adaptation_checkins_last_reminder_at 
+FROM adaptation_checkins 
+WHERE adaptation_checkins.cycle_id IN (?, ?, ?, ?, ?) ORDER BY adaptation_checkins.offset_days
+2026-06-12 12:56:14,141 INFO sqlalchemy.engine.Engine [cached since 41.86s ago] ('d7ad4e24f89d484eadd5c6a84ca1c713', '63e50afca940403a9509dab2cd552ace', 'e5524bf7eaca4c4d80b30863a42339e5', 'c3b2c0d0e24a4c9ca67759b904c5de1a', 'edddcbacd3a34fe492b409054911e8b3')
+2026-06-12 12:56:14,144 INFO sqlalchemy.engine.Engine SELECT people.id, people.full_name 
+FROM people 
+WHERE people.id IN (?, ?, ?, ?, ?)
+2026-06-12 12:56:14,146 INFO sqlalchemy.engine.Engine [cached since 20.33s ago] ('c8fe2c4aa6474fdfbb91c6265ae72e02', 'b76c1b1c4ded41a790b30cf05276c815', '2d94d2c65f9b4e99b7a78931cda3dc31', '88a4293ff8074951bc1a17b1958fd84a', '3967f5350a5847b69d2a34608a2ced47')
+2026-06-12 12:56:14,148 INFO sqlalchemy.engine.Engine SELECT assessment_links.id, assessment_links.token 
+FROM assessment_links 
+WHERE assessment_links.id IN (?, ?, ?, ?, ?)
+2026-06-12 12:56:14,149 INFO sqlalchemy.engine.Engine [cached since 20.27s ago] ('6bb29f1405bc4dd2bc6fa057da14a4cf', 'f9671877847a4c68bf258a20548c7143', 'd553eb1085fd4d928c1cdc7c4af9b07c', '385d709041b842e28e3becf336969b20', '09b4e37d42224c33aa71b7af284f18df')
+2026-06-12 12:56:14,152 INFO sqlalchemy.engine.Engine SELECT tests.id, tests.title 
+FROM tests 
+WHERE tests.category = ?
+2026-06-12 12:56:14,153 INFO sqlalchemy.engine.Engine [cached since 20.27s ago] ('Адаптация',)
+2026-06-12 12:56:14,155 INFO sqlalchemy.engine.Engine SELECT assessment_links.id, assessment_links.organization_id, assessment_links.token, assessment_links.test_id, assessment_links.test_version_id, assessment_links.person_id, assessment_links.recipient_type, assessment_links.recipient_email, assessment_links.recipient_phone, assessment_links.vacancy_id, assessment_links.status, assessment_links.expires_at, assessment_links.subject_person_id, assessment_links.rater_role, assessment_links.created_by, assessment_links.created_at 
+FROM assessment_links 
+WHERE assessment_links.test_id IN (?, ?, ?, ?, ?) AND assessment_links.recipient_type = ? ORDER BY assessment_links.created_at DESC
+2026-06-12 12:56:14,157 INFO sqlalchemy.engine.Engine [cached since 20.27s ago] ('68ba4ddea691431fbf9508b32c679035', '18cb07fc807f40488bb4cf4ff460236e', 'c9507374aba2437d978aff641b626a03', '2ed39695b51f499aaaa913610977bbad', '7dfcc92cc0ef486892e5b5601ba64b27', 'employee')
+2026-06-12 12:56:14,159 INFO sqlalchemy.engine.Engine SELECT adaptation_checkins.link_id 
+FROM adaptation_checkins 
+WHERE adaptation_checkins.link_id IS NOT NULL
+2026-06-12 12:56:14,160 INFO sqlalchemy.engine.Engine [cached since 20.27s ago] ()
+2026-06-12 12:56:14,163 INFO sqlalchemy.engine.Engine SELECT assessment_sessions.id, assessment_sessions.organization_id, assessment_sessions.person_id, assessment_sessions.link_id, assessment_sessions.test_id, assessment_sessions.test_version_id, assessment_sessions.respondent_type, assessment_sessions.vacancy_id, assessment_sessions.status, assessment_sessions.score, assessment_sessions.max_score, assessment_sessions.percent, assessment_sessions.red_flags, assessment_sessions.unanswered_count, assessment_sessions.recommendation_level, assessment_sessions.recommendation_text, assessment_sessions.report_narrative, assessment_sessions.answers_snapshot, assessment_sessions.started_at, assessment_sessions.submitted_at, assessment_sessions.scored_at, assessment_sessions.created_at 
+FROM assessment_sessions 
+WHERE assessment_sessions.link_id IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND assessment_sessions.status IN (?, ?, ?)
+2026-06-12 12:56:14,164 INFO sqlalchemy.engine.Engine [cached since 41.92s ago] ('6bb29f1405bc4dd2bc6fa057da14a4cf', 'bc28215f235a40079b8129e67ab06529', '09b4e37d42224c33aa71b7af284f18df', '385d709041b842e28e3becf336969b20', 'd553eb1085fd4d928c1cdc7c4af9b07c', 'f9671877847a4c68bf258a20548c7143', '19a87fc98e734c20a269e29a2dd712aa', 'd3f002ca6fa44da5b4665e1df4d95094', '90eb099bcd104da897dc509ca04373d6', 'f07d87becf5540ee9f185aacb03c1a72', 'cc0c522294944486947ad0924513070f', '39bd24c54c224ac097466d635bfc9826', 'de7375194b794e848003d40b5da8ce74', 'f123782ddab249c89e368113189e6dfe', 'f5b5e7e3547b4ede8212e143950d7d67', 'scored', 'reviewed', 'submitted')
+2026-06-12 12:56:14,166 INFO sqlalchemy.engine.Engine SELECT session_competency_scores.session_id AS session_competency_scores_session_id, session_competency_scores.id AS session_competency_scores_id, session_competency_scores.competency_id AS session_competency_scores_competency_id, session_competency_scores.score AS session_competency_scores_score, session_competency_scores.max_score AS session_competency_scores_max_score, session_competency_scores.percent AS session_competency_scores_percent 
+FROM session_competency_scores 
+WHERE session_competency_scores.session_id IN (?, ?, ?, ?, ?, ?, ?, ?)
+2026-06-12 12:56:14,167 INFO sqlalchemy.engine.Engine [cached since 20.27s ago] ('59bc4e0d3968475b9c583e48a367eb8b', '9c3079749b4149499b312108057a0363', '5cf7d820977d41fdb5d0889e66ee031b', 'cd0e72ffe9f24992abfdab291aac229c', '96c8fde92d6a437995b4bd23b2bc6b2f', 'ed9509d9baff4dd2a859a95edf313fd5', 'd857efec8dc04f91b8ada3530967f403', '1e78dbef3f7c49e892801e9bb3321971')
+2026-06-12 12:56:14,170 INFO sqlalchemy.engine.Engine SELECT session_answers.session_id AS session_answers_session_id, session_answers.id AS session_answers_id, session_answers.question_version_id AS session_answers_question_version_id, session_answers.answer_text AS session_answers_answer_text, session_answers.scale_value AS session_answers_scale_value, session_answers.awarded_score AS session_answers_awarded_score, session_answers.is_red_flag AS session_answers_is_red_flag, session_answers.ai_status AS session_answers_ai_status, session_answers.ai_score AS session_answers_ai_score, session_answers.ai_rationale AS session_answers_ai_rationale, session_answers.reviewed_score AS session_answers_reviewed_score, session_answers.reviewed_by AS session_answers_reviewed_by, session_answers.answered_at AS session_answers_answered_at 
+FROM session_answers 
+WHERE session_answers.session_id IN (?, ?, ?, ?, ?, ?, ?, ?)
+2026-06-12 12:56:14,172 INFO sqlalchemy.engine.Engine [cached since 20.27s ago] ('59bc4e0d3968475b9c583e48a367eb8b', '9c3079749b4149499b312108057a0363', '5cf7d820977d41fdb5d0889e66ee031b', 'cd0e72ffe9f24992abfdab291aac229c', '96c8fde92d6a437995b4bd23b2bc6b2f', 'ed9509d9baff4dd2a859a95edf313fd5', 'd857efec8dc04f91b8ada3530967f403', '1e78dbef3f7c49e892801e9bb3321971')
+2026-06-12 12:56:14,176 INFO sqlalchemy.engine.Engine SELECT session_answer_options.session_answer_id AS session_answer_options_session_answer_id, session_answer_options.id AS session_answer_options_id, session_answer_options.answer_option_id AS session_answer_options_answer_option_id 
+FROM session_answer_options 
+WHERE session_answer_options.session_answer_id IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-06-12 12:56:14,177 INFO sqlalchemy.engine.Engine [cached since 20.27s ago] ('ff3d07d443f04fd082eea819da07a9d3', 'c0ef16b4deb543c9b9b0b286f38b4d6c', '0ea713339c6948b9ad6cbd6223efb06e', '2dad453900f84aa2af1fcd3966339fc4', 'b02ba2e09a154de8902399993e1fbe26', '1ea92ab05ac14b298620b207963a9c59', 'fa728201806d4307aa9dbd51bbf9457a', '5e40d31727c24b44a0b34640f74894f6', 'fa76d5b469dd42f68cb51a12b47484fc', 'e3b61e97c1b74ba1a7b65bb8ec351bbd', '981dc5b11ce249378e28bde3b9b2968f', '4d9ce010483540f0af8911f12ec7a232', 'feb8160cc126459292f28a5fc05b6c47', '9b27e3ed780c4787a3fd2a2489a3f53d', 'ed2d95d745914ac4a385287de3b7065e', 'be100f8777754f958fdd8e5d0842fc08', '1ab2259b707441bdb8b406b9e5d84112', 'aebe37cdab07464e882c55cc5de9e72a', '9437b2f1f69d4d08abc9c49c86f1d602', '7991041c69cc476396dc853612a98c75', '8bbcf9e3b04e4e83960edb2bd56e2953', '26edc76cbf1f4becaca63c2273041cae', '58945d5962644fdbaa5aba7eaf9f0f60', '182eec8711144c1da5a2947904223df6', '5ad07dc426a6481096750270bfbd49a8', 'e5df6ddcf07d4e678a8c42696ac5adaf', '38543e7d18b7497eae8ec0bdffece9c3', '61c4bab44d39437caa15f5b48d01dfec', 'e27585b85252407f98a245043cda04ad', 'fc9dcfe507b649d2b78ac3976e64c1ee', 'c84c6ad252be4ed192af28cc920bb0de', 'a14fb9963135432d86cb3d69cb5904d7', '2bef3b3797fe49a2a7a294325058e36d', '09b06e22df17464aaf71bbebed7e79b3', '595f892fff36493ea1900fb0b11367c7', '800b9700b20f40169d86078e8b523c08', '5becf69db193404ab129b704af8e035a')
+2026-06-12 12:56:14,180 INFO sqlalchemy.engine.Engine SELECT people.id, people.full_name 
+FROM people 
+WHERE people.id IN (?, ?, ?, ?)
+2026-06-12 12:56:14,181 INFO sqlalchemy.engine.Engine [cached since 20.36s ago] ('f813fceb46a64570bfb05929a6d8a986', '535a432b23344db894e964bbf8ddacd4', '74efa60c31a041bab1a5f37364394f4a', 'ebeb9fa9577c4d73a4f4ecd5f576e476')
+2026-06-12 12:56:14,184 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:60868 - "GET /api/adaptation/cycles HTTP/1.1" 200 OK
+2026-06-12 12:56:24,022 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-12 12:56:24,024 INFO sqlalchemy.engine.Engine SELECT people.id AS people_id, people.organization_id AS people_organization_id, people.last_name AS people_last_name, people.first_name AS people_first_name, people.patronymic AS people_patronymic, people.full_name AS people_full_name, people.email AS people_email, people.phone AS people_phone, people.city AS people_city, people.created_at AS people_created_at, people.updated_at AS people_updated_at 
+FROM people 
+WHERE people.id = ?
+2026-06-12 12:56:24,025 INFO sqlalchemy.engine.Engine [cached since 10s ago] ('b76c1b1c4ded41a790b30cf05276c815',)
+2026-06-12 12:56:24,028 INFO sqlalchemy.engine.Engine SELECT employee_profiles.person_id AS employee_profiles_person_id, employee_profiles.department_id AS employee_profiles_department_id, employee_profiles.position AS employee_profiles_position, employee_profiles.manager_id AS employee_profiles_manager_id, employee_profiles.project AS employee_profiles_project, employee_profiles.start_date AS employee_profiles_start_date, employee_profiles.employment_type AS employee_profiles_employment_type, employee_profiles.turnover_risk AS employee_profiles_turnover_risk, employee_profiles.burnout AS employee_profiles_burnout, employee_profiles.satisfaction AS employee_profiles_satisfaction, employee_profiles.recommendation AS employee_profiles_recommendation, employee_profiles.fit AS employee_profiles_fit 
+FROM employee_profiles 
+WHERE employee_profiles.person_id IN (?)
+2026-06-12 12:56:24,029 INFO sqlalchemy.engine.Engine [cached since 51.8s ago] ('b76c1b1c4ded41a790b30cf05276c815',)
+2026-06-12 12:56:24,032 INFO sqlalchemy.engine.Engine SELECT candidate_profiles.person_id AS candidate_profiles_person_id, candidate_profiles.vacancy_id AS candidate_profiles_vacancy_id, candidate_profiles.source AS candidate_profiles_source, candidate_profiles.selection_type AS candidate_profiles_selection_type, candidate_profiles.stage AS candidate_profiles_stage, candidate_profiles.responsible_user_id AS candidate_profiles_responsible_user_id, candidate_profiles.applied_at AS candidate_profiles_applied_at, candidate_profiles.notes AS candidate_profiles_notes 
+FROM candidate_profiles 
+WHERE candidate_profiles.person_id IN (?)
+2026-06-12 12:56:24,033 INFO sqlalchemy.engine.Engine [cached since 51.8s ago] ('b76c1b1c4ded41a790b30cf05276c815',)
+2026-06-12 12:56:24,035 INFO sqlalchemy.engine.Engine SELECT adaptation_cycles.id, adaptation_cycles.organization_id, adaptation_cycles.person_id, adaptation_cycles.start_date, adaptation_cycles.status, adaptation_cycles.created_at 
+FROM adaptation_cycles 
+WHERE adaptation_cycles.person_id = ? AND adaptation_cycles.status = ?
+2026-06-12 12:56:24,037 INFO sqlalchemy.engine.Engine [cached since 10.01s ago] ('b76c1b1c4ded41a790b30cf05276c815', 'active')
+2026-06-12 12:56:24,039 INFO sqlalchemy.engine.Engine SELECT adaptation_checkins.cycle_id AS adaptation_checkins_cycle_id, adaptation_checkins.id AS adaptation_checkins_id, adaptation_checkins.person_id AS adaptation_checkins_person_id, adaptation_checkins.offset_days AS adaptation_checkins_offset_days, adaptation_checkins.due_date AS adaptation_checkins_due_date, adaptation_checkins.stage AS adaptation_checkins_stage, adaptation_checkins.test_id AS adaptation_checkins_test_id, adaptation_checkins.link_id AS adaptation_checkins_link_id, adaptation_checkins.session_id AS adaptation_checkins_session_id, adaptation_checkins.status AS adaptation_checkins_status, adaptation_checkins.result_percent AS adaptation_checkins_result_percent, adaptation_checkins.risk_flag AS adaptation_checkins_risk_flag, adaptation_checkins.sent_at AS adaptation_checkins_sent_at, adaptation_checkins.completed_at AS adaptation_checkins_completed_at, adaptation_checkins.reminders_sent AS adaptation_checkins_reminders_sent, adaptation_checkins.last_reminder_at AS adaptation_checkins_last_reminder_at 
+FROM adaptation_checkins 
+WHERE adaptation_checkins.cycle_id IN (?) ORDER BY adaptation_checkins.offset_days
+2026-06-12 12:56:24,041 INFO sqlalchemy.engine.Engine [cached since 51.76s ago] ('d7ad4e24f89d484eadd5c6a84ca1c713',)
+2026-06-12 12:56:24,043 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:60872 - "POST /api/adaptation/start HTTP/1.1" 200 OK
+2026-06-12 12:56:24,076 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-12 12:56:24,077 INFO sqlalchemy.engine.Engine SELECT adaptation_cycles.id, adaptation_cycles.organization_id, adaptation_cycles.person_id, adaptation_cycles.start_date, adaptation_cycles.status, adaptation_cycles.created_at 
+FROM adaptation_cycles ORDER BY adaptation_cycles.start_date DESC
+2026-06-12 12:56:24,078 INFO sqlalchemy.engine.Engine [cached since 30.21s ago] ()
+2026-06-12 12:56:24,081 INFO sqlalchemy.engine.Engine SELECT adaptation_checkins.cycle_id AS adaptation_checkins_cycle_id, adaptation_checkins.id AS adaptation_checkins_id, adaptation_checkins.person_id AS adaptation_checkins_person_id, adaptation_checkins.offset_days AS adaptation_checkins_offset_days, adaptation_checkins.due_date AS adaptation_checkins_due_date, adaptation_checkins.stage AS adaptation_checkins_stage, adaptation_checkins.test_id AS adaptation_checkins_test_id, adaptation_checkins.link_id AS adaptation_checkins_link_id, adaptation_checkins.session_id AS adaptation_checkins_session_id, adaptation_checkins.status AS adaptation_checkins_status, adaptation_checkins.result_percent AS adaptation_checkins_result_percent, adaptation_checkins.risk_flag AS adaptation_checkins_risk_flag, adaptation_checkins.sent_at AS adaptation_checkins_sent_at, adaptation_checkins.completed_at AS adaptation_checkins_completed_at, adaptation_checkins.reminders_sent AS adaptation_checkins_reminders_sent, adaptation_checkins.last_reminder_at AS adaptation_checkins_last_reminder_at 
+FROM adaptation_checkins 
+WHERE adaptation_checkins.cycle_id IN (?, ?, ?, ?, ?) ORDER BY adaptation_checkins.offset_days
+2026-06-12 12:56:24,083 INFO sqlalchemy.engine.Engine [cached since 51.81s ago] ('d7ad4e24f89d484eadd5c6a84ca1c713', '63e50afca940403a9509dab2cd552ace', 'e5524bf7eaca4c4d80b30863a42339e5', 'c3b2c0d0e24a4c9ca67759b904c5de1a', 'edddcbacd3a34fe492b409054911e8b3')
+2026-06-12 12:56:24,086 INFO sqlalchemy.engine.Engine SELECT people.id, people.full_name 
+FROM people 
+WHERE people.id IN (?, ?, ?, ?, ?)
+2026-06-12 12:56:24,088 INFO sqlalchemy.engine.Engine [cached since 30.27s ago] ('c8fe2c4aa6474fdfbb91c6265ae72e02', 'b76c1b1c4ded41a790b30cf05276c815', '2d94d2c65f9b4e99b7a78931cda3dc31', '88a4293ff8074951bc1a17b1958fd84a', '3967f5350a5847b69d2a34608a2ced47')
+2026-06-12 12:56:24,090 INFO sqlalchemy.engine.Engine SELECT assessment_links.id, assessment_links.token 
+FROM assessment_links 
+WHERE assessment_links.id IN (?, ?, ?, ?, ?)
+2026-06-12 12:56:24,092 INFO sqlalchemy.engine.Engine [cached since 30.22s ago] ('6bb29f1405bc4dd2bc6fa057da14a4cf', 'f9671877847a4c68bf258a20548c7143', 'd553eb1085fd4d928c1cdc7c4af9b07c', '385d709041b842e28e3becf336969b20', '09b4e37d42224c33aa71b7af284f18df')
+2026-06-12 12:56:24,094 INFO sqlalchemy.engine.Engine SELECT tests.id, tests.title 
+FROM tests 
+WHERE tests.category = ?
+2026-06-12 12:56:24,096 INFO sqlalchemy.engine.Engine [cached since 30.22s ago] ('Адаптация',)
+2026-06-12 12:56:24,100 INFO sqlalchemy.engine.Engine SELECT assessment_links.id, assessment_links.organization_id, assessment_links.token, assessment_links.test_id, assessment_links.test_version_id, assessment_links.person_id, assessment_links.recipient_type, assessment_links.recipient_email, assessment_links.recipient_phone, assessment_links.vacancy_id, assessment_links.status, assessment_links.expires_at, assessment_links.subject_person_id, assessment_links.rater_role, assessment_links.created_by, assessment_links.created_at 
+FROM assessment_links 
+WHERE assessment_links.test_id IN (?, ?, ?, ?, ?) AND assessment_links.recipient_type = ? ORDER BY assessment_links.created_at DESC
+2026-06-12 12:56:24,102 INFO sqlalchemy.engine.Engine [cached since 30.22s ago] ('68ba4ddea691431fbf9508b32c679035', '18cb07fc807f40488bb4cf4ff460236e', 'c9507374aba2437d978aff641b626a03', '2ed39695b51f499aaaa913610977bbad', '7dfcc92cc0ef486892e5b5601ba64b27', 'employee')
+2026-06-12 12:56:24,106 INFO sqlalchemy.engine.Engine SELECT adaptation_checkins.link_id 
+FROM adaptation_checkins 
+WHERE adaptation_checkins.link_id IS NOT NULL
+2026-06-12 12:56:24,108 INFO sqlalchemy.engine.Engine [cached since 30.22s ago] ()
+2026-06-12 12:56:24,110 INFO sqlalchemy.engine.Engine SELECT assessment_sessions.id, assessment_sessions.organization_id, assessment_sessions.person_id, assessment_sessions.link_id, assessment_sessions.test_id, assessment_sessions.test_version_id, assessment_sessions.respondent_type, assessment_sessions.vacancy_id, assessment_sessions.status, assessment_sessions.score, assessment_sessions.max_score, assessment_sessions.percent, assessment_sessions.red_flags, assessment_sessions.unanswered_count, assessment_sessions.recommendation_level, assessment_sessions.recommendation_text, assessment_sessions.report_narrative, assessment_sessions.answers_snapshot, assessment_sessions.started_at, assessment_sessions.submitted_at, assessment_sessions.scored_at, assessment_sessions.created_at 
+FROM assessment_sessions 
+WHERE assessment_sessions.link_id IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND assessment_sessions.status IN (?, ?, ?)
+2026-06-12 12:56:24,112 INFO sqlalchemy.engine.Engine [cached since 51.87s ago] ('6bb29f1405bc4dd2bc6fa057da14a4cf', 'bc28215f235a40079b8129e67ab06529', '09b4e37d42224c33aa71b7af284f18df', '385d709041b842e28e3becf336969b20', 'd553eb1085fd4d928c1cdc7c4af9b07c', 'f9671877847a4c68bf258a20548c7143', '19a87fc98e734c20a269e29a2dd712aa', 'd3f002ca6fa44da5b4665e1df4d95094', '90eb099bcd104da897dc509ca04373d6', 'f07d87becf5540ee9f185aacb03c1a72', 'cc0c522294944486947ad0924513070f', '39bd24c54c224ac097466d635bfc9826', 'de7375194b794e848003d40b5da8ce74', 'f123782ddab249c89e368113189e6dfe', 'f5b5e7e3547b4ede8212e143950d7d67', 'scored', 'reviewed', 'submitted')
+2026-06-12 12:56:24,115 INFO sqlalchemy.engine.Engine SELECT session_competency_scores.session_id AS session_competency_scores_session_id, session_competency_scores.id AS session_competency_scores_id, session_competency_scores.competency_id AS session_competency_scores_competency_id, session_competency_scores.score AS session_competency_scores_score, session_competency_scores.max_score AS session_competency_scores_max_score, session_competency_scores.percent AS session_competency_scores_percent 
+FROM session_competency_scores 
+WHERE session_competency_scores.session_id IN (?, ?, ?, ?, ?, ?, ?, ?)
+2026-06-12 12:56:24,116 INFO sqlalchemy.engine.Engine [cached since 30.22s ago] ('59bc4e0d3968475b9c583e48a367eb8b', '9c3079749b4149499b312108057a0363', '5cf7d820977d41fdb5d0889e66ee031b', 'cd0e72ffe9f24992abfdab291aac229c', '96c8fde92d6a437995b4bd23b2bc6b2f', 'ed9509d9baff4dd2a859a95edf313fd5', 'd857efec8dc04f91b8ada3530967f403', '1e78dbef3f7c49e892801e9bb3321971')
+2026-06-12 12:56:24,119 INFO sqlalchemy.engine.Engine SELECT session_answers.session_id AS session_answers_session_id, session_answers.id AS session_answers_id, session_answers.question_version_id AS session_answers_question_version_id, session_answers.answer_text AS session_answers_answer_text, session_answers.scale_value AS session_answers_scale_value, session_answers.awarded_score AS session_answers_awarded_score, session_answers.is_red_flag AS session_answers_is_red_flag, session_answers.ai_status AS session_answers_ai_status, session_answers.ai_score AS session_answers_ai_score, session_answers.ai_rationale AS session_answers_ai_rationale, session_answers.reviewed_score AS session_answers_reviewed_score, session_answers.reviewed_by AS session_answers_reviewed_by, session_answers.answered_at AS session_answers_answered_at 
+FROM session_answers 
+WHERE session_answers.session_id IN (?, ?, ?, ?, ?, ?, ?, ?)
+2026-06-12 12:56:24,121 INFO sqlalchemy.engine.Engine [cached since 30.22s ago] ('59bc4e0d3968475b9c583e48a367eb8b', '9c3079749b4149499b312108057a0363', '5cf7d820977d41fdb5d0889e66ee031b', 'cd0e72ffe9f24992abfdab291aac229c', '96c8fde92d6a437995b4bd23b2bc6b2f', 'ed9509d9baff4dd2a859a95edf313fd5', 'd857efec8dc04f91b8ada3530967f403', '1e78dbef3f7c49e892801e9bb3321971')
+2026-06-12 12:56:24,124 INFO sqlalchemy.engine.Engine SELECT session_answer_options.session_answer_id AS session_answer_options_session_answer_id, session_answer_options.id AS session_answer_options_id, session_answer_options.answer_option_id AS session_answer_options_answer_option_id 
+FROM session_answer_options 
+WHERE session_answer_options.session_answer_id IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-06-12 12:56:24,126 INFO sqlalchemy.engine.Engine [cached since 30.22s ago] ('ff3d07d443f04fd082eea819da07a9d3', 'c0ef16b4deb543c9b9b0b286f38b4d6c', '0ea713339c6948b9ad6cbd6223efb06e', '2dad453900f84aa2af1fcd3966339fc4', 'b02ba2e09a154de8902399993e1fbe26', '1ea92ab05ac14b298620b207963a9c59', 'fa728201806d4307aa9dbd51bbf9457a', '5e40d31727c24b44a0b34640f74894f6', 'fa76d5b469dd42f68cb51a12b47484fc', 'e3b61e97c1b74ba1a7b65bb8ec351bbd', '981dc5b11ce249378e28bde3b9b2968f', '4d9ce010483540f0af8911f12ec7a232', 'feb8160cc126459292f28a5fc05b6c47', '9b27e3ed780c4787a3fd2a2489a3f53d', 'ed2d95d745914ac4a385287de3b7065e', 'be100f8777754f958fdd8e5d0842fc08', '1ab2259b707441bdb8b406b9e5d84112', 'aebe37cdab07464e882c55cc5de9e72a', '9437b2f1f69d4d08abc9c49c86f1d602', '7991041c69cc476396dc853612a98c75', '8bbcf9e3b04e4e83960edb2bd56e2953', '26edc76cbf1f4becaca63c2273041cae', '58945d5962644fdbaa5aba7eaf9f0f60', '182eec8711144c1da5a2947904223df6', '5ad07dc426a6481096750270bfbd49a8', 'e5df6ddcf07d4e678a8c42696ac5adaf', '38543e7d18b7497eae8ec0bdffece9c3', '61c4bab44d39437caa15f5b48d01dfec', 'e27585b85252407f98a245043cda04ad', 'fc9dcfe507b649d2b78ac3976e64c1ee', 'c84c6ad252be4ed192af28cc920bb0de', 'a14fb9963135432d86cb3d69cb5904d7', '2bef3b3797fe49a2a7a294325058e36d', '09b06e22df17464aaf71bbebed7e79b3', '595f892fff36493ea1900fb0b11367c7', '800b9700b20f40169d86078e8b523c08', '5becf69db193404ab129b704af8e035a')
+2026-06-12 12:56:24,129 INFO sqlalchemy.engine.Engine SELECT people.id, people.full_name 
+FROM people 
+WHERE people.id IN (?, ?, ?, ?)
+2026-06-12 12:56:24,131 INFO sqlalchemy.engine.Engine [cached since 30.31s ago] ('f813fceb46a64570bfb05929a6d8a986', '535a432b23344db894e964bbf8ddacd4', '74efa60c31a041bab1a5f37364394f4a', 'ebeb9fa9577c4d73a4f4ecd5f576e476')
+2026-06-12 12:56:24,134 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:60872 - "GET /api/adaptation/cycles HTTP/1.1" 200 OK
