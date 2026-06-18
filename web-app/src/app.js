@@ -2293,6 +2293,192 @@ function initLv3Landing() {
     counterEls.forEach(el => counterObserver.observe(el));
   }
 
+  // ── FOLDER TABS ──
+  const folderTabs = document.querySelectorAll('.lv3-folder-tab');
+  const folderPanels = document.querySelectorAll('.lv3-folder-panel');
+  let folderTimers = {};
+
+  function stopFolderAnimations() {
+    Object.values(folderTimers).forEach(t => clearTimeout(t));
+    folderTimers = {};
+  }
+
+  function activateFolder(idx) {
+    stopFolderAnimations();
+    folderTabs.forEach(t => t.classList.remove('active'));
+    folderPanels.forEach(p => p.classList.remove('active'));
+    const tab = document.querySelector(`.lv3-folder-tab[data-folder="${idx}"]`);
+    const panel = document.querySelector(`.lv3-folder-panel[data-folder-panel="${idx}"]`);
+    if (tab) tab.classList.add('active');
+    if (panel) {
+      panel.classList.add('active');
+      // Animate bars on slide 1
+      if (idx === 0) {
+        panel.querySelectorAll('.lv3-dash-bar-fill').forEach((bar, i) => {
+          const w = bar.style.width;
+          bar.style.width = '0';
+          folderTimers[`bar${i}`] = setTimeout(() => { bar.style.width = w; }, 100 + i * 120);
+        });
+      }
+      // AI chat loop on slide 2
+      if (idx === 1) startAiChatLoop();
+      // Send animation loop on slide 3
+      if (idx === 2) startSendLoop();
+      // Org expand on slide 4
+      if (idx === 3) startOrgExpand();
+    }
+  }
+
+  folderTabs.forEach(tab => {
+    tab.addEventListener('click', () => activateFolder(parseInt(tab.dataset.folder)));
+  });
+
+  // Animate bars on initial load (slide 0 is active)
+  setTimeout(() => {
+    document.querySelectorAll('.lv3-folder-panel[data-folder-panel="0"] .lv3-dash-bar-fill').forEach((bar, i) => {
+      const w = bar.style.width;
+      bar.style.width = '0';
+      setTimeout(() => { bar.style.width = w; }, 300 + i * 120);
+    });
+  }, 600);
+
+  // ── AI CHAT LOOP (Slide 2) ──
+  const aiConversations = [
+    [
+      { type: 'user', text: 'Как провести оценку 360 для руководителя?' },
+      { type: 'bot', text: 'Для оценки 360 выберите профиль «Руководитель», добавьте 5–8 оценщиков и установите срок 7 дней. Я сформирую сводный отчёт. 📊' },
+    ],
+    [
+      { type: 'user', text: 'На кого из кандидатов обратить внимание?' },
+      { type: 'bot', text: 'Рекомендую Анну К. — fit к роли 94%, высокая обучаемость. Красных флагов нет. ✅' },
+    ],
+    [
+      { type: 'user', text: 'Что значит низкая вовлечённость?' },
+      { type: 'bot', text: 'Вовлечённость ниже 60% — риск выгорания. Рекомендую 1-on-1 с сотрудником. 🔥' },
+    ],
+    [
+      { type: 'user', text: 'Как составить ИПР для сотрудника?' },
+      { type: 'bot', text: 'На основе оценки AI сформирует ИПР автоматически: зоны роста, рекомендации, сроки. Вы можете отредактировать. 📄' },
+    ],
+  ];
+  let aiConvIdx = 0;
+  let aiChatRunning = false;
+
+  function startAiChatLoop() {
+    const container = document.getElementById('lv3AiMessages');
+    if (!container) return;
+    if (aiChatRunning) return;
+    aiChatRunning = true;
+    runAiConversation();
+  }
+
+  function runAiConversation() {
+    const container = document.getElementById('lv3AiMessages');
+    if (!container) { aiChatRunning = false; return; }
+    const conv = aiConversations[aiConvIdx % aiConversations.length];
+    aiConvIdx++;
+    // Clear messages
+    container.querySelectorAll('.lv3-ai-msg').forEach(m => m.remove());
+    let delay = 0;
+    conv.forEach((msg, i) => {
+      delay += i === 0 ? 400 : 1200;
+      folderTimers[`aiMsg${i}`] = setTimeout(() => {
+        const el = document.createElement('div');
+        el.className = `lv3-ai-msg lv3-ai-msg-${msg.type}`;
+        el.textContent = msg.text;
+        container.appendChild(el);
+        requestAnimationFrame(() => el.classList.add('lv3-ai-msg-visible'));
+        container.scrollTop = container.scrollHeight;
+      }, delay);
+    });
+    // Loop
+    folderTimers['aiLoop'] = setTimeout(() => {
+      if (aiChatRunning) runAiConversation();
+    }, delay + 2500);
+  }
+
+  // ── SEND ANIMATION LOOP (Slide 3) ──
+  let sendRunning = false;
+
+  function startSendLoop() {
+    if (sendRunning) return;
+    sendRunning = true;
+    runSendCycle();
+  }
+
+  function runSendCycle() {
+    const stage0 = document.querySelector('.lv3-send-stage[data-stage="0"]');
+    const stage1 = document.querySelector('.lv3-send-stage[data-stage="1"]');
+    const stage2 = document.querySelector('.lv3-send-stage[data-stage="2"]');
+    const bar = document.getElementById('lv3SendBar');
+    const btn = document.getElementById('lv3SendBtn');
+    if (!stage0) { sendRunning = false; return; }
+    // Reset to stage 0
+    stage0.style.display = '';
+    stage1.style.display = 'none';
+    stage2.style.display = 'none';
+    if (btn) btn.style.display = '';
+    // Stage 1: sending
+    folderTimers['send1'] = setTimeout(() => {
+      stage0.style.display = 'none';
+      stage1.style.display = '';
+      if (btn) btn.style.display = 'none';
+      if (bar) {
+        bar.style.width = '0';
+        let pct = 0;
+        const prog = setInterval(() => {
+          pct += 4;
+          bar.style.width = pct + '%';
+          if (pct >= 100) clearInterval(prog);
+        }, 40);
+      }
+    }, 1800);
+    // Stage 2: done
+    folderTimers['send2'] = setTimeout(() => {
+      stage1.style.display = 'none';
+      stage2.style.display = '';
+    }, 3600);
+    // Loop
+    folderTimers['sendLoop'] = setTimeout(() => {
+      if (sendRunning) runSendCycle();
+    }, 6000);
+  }
+
+  // ── ORG EXPAND ANIMATION (Slide 4) ──
+  function startOrgExpand() {
+    const children = document.querySelectorAll('.lv3-org-children');
+    children.forEach(c => c.classList.remove('open'));
+    let i = 0;
+    function expandNext() {
+      if (i < children.length) {
+        children[i].classList.add('open');
+        i++;
+        folderTimers[`org${i}`] = setTimeout(expandNext, 500);
+      } else {
+        // Collapse and restart
+        folderTimers['orgReset'] = setTimeout(() => {
+          children.forEach(c => c.classList.remove('open'));
+          folderTimers['orgRestart'] = setTimeout(startOrgExpand, 600);
+        }, 3000);
+      }
+    }
+    folderTimers['orgStart'] = setTimeout(expandNext, 400);
+  }
+
+  // ── REFERRAL COPY BUTTON (Slide 5) ──
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('#lv3RefCopyBtn');
+    if (!btn) return;
+    const url = 'eltera.ai/ref/xK9mP2qR';
+    navigator.clipboard?.writeText(url).catch(() => {});
+    btn.textContent = 'Скопировано ✓';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'Скопировать';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+
   // SMOOTH ANCHOR SCROLL
   document.querySelectorAll('a[href^="#lv3-"]').forEach(link => {
     link.addEventListener('click', (e) => {

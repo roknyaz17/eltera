@@ -158,95 +158,297 @@ export function renderLanding(tariffs) {
       </div>
 
       <!-- FOR WHOM -->
-      <section class="lv3-section" id="lv3-for-whom" data-reveal>
+      <!-- FEATURES FOLDER TABS -->
+      <section class="lv3-section lv3-features-section" id="lv3-for-whom" data-reveal>
         <div class="lv3-section-head">
-          <h2>Для кого платформа</h2>
-          <p>Eltera помогает разным ролям принимать решения на основе данных</p>
+          <h2>Почему выбирают Eltera</h2>
+          <p>Пять причин, которые делают оценку людей простой и эффективной</p>
         </div>
-        <div class="lv3-tabs">
-          <div class="lv3-tab-btns">
-            <button class="lv3-tab-btn active" data-lv3-tab="0">Собственники бизнеса</button>
-            <button class="lv3-tab-btn" data-lv3-tab="1">HR-директора и HR-отделы</button>
-            <button class="lv3-tab-btn" data-lv3-tab="2">Руководители подразделений</button>
+        <div class="lv3-folders" id="lv3Folders">
+          <!-- Folder tabs -->
+          <div class="lv3-folder-tabs">
+            <button class="lv3-folder-tab active" data-folder="0">
+              <span class="lv3-folder-icon">📊</span>
+              <span>Аналитика</span>
+            </button>
+            <button class="lv3-folder-tab" data-folder="1">
+              <span class="lv3-folder-icon">🤖</span>
+              <span>AI-помощник</span>
+            </button>
+            <button class="lv3-folder-tab" data-folder="2">
+              <span class="lv3-folder-icon">⚡</span>
+              <span>Простота</span>
+            </button>
+            <button class="lv3-folder-tab" data-folder="3">
+              <span class="lv3-folder-icon">🏢</span>
+              <span>Структура</span>
+            </button>
+            <button class="lv3-folder-tab" data-folder="4">
+              <span class="lv3-folder-icon">💎</span>
+              <span>Реферальная</span>
+            </button>
           </div>
-          <div class="lv3-tab-panels">
-            <div class="lv3-tab-panel active" data-lv3-panel="0">
-              <div class="lv3-tab-content">
-                <div class="lv3-tab-text">
-                  <h3>Собственники бизнеса</h3>
-                  <p>Для собственников, которые хотят понимать реальное состояние команды, оценивать сотрудников, принимать решения о развитии, ротации, удержании или расставании с людьми.</p>
-                  <div class="lv3-tasks-label">ЗАДАЧИ</div>
-                  <ul class="lv3-tasks">
-                    <li>Оценить сотрудников</li>
-                    <li>Провести ротацию кадров</li>
-                    <li>Снизить текучесть</li>
-                    <li>Увидеть риски в команде</li>
-                    <li>Принимать решения на данных</li>
+
+          <!-- Folder panels -->
+          <div class="lv3-folder-panels">
+
+            <!-- Slide 1: Analytics Dashboard -->
+            <div class="lv3-folder-panel active" data-folder-panel="0">
+              <div class="lv3-folder-content">
+                <div class="lv3-folder-text">
+                  <div class="lv3-folder-tag">Аналитика</div>
+                  <h3>Удобная аналитика в одном кабинете</h3>
+                  <p>Видите полную картину компании: KPI, воронку найма, риски, вовлечённость и потенциал каждого сотрудника — всё в одном визуальном дашборде.</p>
+                  <ul class="lv3-folder-list">
+                    <li>Дашборд HR-директора и собственника</li>
+                    <li>Radar компетенций и 9-box матрица</li>
+                    <li>Тепловая карта рисков команды</li>
+                    <li>Воронка подбора в реальном времени</li>
                   </ul>
                 </div>
-                <div class="lv3-tab-visual">
-                  <div class="lv3-mini-report">
-                    <div class="lv3-mr-head"><span class="lv3-mr-badge">Отчёт собственника</span></div>
-                    <div class="lv3-mr-row"><span>Команда в норме</span><b class="lv3-green">12 чел.</b></div>
-                    <div class="lv3-mr-row"><span>Зона риска</span><b class="lv3-amber">3 чел.</b></div>
-                    <div class="lv3-mr-row"><span>Текучесть (прогноз)</span><b class="lv3-red">↓ 18%</b></div>
-                    <div class="lv3-mr-row"><span>Средний fit к роли</span><b class="lv3-teal">79%</b></div>
+                <div class="lv3-folder-visual">
+                  <div class="lv3-dash-preview">
+                    <div class="lv3-dash-header">
+                      <span class="lv3-dash-title">HR Dashboard</span>
+                      <span class="lv3-live-dot">● Live</span>
+                    </div>
+                    <div class="lv3-dash-kpis">
+                      <div class="lv3-dash-kpi">
+                        <span class="lv3-dash-kpi-val lv3-teal">47</span>
+                        <span class="lv3-dash-kpi-label">Оценок</span>
+                      </div>
+                      <div class="lv3-dash-kpi">
+                        <span class="lv3-dash-kpi-val lv3-green">81%</span>
+                        <span class="lv3-dash-kpi-label">Конверсия</span>
+                      </div>
+                      <div class="lv3-dash-kpi">
+                        <span class="lv3-dash-kpi-val lv3-amber">3</span>
+                        <span class="lv3-dash-kpi-label">Риска</span>
+                      </div>
+                    </div>
+                    <div class="lv3-dash-bars">
+                      <div class="lv3-dash-bar-row">
+                        <span>Коммуникация</span>
+                        <div class="lv3-dash-bar"><div class="lv3-dash-bar-fill" style="width:87%"></div></div>
+                        <span>87%</span>
+                      </div>
+                      <div class="lv3-dash-bar-row">
+                        <span>Лидерство</span>
+                        <div class="lv3-dash-bar"><div class="lv3-dash-bar-fill" style="width:72%"></div></div>
+                        <span>72%</span>
+                      </div>
+                      <div class="lv3-dash-bar-row">
+                        <span>Стрессоустойчивость</span>
+                        <div class="lv3-dash-bar"><div class="lv3-dash-bar-fill lv3-bar-amber" style="width:54%"></div></div>
+                        <span>54%</span>
+                      </div>
+                      <div class="lv3-dash-bar-row">
+                        <span>Обучаемость</span>
+                        <div class="lv3-dash-bar"><div class="lv3-dash-bar-fill" style="width:91%"></div></div>
+                        <span>91%</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-            <div class="lv3-tab-panel" data-lv3-panel="1">
-              <div class="lv3-tab-content">
-                <div class="lv3-tab-text">
-                  <h3>HR-директора и HR-отделы</h3>
-                  <p>Автоматизируете оценку, получаете готовые отчёты, экономите время на ручной работе и принимаете обоснованные кадровые решения.</p>
-                  <div class="lv3-tasks-label">ЗАДАЧИ</div>
-                  <ul class="lv3-tasks">
-                    <li>Автоматизировать оценку</li>
-                    <li>Получать PDF-отчёты</li>
-                    <li>Сравнивать кандидатов</li>
-                    <li>Меньше ручной работы</li>
-                    <li>Снизить текучесть персонала</li>
+
+            <!-- Slide 2: AI Assistant -->
+            <div class="lv3-folder-panel" data-folder-panel="1">
+              <div class="lv3-folder-content">
+                <div class="lv3-folder-text">
+                  <div class="lv3-folder-tag">AI-помощник</div>
+                  <h3>Спроси AI, если не знаешь как действовать</h3>
+                  <p>Не знаете как провести оценку 360, на кого из кандидатов обратить внимание или как интерпретировать результаты? AI ответит на любой HR-вопрос за секунды.</p>
+                  <ul class="lv3-folder-list">
+                    <li>Рекомендации по кандидатам</li>
+                    <li>Помощь в настройке оценки 360</li>
+                    <li>Анализ рисков и красных флагов</li>
+                    <li>Советы по развитию сотрудников</li>
                   </ul>
                 </div>
-                <div class="lv3-tab-visual">
-                  <div class="lv3-mini-report">
-                    <div class="lv3-mr-head"><span class="lv3-mr-badge">HR-дашборд</span></div>
-                    <div class="lv3-mr-row"><span>Отправлено оценок</span><b class="lv3-teal">47</b></div>
-                    <div class="lv3-mr-row"><span>Завершено</span><b class="lv3-green">38</b></div>
-                    <div class="lv3-mr-row"><span>Конверсия</span><b class="lv3-teal">81%</b></div>
-                    <div class="lv3-mr-row"><span>Экономия времени</span><b class="lv3-green">↑ 60%</b></div>
+                <div class="lv3-folder-visual">
+                  <div class="lv3-ai-chat" id="lv3AiChat">
+                    <div class="lv3-ai-chat-header">
+                      <span class="lv3-ai-avatar">✦</span>
+                      <span>Eltera AI</span>
+                      <span class="lv3-live-dot">● Online</span>
+                    </div>
+                    <div class="lv3-ai-chat-messages" id="lv3AiMessages">
+                      <div class="lv3-ai-msg lv3-ai-msg-user lv3-ai-msg-visible">Как провести оценку 360 для руководителя?</div>
+                      <div class="lv3-ai-msg lv3-ai-msg-bot lv3-ai-msg-visible">Для оценки 360 выберите профиль «Руководитель», добавьте 5–8 коллег и подчинённых как оценщиков, установите срок 7 дней. Я автоматически сформирую сводный отчёт. 📊</div>
+                      <div class="lv3-ai-msg lv3-ai-msg-user">На кого из кандидатов обратить внимание?</div>
+                      <div class="lv3-ai-msg lv3-ai-msg-bot">Рекомендую Анну К. — fit к роли 94%, высокая обучаемость и стрессоустойчивость. Красных флагов нет. ✅</div>
+                      <div class="lv3-ai-msg lv3-ai-msg-user">Что значит низкий показатель вовлечённости?</div>
+                      <div class="lv3-ai-msg lv3-ai-msg-bot">Вовлечённость ниже 60% — сигнал риска выгорания. Рекомендую 1-on-1 с сотрудником и пересмотр нагрузки. 🔥</div>
+                    </div>
+                    <div class="lv3-ai-chat-input">
+                      <input type="text" placeholder="Задайте вопрос AI..." readonly>
+                      <button>↑</button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-            <div class="lv3-tab-panel" data-lv3-panel="2">
-              <div class="lv3-tab-content">
-                <div class="lv3-tab-text">
-                  <h3>Руководители подразделений</h3>
-                  <p>Понимаете потенциал каждого сотрудника, видите кто готов к росту, а кто в зоне риска. Строите команду осознанно.</p>
-                  <div class="lv3-tasks-label">ЗАДАЧИ</div>
-                  <ul class="lv3-tasks">
-                    <li>Оценить потенциал сотрудников</li>
-                    <li>Построить ИПР</li>
-                    <li>Выявить лидеров</li>
-                    <li>Снизить риски команды</li>
-                    <li>Performance Review</li>
+
+            <!-- Slide 3: Simple Interface -->
+            <div class="lv3-folder-panel" data-folder-panel="2">
+              <div class="lv3-folder-content">
+                <div class="lv3-folder-text">
+                  <div class="lv3-folder-tag">Простота</div>
+                  <h3>HR без воды — интуитивно понятный интерфейс</h3>
+                  <p>Создайте и отправьте оценку за 1 минуту. Никаких инструкций, долгого обучения и технических сложностей. Просто выберите профиль и отправьте ссылку.</p>
+                  <ul class="lv3-folder-list">
+                    <li>Создание оценки за 3 клика</li>
+                    <li>Готовые профили для 120+ должностей</li>
+                    <li>Автоматическая отправка ссылок</li>
+                    <li>Результат сразу после прохождения</li>
                   </ul>
                 </div>
-                <div class="lv3-tab-visual">
-                  <div class="lv3-mini-report">
-                    <div class="lv3-mr-head"><span class="lv3-mr-badge">9-box команды</span></div>
-                    <div class="lv3-mr-row"><span>Высокий потенциал</span><b class="lv3-green">4 чел.</b></div>
-                    <div class="lv3-mr-row"><span>Кадровый резерв</span><b class="lv3-teal">3 чел.</b></div>
-                    <div class="lv3-mr-row"><span>Требуют внимания</span><b class="lv3-amber">2 чел.</b></div>
-                    <div class="lv3-mr-row"><span>ИПР составлено</span><b class="lv3-teal">7 чел.</b></div>
+                <div class="lv3-folder-visual">
+                  <div class="lv3-send-preview">
+                    <div class="lv3-send-step" id="lv3SendStep">
+                      <div class="lv3-send-stage" data-stage="0">
+                        <div class="lv3-send-form">
+                          <div class="lv3-send-label">Должность</div>
+                          <div class="lv3-send-field lv3-typing" id="lv3TypeField">Менеджер по продажам</div>
+                          <div class="lv3-send-label">Кандидат</div>
+                          <div class="lv3-send-field">Иванов Алексей</div>
+                          <div class="lv3-send-label">Email</div>
+                          <div class="lv3-send-field">ivanov@company.ru</div>
+                        </div>
+                      </div>
+                      <div class="lv3-send-stage" data-stage="1" style="display:none">
+                        <div class="lv3-send-sending">
+                          <div class="lv3-send-icon">📤</div>
+                          <div class="lv3-send-text">Отправляем оценку...</div>
+                          <div class="lv3-send-progress"><div class="lv3-send-progress-bar" id="lv3SendBar"></div></div>
+                        </div>
+                      </div>
+                      <div class="lv3-send-stage" data-stage="2" style="display:none">
+                        <div class="lv3-send-done">
+                          <div class="lv3-send-check">✓</div>
+                          <div class="lv3-send-text lv3-green">Оценка отправлена!</div>
+                          <div class="lv3-send-link">eltera.ai/a/xK9mP2</div>
+                        </div>
+                      </div>
+                    </div>
+                    <button class="lv3-send-btn" id="lv3SendBtn">Отправить оценку →</button>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+
+            <!-- Slide 4: Company Structure -->
+            <div class="lv3-folder-panel" data-folder-panel="3">
+              <div class="lv3-folder-content">
+                <div class="lv3-folder-text">
+                  <div class="lv3-folder-tag">Структура</div>
+                  <h3>Вся структура компании и данные о каждом</h3>
+                  <p>Видите полную оргструктуру: отделы, руководителей, сотрудников. Кликните на любого — получите его профиль, оценки, риски и ИПР.</p>
+                  <ul class="lv3-folder-list">
+                    <li>Оргструктура с drill-down</li>
+                    <li>Профиль каждого сотрудника</li>
+                    <li>История оценок и динамика</li>
+                    <li>Риски и рекомендации по каждому</li>
+                  </ul>
+                </div>
+                <div class="lv3-folder-visual">
+                  <div class="lv3-org-preview">
+                    <div class="lv3-org-node lv3-org-root" id="lv3OrgRoot">
+                      <span class="lv3-org-avatar">ГД</span>
+                      <span>Генеральный директор</span>
+                    </div>
+                    <div class="lv3-org-branches">
+                      <div class="lv3-org-branch">
+                        <div class="lv3-org-node lv3-org-dept" id="lv3OrgDept1">
+                          <span class="lv3-org-avatar lv3-org-blue">HR</span>
+                          <span>HR-отдел</span>
+                        </div>
+                        <div class="lv3-org-children" id="lv3OrgHr">
+                          <div class="lv3-org-leaf"><span class="lv3-org-dot lv3-green"></span>Анна К. <span class="lv3-org-fit">94%</span></div>
+                          <div class="lv3-org-leaf"><span class="lv3-org-dot lv3-teal"></span>Мария С. <span class="lv3-org-fit">88%</span></div>
+                        </div>
+                      </div>
+                      <div class="lv3-org-branch">
+                        <div class="lv3-org-node lv3-org-dept" id="lv3OrgDept2">
+                          <span class="lv3-org-avatar lv3-org-purple">IT</span>
+                          <span>IT-отдел</span>
+                        </div>
+                        <div class="lv3-org-children" id="lv3OrgIt">
+                          <div class="lv3-org-leaf"><span class="lv3-org-dot lv3-green"></span>Дмитрий В. <span class="lv3-org-fit">91%</span></div>
+                          <div class="lv3-org-leaf"><span class="lv3-org-dot lv3-amber"></span>Павел Н. <span class="lv3-org-fit">67%</span></div>
+                        </div>
+                      </div>
+                      <div class="lv3-org-branch">
+                        <div class="lv3-org-node lv3-org-dept" id="lv3OrgDept3">
+                          <span class="lv3-org-avatar lv3-org-teal">ПР</span>
+                          <span>Продажи</span>
+                        </div>
+                        <div class="lv3-org-children" id="lv3OrgSales">
+                          <div class="lv3-org-leaf"><span class="lv3-org-dot lv3-green"></span>Алексей И. <span class="lv3-org-fit">89%</span></div>
+                          <div class="lv3-org-leaf"><span class="lv3-org-dot lv3-red"></span>Сергей М. <span class="lv3-org-fit">45%</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Slide 5: Referral -->
+            <div class="lv3-folder-panel" data-folder-panel="4">
+              <div class="lv3-folder-content">
+                <div class="lv3-folder-text">
+                  <div class="lv3-folder-tag">Реферальная программа</div>
+                  <h3>Зарабатывай криптовалюту и выводи рублями</h3>
+                  <p>Приглашайте компании в Eltera и получайте 10% от каждой их оплаты. Бонусы начисляются в USDT и выводятся на российскую карту в рублях.</p>
+                  <ul class="lv3-folder-list">
+                    <li>10% от оплаты каждой приглашённой компании</li>
+                    <li>Начисление в USDT</li>
+                    <li>Вывод на карту РФ в рублях</li>
+                    <li>Реальные выплаты без ограничений</li>
+                  </ul>
+                </div>
+                <div class="lv3-folder-visual">
+                  <div class="lv3-ref-preview">
+                    <div class="lv3-ref-balance">
+                      <span class="lv3-ref-bal-label">Ваш баланс</span>
+                      <span class="lv3-ref-bal-val">$142.50 <span class="lv3-ref-rub">≈ 13 200 ₽</span></span>
+                    </div>
+                    <div class="lv3-ref-link-block">
+                      <div class="lv3-ref-link-label">Ваша реферальная ссылка</div>
+                      <div class="lv3-ref-link-row">
+                        <span class="lv3-ref-link-url">eltera.ai/ref/xK9mP2qR</span>
+                        <button class="lv3-ref-copy-btn" id="lv3RefCopyBtn">Скопировать</button>
+                      </div>
+                    </div>
+                    <div class="lv3-ref-stats">
+                      <div class="lv3-ref-stat">
+                        <span class="lv3-ref-stat-val lv3-teal">7</span>
+                        <span class="lv3-ref-stat-label">Компаний</span>
+                      </div>
+                      <div class="lv3-ref-stat">
+                        <span class="lv3-ref-stat-val lv3-green">$142</span>
+                        <span class="lv3-ref-stat-label">Заработано</span>
+                      </div>
+                      <div class="lv3-ref-stat">
+                        <span class="lv3-ref-stat-val lv3-amber">$38</span>
+                        <span class="lv3-ref-stat-label">Ожидает</span>
+                      </div>
+                    </div>
+                    <div class="lv3-ref-history">
+                      <div class="lv3-ref-hist-row"><span>ООО «Ритейл Групп»</span><span class="lv3-green">+$18.00</span></div>
+                      <div class="lv3-ref-hist-row"><span>IT-компания «Devs»</span><span class="lv3-green">+$24.50</span></div>
+                      <div class="lv3-ref-hist-row"><span>Контакт-центр «Плюс»</span><span class="lv3-green">+$12.00</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /lv3-folder-panels -->
+        </div><!-- /lv3-folders -->
       </section>
 
       <!-- AI SECTION -->
