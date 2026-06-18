@@ -2008,31 +2008,15 @@ function initLv3Landing() {
     }
 
     function goTo(idx) {
-      // Fade out current
-      slides[current].style.opacity = '0';
-      slides[current].style.transform = 'translateY(-8px)';
-      const prev = current;
-      setTimeout(() => {
-        slides[prev].classList.remove('lv3-hslide--active');
-        slides[prev].style.opacity = '';
-        slides[prev].style.transform = '';
-      }, 250);
+      // Remove active from current (CSS handles fade out via transition)
+      slides[current].classList.remove('lv3-hslide--active');
       dots[current].classList.remove('lv3-hsdot--active');
       current = (idx + slides.length) % slides.length;
-      // Fade in new
-      slides[current].style.opacity = '0';
-      slides[current].style.transform = 'translateY(8px)';
+      // Add active to new (CSS handles fade in via transition)
       slides[current].classList.add('lv3-hslide--active');
       dots[current].classList.add('lv3-hsdot--active');
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          slides[current].style.transition = 'opacity 0.35s ease, transform 0.35s ease';
-          slides[current].style.opacity = '1';
-          slides[current].style.transform = 'translateY(0)';
-          animateBars(slides[current]);
-          setTimeout(() => { slides[current].style.transition = ''; }, 400);
-        });
-      });
+      // Animate bars after a short delay so they start after slide appears
+      setTimeout(() => animateBars(slides[current]), 100);
     }
 
     function startTimer() {

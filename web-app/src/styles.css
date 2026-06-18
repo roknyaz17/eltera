@@ -7704,12 +7704,19 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 .lv3-hstat span { font-size: 11px; color: #4A5568; }
 
 /* ── HERO CARD SLIDER ── */
-.lv3-hslider { position: relative; }
-.lv3-hslide { display: none; animation: lv3SlideIn .5s ease forwards; }
-.lv3-hslide--active { display: block; }
-@keyframes lv3SlideIn {
-  from { opacity: 0; transform: translateY(12px) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+.lv3-hslider { position: relative; min-height: 340px; }
+.lv3-hslide {
+  position: absolute; top: 0; left: 0; right: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  transform: translateY(10px);
+  will-change: opacity, transform;
+}
+.lv3-hslide--active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
 }
 /* Glass card */
 .lv3-hcard {
