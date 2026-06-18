@@ -2293,26 +2293,34 @@ function initLv3Landing() {
     counterEls.forEach(el => counterObserver.observe(el));
   }
 
-  // ── FOLDER TABS ──
+  // ── FOLDER TABS + SCROLL-DRIVEN ──
   const folderTabs = document.querySelectorAll('.lv3-folder-tab');
   const folderPanels = document.querySelectorAll('.lv3-folder-panel');
+  const scrollDots = document.querySelectorAll('.lv3-scroll-dot');
   let folderTimers = {};
+  let currentFolder = 0;
 
   function stopFolderAnimations() {
     Object.values(folderTimers).forEach(t => clearTimeout(t));
     folderTimers = {};
+    aiChatRunning = false;
+    sendRunning = false;
   }
 
   function activateFolder(idx) {
+    if (idx === currentFolder && document.querySelector(`.lv3-folder-panel[data-folder-panel="${idx}"]`)?.classList.contains('active')) return;
     stopFolderAnimations();
+    currentFolder = idx;
     folderTabs.forEach(t => t.classList.remove('active'));
     folderPanels.forEach(p => p.classList.remove('active'));
+    scrollDots.forEach(d => d.classList.remove('active'));
     const tab = document.querySelector(`.lv3-folder-tab[data-folder="${idx}"]`);
     const panel = document.querySelector(`.lv3-folder-panel[data-folder-panel="${idx}"]`);
+    const dot = document.querySelector(`.lv3-scroll-dot[data-dot="${idx}"]`);
     if (tab) tab.classList.add('active');
+    if (dot) dot.classList.add('active');
     if (panel) {
       panel.classList.add('active');
-      // Animate bars on slide 1
       if (idx === 0) {
         panel.querySelectorAll('.lv3-dash-bar-fill').forEach((bar, i) => {
           const w = bar.style.width;
@@ -2320,18 +2328,44 @@ function initLv3Landing() {
           folderTimers[`bar${i}`] = setTimeout(() => { bar.style.width = w; }, 100 + i * 120);
         });
       }
-      // AI chat loop on slide 2
       if (idx === 1) startAiChatLoop();
-      // Send animation loop on slide 3
       if (idx === 2) startSendLoop();
-      // Org expand on slide 4
       if (idx === 3) startOrgExpand();
     }
   }
 
+  // Click on tabs still works
   folderTabs.forEach(tab => {
     tab.addEventListener('click', () => activateFolder(parseInt(tab.dataset.folder)));
   });
+  // Click on dots
+  scrollDots.forEach(dot => {
+    dot.addEventListener('click', () => activateFolder(parseInt(dot.dataset.dot)));
+  });
+
+  // ── SCROLL-DRIVEN: IntersectionObserver on sentinels ──
+  const sentinels = document.querySelectorAll('.lv3-scroll-sentinel');
+  if (sentinels.length > 0 && 'IntersectionObserver' in window) {
+    const sentinelObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const slideIdx = parseInt(entry.target.dataset.slide);
+          activateFolder(slideIdx);
+        }
+      });
+    }, {
+      threshold: 0.5,
+      rootMargin: '0px 0px 0px 0px'
+    });
+    sentinels.forEach(s => sentinelObserver.observe(s));
+  }
+
+  // Set scroll-features height to accommodate all slides
+  const scrollFeatures = document.getElementById('lv3ScrollFeatures');
+  if (scrollFeatures) {
+    // 100vh sticky + 5 * 100vh sentinels = 600vh total (set in CSS)
+    // Already set via CSS height: 600vh
+  }
 
   // Animate bars on initial load (slide 0 is active)
   setTimeout(() => {

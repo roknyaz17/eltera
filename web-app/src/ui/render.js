@@ -158,12 +158,23 @@ export function renderLanding(tariffs) {
       </div>
 
       <!-- FOR WHOM -->
-      <!-- FEATURES FOLDER TABS -->
-      <section class="lv3-section lv3-features-section" id="lv3-for-whom" data-reveal>
-        <div class="lv3-section-head">
-          <h2>Почему выбирают Eltera</h2>
-          <p>Пять причин, которые делают оценку людей простой и эффективной</p>
-        </div>
+      <!-- FEATURES FOLDER TABS (scroll-driven sticky) -->
+      <div class="lv3-scroll-features" id="lv3ScrollFeatures">
+        <!-- Sticky panel -->
+        <div class="lv3-scroll-sticky" id="lv3ScrollSticky">
+          <section class="lv3-section lv3-features-section" id="lv3-for-whom">
+            <div class="lv3-section-head">
+              <h2>Почему выбирают Eltera</h2>
+              <p>Пять причин, которые делают оценку людей простой и эффективной</p>
+            </div>
+            <!-- Progress dots -->
+            <div class="lv3-scroll-dots" id="lv3ScrollDots">
+              <div class="lv3-scroll-dot active" data-dot="0"></div>
+              <div class="lv3-scroll-dot" data-dot="1"></div>
+              <div class="lv3-scroll-dot" data-dot="2"></div>
+              <div class="lv3-scroll-dot" data-dot="3"></div>
+              <div class="lv3-scroll-dot" data-dot="4"></div>
+            </div>
         <div class="lv3-folders" id="lv3Folders">
           <!-- Folder tabs -->
           <div class="lv3-folder-tabs">
@@ -449,7 +460,15 @@ export function renderLanding(tariffs) {
 
           </div><!-- /lv3-folder-panels -->
         </div><!-- /lv3-folders -->
-      </section>
+          </section>
+        </div><!-- /lv3-scroll-sticky -->
+        <!-- Scroll sentinels: one per slide -->
+        <div class="lv3-scroll-sentinel" data-slide="0"></div>
+        <div class="lv3-scroll-sentinel" data-slide="1"></div>
+        <div class="lv3-scroll-sentinel" data-slide="2"></div>
+        <div class="lv3-scroll-sentinel" data-slide="3"></div>
+        <div class="lv3-scroll-sentinel" data-slide="4"></div>
+      </div><!-- /lv3-scroll-features -->
 
       <!-- AI SECTION -->
       <section class="lv3-section lv3-ai-section" id="lv3-ai" data-reveal>

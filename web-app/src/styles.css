@@ -7702,6 +7702,54 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 .lv3-section-tag { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .1em; color: #00E5D4; text-transform: uppercase; margin-bottom: 12px; }
 
 /* TABS */
+/* ── Scroll-driven Sticky Features ── */
+.lv3-scroll-features {
+  position: relative;
+  /* height = sticky panel height + (N-1) * scroll-step */
+  /* We set this via JS, but set a fallback */
+  height: 600vh;
+}
+.lv3-scroll-sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  z-index: 1;
+}
+.lv3-scroll-sticky .lv3-features-section {
+  width: 100%;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+.lv3-scroll-sentinel {
+  height: 100vh;
+  pointer-events: none;
+  position: relative;
+  z-index: 0;
+}
+/* Progress dots */
+.lv3-scroll-dots {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 0 auto 24px;
+}
+.lv3-scroll-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  transition: all .35s ease;
+  cursor: pointer;
+}
+.lv3-scroll-dot.active {
+  background: #00E5D4;
+  width: 28px;
+  border-radius: 4px;
+  box-shadow: 0 0 8px rgba(0,229,212,0.5);
+}
 /* ── Folder Tabs (Features Section) ── */
 .lv3-features-section { }
 .lv3-folders { display: flex; flex-direction: column; gap: 0; }
