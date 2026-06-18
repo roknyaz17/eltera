@@ -219,31 +219,51 @@ export function renderLanding(tariffs) {
                   </div>
                 </div>
               </div>
-              <!-- Slide 4: Зона риска -->
+              <!-- Slide 4: Сотрудник с потенциалом -->
               <div class="lv3-hslide" data-slide="3">
-                <div class="lv3-hcard lv3-hcard--risk">
+                <div class="lv3-hcard">
                   <div class="lv3-hcard-header">
-                    <div class="lv3-hcard-title">Зона риска</div>
-                    <span class="lv3-live-dot lv3-live-dot--warn"><span class="lv3-pulse lv3-pulse--warn"></span>Риск</span>
+                    <div class="lv3-hcard-title">Анализ сотрудника</div>
+                    <span class="lv3-live-dot"><span class="lv3-pulse"></span>Live</span>
+                  </div>
+                  <div class="lv3-hcard-person">
+                    <div class="lv3-hcard-avatar lv3-hcard-avatar--photo">
+                      <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                        <circle cx="20" cy="20" r="20" fill="url(#avatarBg2)"/>
+                        <circle cx="20" cy="15" r="7" fill="rgba(255,255,255,0.85)"/>
+                        <ellipse cx="20" cy="34" rx="12" ry="8" fill="rgba(255,255,255,0.7)"/>
+                        <defs>
+                          <linearGradient id="avatarBg2" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#00E5D4"/>
+                            <stop offset="100%" stop-color="#1E5BFF"/>
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                    </div>
+                    <div>
+                      <div class="lv3-hcard-name">Аналитик по данным</div>
+                      <div class="lv3-hcard-sub">Стаж 1.5 года · Отдел аналитики</div>
+                    </div>
                   </div>
                   <div class="lv3-hcard-metrics">
                     <div class="lv3-hcard-metric">
-                      <div class="lv3-hcard-metric-row"><span>Риск выгорания</span><b class="lv3-status-risk">высокий</b></div>
+                      <div class="lv3-hcard-metric-row"><span>Результативность</span><b>79%</b></div>
+                      <div class="lv3-hbar"><div class="lv3-hbar-fill" style="--w:79%;background:linear-gradient(90deg,#1E5BFF,#00E5D4)"></div></div>
                     </div>
                     <div class="lv3-hcard-metric">
-                      <div class="lv3-hcard-metric-row"><span>Вовлечённость</span><b>42%</b></div>
-                      <div class="lv3-hbar"><div class="lv3-hbar-fill" style="--w:42%;background:linear-gradient(90deg,#E8855A,#C26B3A)"></div></div>
+                      <div class="lv3-hcard-metric-row"><span>Вовлечённость</span><b>61%</b></div>
+                      <div class="lv3-hbar"><div class="lv3-hbar-fill" style="--w:61%;background:linear-gradient(90deg,#7B61FF,#1E5BFF)"></div></div>
                     </div>
                     <div class="lv3-hcard-metric">
-                      <div class="lv3-hcard-metric-row"><span>Конфликтность</span><b class="lv3-status-risk">повышена</b></div>
+                      <div class="lv3-hcard-metric-row"><span>Потенциал роста</span><b class="lv3-status-good">высокий</b></div>
                     </div>
                     <div class="lv3-hcard-metric">
-                      <div class="lv3-hcard-metric-row"><span>Адаптация</span><b class="lv3-status-risk">под риском</b></div>
+                      <div class="lv3-hcard-metric-row"><span>Риск ухода</span><b class="lv3-status-warn">средний</b></div>
                     </div>
                   </div>
-                  <div class="lv3-hcard-ai lv3-hcard-ai--warn">
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#E8855A" stroke-width="1.2"/><path d="M7 4v4M7 9.5v.5" stroke="#E8855A" stroke-width="1.2" stroke-linecap="round"/></svg>
-                    <span>AI: Нужна встреча с руководителем и коррекция нагрузки</span>
+                  <div class="lv3-hcard-ai">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#00E5D4" stroke-width="1.2"/><path d="M5 7l1.5 1.5L9 5" stroke="#00E5D4" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>AI: Предложить повышение — высокий потенциал, риск ухода снизится</span>
                   </div>
                 </div>
               </div>
