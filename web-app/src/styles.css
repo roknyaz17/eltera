@@ -7705,32 +7705,16 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 /* TABS */
 /* ── Scroll-driven Sticky Features ── */
 .lv3-scroll-features {
-  position: relative;
-  /* height set dynamically by JS */
-  height: 600vh; /* fallback */
   background: #0A0F1E;
 }
 .lv3-scroll-sticky {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-  z-index: 1;
+  /* no longer sticky — normal flow */
 }
 .lv3-scroll-sticky .lv3-features-section {
   width: 100%;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
 }
 .lv3-scroll-sentinel {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  height: 100vh;
-  pointer-events: none;
-  z-index: 0;
+  display: none;
 }
 /* Progress dots */
 .lv3-scroll-dots {

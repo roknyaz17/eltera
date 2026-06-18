@@ -2343,36 +2343,7 @@ function initLv3Landing() {
     dot.addEventListener('click', () => activateFolder(parseInt(dot.dataset.dot)));
   });
 
-  // ── SCROLL-DRIVEN: scroll position tracking ──
-  const scrollFeatures = document.getElementById('lv3ScrollFeatures');
-  const scrollSticky = document.getElementById('lv3ScrollSticky');
-  const TOTAL_SLIDES = 5;
-
-  function setupScrollFeatures() {
-    if (!scrollFeatures || !scrollSticky) return;
-    const vh = window.innerHeight;
-    // Total height: 1 sticky viewport + N scroll steps (one per slide)
-    scrollFeatures.style.height = (vh * (1 + TOTAL_SLIDES)) + 'px';
-  }
-
-  function onScrollFeatures() {
-    if (!scrollFeatures || !scrollSticky) return;
-    const rect = scrollFeatures.getBoundingClientRect();
-    const vh = window.innerHeight;
-    // How far we've scrolled INTO the scroll-features section
-    const scrolled = -rect.top; // 0 when section top hits viewport top
-    if (scrolled < 0) return; // haven't reached section yet
-    // Each slide occupies one viewport height of scroll
-    const slideIdx = Math.min(Math.floor(scrolled / vh), TOTAL_SLIDES - 1);
-    activateFolder(slideIdx);
-  }
-
-  setupScrollFeatures();
-  window.addEventListener('scroll', onScrollFeatures, { passive: true });
-  window.addEventListener('resize', () => {
-    setupScrollFeatures();
-    onScrollFeatures();
-  }, { passive: true });
+  // Click-only tab switching (no scroll-driven)
 
   // Animate bars on initial load (slide 0 is active)
   setTimeout(() => {
