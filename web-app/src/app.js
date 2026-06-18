@@ -2143,6 +2143,91 @@ function initLv3Landing() {
     revealEls.forEach(el => el.classList.add('revealed'));
   }
 
+  // CANVAS PARTICLES
+  const canvas = document.getElementById('lv3Particles');
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    let animFrame;
+
+    function resizeCanvas() {
+      const hero = canvas.parentElement.parentElement;
+      canvas.width = hero.offsetWidth;
+      canvas.height = hero.offsetHeight;
+    }
+
+    function createParticles() {
+      particles = [];
+      const count = Math.floor(canvas.width / 12);
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          r: Math.random() * 1.5 + 0.3,
+          vx: (Math.random() - 0.5) * 0.3,
+          vy: (Math.random() - 0.5) * 0.3,
+          alpha: Math.random() * 0.5 + 0.1,
+          color: Math.random() > 0.5 ? '30,91,255' : '0,229,212'
+        });
+      }
+    }
+
+    function drawParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0) p.x = canvas.width;
+        if (p.x > canvas.width) p.x = 0;
+        if (p.y < 0) p.y = canvas.height;
+        if (p.y > canvas.height) p.y = 0;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${p.color},${p.alpha})`;
+        ctx.fill();
+      });
+      // Draw connecting lines
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          if (dist < 80) {
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.strokeStyle = `rgba(30,91,255,${0.08 * (1 - dist/80)})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+      animFrame = requestAnimationFrame(drawParticles);
+    }
+
+    resizeCanvas();
+    createParticles();
+    drawParticles();
+    window.addEventListener('resize', () => { resizeCanvas(); createParticles(); }, { passive: true });
+
+    // Stop animation when hero not visible
+    const heroObs = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) { cancelAnimationFrame(animFrame); }
+      else { drawParticles(); }
+    }, { threshold: 0 });
+    heroObs.observe(canvas.parentElement.parentElement);
+  }
+
+  // COMPARE TABLE TOGGLE
+  const compareToggle = document.getElementById('lv3CompareToggle');
+  const compareTable = document.getElementById('lv3CompareTable');
+  if (compareToggle && compareTable) {
+    compareToggle.addEventListener('click', () => {
+      const isOpen = compareTable.classList.toggle('open');
+      compareToggle.textContent = isOpen ? 'Скрыть сравнение ↑' : 'Сравнить тарифы ↓';
+    });
+  }
+
   // SMOOTH ANCHOR SCROLL
   document.querySelectorAll('a[href^="#lv3-"]').forEach(link => {
     link.addEventListener('click', (e) => {

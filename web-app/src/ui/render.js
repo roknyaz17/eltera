@@ -69,8 +69,10 @@ export function renderLanding(tariffs) {
       <!-- HERO -->
       <section class="lv3-hero" id="lv3-hero">
         <div class="lv3-hero-bg">
+          <canvas class="lv3-particles" id="lv3Particles"></canvas>
           <div class="lv3-hero-orb lv3-hero-orb--1"></div>
           <div class="lv3-hero-orb lv3-hero-orb--2"></div>
+          <div class="lv3-hero-orb lv3-hero-orb--3"></div>
           <div class="lv3-hero-grid"></div>
         </div>
         <div class="lv3-hero-content">
@@ -100,20 +102,20 @@ export function renderLanding(tariffs) {
               </div>
               <div class="lv3-metrics" id="lv3Metrics">
                 <div class="lv3-metric">
-                  <div class="lv3-metric-top"><span>Коммуникация</span><b id="lv3m1v">87%</b></div>
-                  <div class="lv3-bar"><div class="lv3-bar-fill" id="lv3m1b" style="width:87%;background:linear-gradient(90deg,#1E5BFF,#00E5D4)"></div></div>
+                  <div class="lv3-metric-top"><span>Коммуникация</span><b id="lv3m1v">0%</b></div>
+                  <div class="lv3-bar"><div class="lv3-bar-fill" id="lv3m1b" style="width:0%;background:linear-gradient(90deg,#1E5BFF,#00E5D4);transition:width 1s cubic-bezier(.4,0,.2,1)"></div></div>
                 </div>
                 <div class="lv3-metric">
-                  <div class="lv3-metric-top"><span>Стрессоустойчивость</span><b id="lv3m2v">72%</b></div>
-                  <div class="lv3-bar"><div class="lv3-bar-fill" id="lv3m2b" style="width:72%;background:linear-gradient(90deg,#7B61FF,#1E5BFF)"></div></div>
+                  <div class="lv3-metric-top"><span>Стрессоустойчивость</span><b id="lv3m2v">0%</b></div>
+                  <div class="lv3-bar"><div class="lv3-bar-fill" id="lv3m2b" style="width:0%;background:linear-gradient(90deg,#7B61FF,#1E5BFF);transition:width 1.1s cubic-bezier(.4,0,.2,1)"></div></div>
                 </div>
                 <div class="lv3-metric">
-                  <div class="lv3-metric-top"><span>Ответственность</span><b id="lv3m3v">91%</b></div>
-                  <div class="lv3-bar"><div class="lv3-bar-fill" id="lv3m3b" style="width:91%;background:linear-gradient(90deg,#00E5D4,#1E5BFF)"></div></div>
+                  <div class="lv3-metric-top"><span>Ответственность</span><b id="lv3m3v">0%</b></div>
+                  <div class="lv3-bar"><div class="lv3-bar-fill" id="lv3m3b" style="width:0%;background:linear-gradient(90deg,#00E5D4,#1E5BFF);transition:width 1.2s cubic-bezier(.4,0,.2,1)"></div></div>
                 </div>
                 <div class="lv3-metric">
-                  <div class="lv3-metric-top"><span>Обучаемость</span><b id="lv3m4v">65%</b></div>
-                  <div class="lv3-bar"><div class="lv3-bar-fill" id="lv3m4b" style="width:65%;background:linear-gradient(90deg,#1E5BFF,#7B61FF)"></div></div>
+                  <div class="lv3-metric-top"><span>Обучаемость</span><b id="lv3m4v">0%</b></div>
+                  <div class="lv3-bar"><div class="lv3-bar-fill" id="lv3m4b" style="width:0%;background:linear-gradient(90deg,#1E5BFF,#7B61FF);transition:width 1.3s cubic-bezier(.4,0,.2,1)"></div></div>
                 </div>
               </div>
               <div class="lv3-chart-wrap">
@@ -426,6 +428,86 @@ export function renderLanding(tariffs) {
         </div>
         <div class="tariffGrid landingTariffs">${tariffs.map(renderTariffCard).join("")}</div>
         <p class="lv3-tariff-note">Все тарифы включают оценку кандидатов и сотрудников. Отмена в любой момент.</p>
+
+        <!-- COMPARISON TABLE -->
+        <div class="lv3-compare-wrap" data-reveal>
+          <div class="lv3-compare-toggle">
+            <button class="lv3-compare-btn active" id="lv3CompareToggle">Сравнить тарифы ↓</button>
+          </div>
+          <div class="lv3-compare-table" id="lv3CompareTable">
+            <table>
+              <thead>
+                <tr>
+                  <th>Функция</th>
+                  <th><span class="lv3-plan-name">Start</span></th>
+                  <th><span class="lv3-plan-name">TalentCheck</span></th>
+                  <th><span class="lv3-plan-name lv3-plan-popular">TalentPro</span></th>
+                  <th><span class="lv3-plan-name">TalentStudio</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Оценка кандидатов</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td></tr>
+                <tr><td>Оценка сотрудников</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td></tr>
+                <tr><td>PDF-отчёты</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td></tr>
+                <tr><td>Готовые профили должностей</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td></tr>
+                <tr><td>Конструктор оценок</td><td class="lv3-no">—</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td></tr>
+                <tr><td>Групповые отчёты</td><td class="lv3-no">—</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td></tr>
+                <tr><td>Адаптация 7/14/30/60/90 дней</td><td class="lv3-no">—</td><td class="lv3-no">—</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td></tr>
+                <tr><td>Performance Review + 9-box</td><td class="lv3-no">—</td><td class="lv3-no">—</td><td class="lv3-yes">✓</td><td class="lv3-yes">✓</td></tr>
+                <tr><td>Оценка 360</td><td class="lv3-no">—</td><td class="lv3-no">—</td><td class="lv3-no">—</td><td class="lv3-yes">✓</td></tr>
+                <tr><td>API-интеграция</td><td class="lv3-no">—</td><td class="lv3-no">—</td><td class="lv3-no">—</td><td class="lv3-yes">✓</td></tr>
+                <tr><td>Брендированные отчёты</td><td class="lv3-no">—</td><td class="lv3-no">—</td><td class="lv3-no">—</td><td class="lv3-yes">✓</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- SOCIAL PROOF -->
+      <section class="lv3-section lv3-social-proof" id="lv3-social" data-reveal>
+        <div class="lv3-section-head">
+          <h2>Нам доверяют HR-команды</h2>
+          <p>Компании разных отраслей используют Eltera для оценки людей</p>
+        </div>
+        <div class="lv3-logos-row">
+          <div class="lv3-logo-pill">Ритейл</div>
+          <div class="lv3-logo-pill">IT-компании</div>
+          <div class="lv3-logo-pill">Банки</div>
+          <div class="lv3-logo-pill">Производство</div>
+          <div class="lv3-logo-pill">Логистика</div>
+          <div class="lv3-logo-pill">Контакт-центры</div>
+          <div class="lv3-logo-pill">Девелопмент</div>
+          <div class="lv3-logo-pill">Страхование</div>
+        </div>
+        <div class="lv3-testimonials">
+          <div class="lv3-testimonial">
+            <div class="lv3-test-text">"Раньше оценка кандидата занимала 2-3 дня. Теперь результат готов через 30 минут после прохождения. Экономим около 60% времени HR-отдела."</div>
+            <div class="lv3-test-author">
+              <div class="lv3-test-avatar">ЕК</div>
+              <div><b>Елена К.</b><span>HR-директор, ритейл-сеть</span></div>
+            </div>
+          </div>
+          <div class="lv3-testimonial">
+            <div class="lv3-test-text">"Оценка 360 помогла нам честно поговорить с командой о точках роста. Отчёты понятные, без лишней воды — сразу видно что делать."</div>
+            <div class="lv3-test-author">
+              <div class="lv3-test-avatar">АМ</div>
+              <div><b>Андрей М.</b><span>Руководитель отдела, IT-компания</span></div>
+            </div>
+          </div>
+          <div class="lv3-testimonial">
+            <div class="lv3-test-text">"Собственник наконец увидел реальную картину по команде. Тепловая карта рисков и 9-box матрица — именно то, что нужно для управленческих решений."</div>
+            <div class="lv3-test-author">
+              <div class="lv3-test-avatar">НВ</div>
+              <div><b>Наталья В.</b><span>HRD, производственная компания</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="lv3-proof-stats">
+          <div class="lv3-proof-stat"><b>3 000+</b><span>профессий в базе</span></div>
+          <div class="lv3-proof-stat"><b>639</b><span>вопросов по компетенциям</span></div>
+          <div class="lv3-proof-stat"><b>60+</b><span>готовых должностей</span></div>
+          <div class="lv3-proof-stat"><b>100+</b><span>методик оценки</span></div>
+        </div>
       </section>
 
       <!-- CASES -->
