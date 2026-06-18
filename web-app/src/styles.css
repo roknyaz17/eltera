@@ -7610,12 +7610,12 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   align-items: center;
   gap: 32px;
   padding: 0 48px;
-  height: 64px;
+  height: 72px;
   background: rgba(10,15,30,0.92);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid rgba(255,255,255,0.06);
 }
-.lv3-logo img { display: block; height: 52px; width: auto; }
+.lv3-logo img { display: block; height: 56px; width: auto; }
 .lv3-navlinks { display: flex; align-items: center; gap: 4px; flex: 1; }
 .lv3-navlinks > a { color: #8899BB; text-decoration: none; font-size: 14px; font-weight: 500; padding: 6px 12px; border-radius: 8px; transition: color .2s, background .2s; }
 .lv3-navlinks > a:hover { color: #E6F2FF; background: rgba(255,255,255,0.05); }

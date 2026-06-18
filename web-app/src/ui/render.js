@@ -21,7 +21,7 @@ export function renderLanding(tariffs) {
       <!-- NAVBAR -->
       <header class="lv3-nav" id="lv3Nav">
         <a class="lv3-logo" href="#/">
-          <img src="/public/assets/eltera_logo_horizontal_on_dark.png?v=10" alt="Eltera" style="height:44px;width:auto;object-fit:contain;display:block;">
+          <img src="/public/assets/eltera_logo_horizontal_on_dark.png?v=10" alt="Eltera" style="height:56px;width:auto;object-fit:contain;display:block;">
         </a>
         <nav class="lv3-navlinks">
           <a href="#lv3-how">Как работает</a>
@@ -540,7 +540,7 @@ export function renderLanding(tariffs) {
       <footer class="lv3-footer">
         <div class="lv3-footer-top">
           <div class="lv3-footer-brand">
-            <img src="/public/assets/eltera_logo_horizontal_on_dark.png" alt="Eltera" style="height:34px;width:auto;object-fit:contain;">
+            <img src="/public/assets/eltera_logo_horizontal_on_dark.png" alt="Eltera" style="height:48px;width:auto;object-fit:contain;">
             <p>AI-платформа для оценки кандидатов и сотрудников. Компетенции, 360, вовлечённость, пульс-опросы и готовые отчёты.</p>
             <button class="lv3-btn-ghost" data-route="login">Войти в личный кабинет</button>
           </div>
