@@ -7646,7 +7646,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 .lv3-btn-sm { padding: 6px 12px !important; font-size: 12px !important; border-radius: 6px !important; }
 
 /* HERO */
-.lv3-hero { position: relative; min-height: auto; display: flex; align-items: center; padding: 100px 48px 80px; overflow: hidden; }
+.lv3-hero { position: relative; min-height: auto; display: flex; align-items: center; padding: 100px 48px 48px; overflow: hidden; }
 .lv3-hero-bg { position: absolute; inset: 0; pointer-events: none; }
 .lv3-hero-orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.18; }
 .lv3-hero-orb--1 { width: 600px; height: 600px; background: radial-gradient(circle, #1E5BFF, transparent 70%); top: -100px; left: -100px; animation: lv3OrbFloat 8s ease-in-out infinite; }
@@ -7893,8 +7893,8 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 @keyframes lv3Ticker { 0% { transform: translateX(-50%); } 100% { transform: translateX(0); } }
 
 /* SECTIONS */
-.lv3-section { padding: 80px 48px; max-width: 1160px; margin: 0 auto; }
-#lv3-assess { padding-top: 64px; }
+.lv3-section { padding: 64px 48px; max-width: 1160px; margin: 0 auto; }
+#lv3-assess { padding-top: 48px; }
 .lv3-section-head { text-align: center; margin-bottom: 48px; }
 .lv3-section-head h2 { font-size: clamp(24px, 3vw, 40px); font-weight: 800; color: #E6F2FF; margin: 0 0 12px; }
 .lv3-section-head p { font-size: 16px; color: #8899BB; margin: 0 auto; max-width: 560px; }
@@ -8009,7 +8009,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   box-shadow: 0 0 8px rgba(0,229,212,0.5);
 }
 /* ── Folder Tabs (Features Section) ── */
-.lv3-features-section { padding-top: 48px !important; }
+.lv3-features-section { padding-top: 32px !important; padding-bottom: 0 !important; }
 .lv3-folders {
   display: flex;
   flex-direction: column;
@@ -8567,7 +8567,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 .lv3-dual-bg {
   position: relative;
   background: #0A0F1E;
-  padding: 48px 0 64px;
+  padding: 32px 0 40px;
   overflow: hidden;
 }
 .lv3-dual-bg-orbs {
@@ -8633,7 +8633,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 .lv3-astat span { font-size: 12px; color: #4A5568; }
 
 /* CTA BLOCK */
-.lv3-cta-block { background: linear-gradient(135deg, rgba(30,91,255,0.12), rgba(0,229,212,0.06)); border-top: 1px solid rgba(30,91,255,0.15); border-bottom: 1px solid rgba(30,91,255,0.15); padding: 80px 48px; }
+.lv3-cta-block { background: linear-gradient(135deg, rgba(30,91,255,0.12), rgba(0,229,212,0.06)); border-top: 1px solid rgba(30,91,255,0.15); border-bottom: 1px solid rgba(30,91,255,0.15); padding: 64px 48px; }
 .lv3-cta-inner { text-align: center; max-width: 600px; margin: 0 auto; }
 .lv3-cta-inner h2 { font-size: 36px; font-weight: 800; color: #E6F2FF; margin: 0 0 16px; }
 .lv3-cta-inner p { font-size: 16px; color: #8899BB; line-height: 1.7; margin: 0 0 28px; }
@@ -9639,7 +9639,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   max-width: 100% !important;
   margin: 0 !important;
   background: transparent;
-  margin-top: 48px !important;
+  margin-top: 24px !important;
   margin-bottom: 0 !important;
 }
 
