@@ -9429,3 +9429,96 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   70%  { transform: translate(20px, -30px) scale(1.12); }
   100% { transform: translate(0, 0) scale(1); }
 }
+
+/* ── Shimmer / Glint effect (Структура tab) ── */
+
+/* CEO card shimmer */
+.lv3-org2-card--ceo {
+  overflow: hidden;
+}
+.lv3-org2-card--ceo::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    105deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.07) 40%,
+    rgba(0, 229, 212, 0.12) 50%,
+    rgba(255, 255, 255, 0.07) 60%,
+    transparent 80%
+  );
+  transform: skewX(-15deg);
+  animation: lv3Shimmer 4s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Dept badge shimmer */
+.lv3-org2-dept {
+  overflow: hidden;
+  position: relative;
+}
+.lv3-org2-dept::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 70%;
+  height: 100%;
+  background: linear-gradient(
+    105deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 80%
+  );
+  transform: skewX(-15deg);
+  animation: lv3Shimmer 5s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+.lv3-org2-dept--blue::before  { animation-delay: 0s; }
+.lv3-org2-dept--purple::before { animation-delay: 1.2s; }
+.lv3-org2-dept--teal::before   { animation-delay: 2.4s; }
+
+/* Employee card shimmer */
+.lv3-org2-emp {
+  overflow: hidden;
+  position: relative;
+}
+.lv3-org2-emp::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    105deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 80%
+  );
+  transform: skewX(-15deg);
+  animation: lv3Shimmer 6s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+/* Stagger shimmer per employee */
+.lv3-org2-emp:nth-child(1)::before { animation-delay: 0s; }
+.lv3-org2-emp:nth-child(2)::before { animation-delay: 0.8s; }
+.lv3-org2-emp:nth-child(3)::before { animation-delay: 1.6s; }
+.lv3-org2-emp:nth-child(4)::before { animation-delay: 2.4s; }
+.lv3-org2-emp:nth-child(5)::before { animation-delay: 3.2s; }
+.lv3-org2-emp:nth-child(6)::before { animation-delay: 4.0s; }
+
+@keyframes lv3Shimmer {
+  0%   { left: -120%; opacity: 0; }
+  10%  { opacity: 1; }
+  50%  { left: 130%; opacity: 1; }
+  55%  { opacity: 0; }
+  100% { left: 130%; opacity: 0; }
+}
