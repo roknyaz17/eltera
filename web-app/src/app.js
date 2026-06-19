@@ -1994,6 +1994,15 @@ function initLv3Landing() {
     });
   });
 
+  // TARIFF CARD SELECTION GLOW
+  const tariffCards = document.querySelectorAll('.elt-tariff-card');
+  tariffCards.forEach(card => {
+    card.addEventListener('click', () => {
+      tariffCards.forEach(c => c.classList.remove('lv3-tariff-selected'));
+      card.classList.add('lv3-tariff-selected');
+    });
+  });
+
   // BILLING TOGGLE
   const billingBtns = document.querySelectorAll('.lv3-billing-btn');
   billingBtns.forEach(btn => {
@@ -2310,7 +2319,7 @@ function initLv3Landing() {
     return { prefix, num, suffix };
   }
 
-  const counterEls = document.querySelectorAll('.lv3-hstat b[data-count-to], .lv3-proof-stat b[data-count-to]');
+  const counterEls = document.querySelectorAll('.lv3-hstat b[data-count-to], .lv3-proof-stat b[data-count-to], .lv3-astat b[data-count-to]');
   if (counterEls.length > 0 && 'IntersectionObserver' in window) {
     const counterObserver = new IntersectionObserver((entries) => {
       entries.forEach(entry => {

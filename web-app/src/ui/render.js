@@ -928,8 +928,8 @@ export function renderLanding(tariffs) {
           </div>
         </div>
         <div class="lv3-assess-stats">
-          <div class="lv3-astat"><b>120+</b><span>готовых профилей должностей</span></div>
-          <div class="lv3-astat"><b>1000+</b><span>методик оценки</span></div>
+          <div class="lv3-astat"><b data-count-to="120" data-count-suffix="+">120+</b><span>готовых профилей должностей</span></div>
+          <div class="lv3-astat"><b data-count-to="1000" data-count-suffix="+">1000+</b><span>методик оценки</span></div>
           <div class="lv3-astat"><b>∞</b><span>Гибкий конструктор компетенций</span></div>
         </div>
       </section>
@@ -941,8 +941,7 @@ export function renderLanding(tariffs) {
           <h2>Попробуйте всего за 990 ₽</h2>
           <p>Получите 1 месяц доступа к оценке кандидатов и сотрудников.<br>Мы не делим людей на кандидатов и сотрудников — в одном доступе можно оценивать всех.</p>
           <div class="lv3-cta-btns">
-            <button class="lv3-btn-primary lv3-btn-lg" data-route="login">Попробовать за 990 ₽ →</button>
-            <button class="lv3-btn-ghost lv3-btn-lg" data-route="login">Оплатить доступ</button>
+            <button class="lv3-btn-primary lv3-btn-lg" data-route="login">Попробовать за 990 ₽</button>
           </div>
           <div class="lv3-cta-meta">20 оценок на 1 месяц в стартовом доступе</div>
         </div>
@@ -980,7 +979,13 @@ export function renderLanding(tariffs) {
             {t:"Отчёт по рискам текучести",d:"Зоны выгорания, факторы ухода, рекомендации",c:"#FFB347"},
             {t:"ИПР сотрудника",d:"Индивидуальный план развития с целями и сроками",c:"#1E5BFF"}
           ].map(r=>{
+            const heights = [60,80,45,70,55,90,40,75];
+            const barHtml = heights.map((h,i)=>`<span style="height:${h}%;background:${r.c};opacity:${0.5+i*0.06};animation-delay:${i*0.1}s"></span>`).join('');
             return `<div class="lv3-report-card">
+              <div class="lv3-rc-preview" style="background:${r.c}10;border:1px solid ${r.c}22">
+                <div class="lv3-rc-preview-bar">${barHtml}</div>
+                <div style="position:absolute;top:8px;right:8px;font-size:10px;font-weight:700;color:${r.c};opacity:0.7">PDF</div>
+              </div>
               <div class="lv3-rc-top">
                 <div class="lv3-rc-icon" style="color:${r.c};background:${r.c}18"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 3h8l4 4v10a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.3"/><path d="M13 3v5h4" stroke="currentColor" stroke-width="1.3"/><path d="M7 10h6M7 13h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></div>
                 <div><h4>${r.t}</h4><p>${r.d}</p></div>

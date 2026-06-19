@@ -434,6 +434,14 @@ p { line-height: 1.6; }
   box-shadow: 0 20px 70px rgba(0, 229, 212, .12);
 }
 
+/* Landing tariff card selected state */
+.elt-tariff-card.lv3-tariff-selected {
+  border-color: rgba(0, 229, 212, 0.6) !important;
+  box-shadow: 0 0 0 1px rgba(0,229,212,0.3), 0 8px 40px rgba(0,229,212,0.18), 0 0 60px rgba(0,229,212,0.08) !important;
+  transform: translateY(-2px);
+  transition: all .3s;
+}
+
 .tariffCard span {
   color: var(--cyan);
   font-size: 12px;
@@ -7617,7 +7625,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 .lv3-logo img { display: block; height: 56px; width: auto; }
-.lv3-navlinks { display: flex; align-items: center; gap: 4px; flex: 1; }
+.lv3-navlinks { display: flex; align-items: center; gap: 4px; flex: 1; padding-left: 32px; }
 .lv3-navlinks > a { color: #8899BB; text-decoration: none; font-size: 14px; font-weight: 500; padding: 6px 12px; border-radius: 8px; transition: color .2s, background .2s; }
 .lv3-navlinks > a:hover { color: #E6F2FF; background: rgba(255,255,255,0.05); }
 .lv3-dropdown { position: relative; }
@@ -7761,8 +7769,9 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 .lv3-hcard-metric-row span { font-size: 12px; color: #8899BB; }
 .lv3-hcard-metric-row b { font-size: 13px; font-weight: 700; color: #E6F2FF; }
 /* Progress bars */
-.lv3-hbar { height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
-.lv3-hbar-fill { height: 100%; width: 0; border-radius: 2px; }
+.lv3-hbar { height: 7px; background: rgba(255,255,255,0.07); border-radius: 4px; overflow: visible; position: relative; }
+.lv3-hbar-fill { height: 100%; width: 0; border-radius: 4px; box-shadow: 0 0 8px rgba(0,229,212,0.55), 0 0 16px rgba(30,91,255,0.35); position: relative; }
+.lv3-hbar-fill::after { content: ''; position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: 6px; height: 6px; border-radius: 50%; background: #00E5D4; box-shadow: 0 0 6px 2px rgba(0,229,212,0.8); }
 .lv3-hslide--active .lv3-hbar-fill { width: var(--w, 0%); transition: width 0.9s cubic-bezier(0.22, 0.68, 0, 1.1); }
 /* Status labels */
 .lv3-status-good { color: #00E5D4 !important; }
@@ -8570,7 +8579,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 .lv3-acc-item.active .lv3-acc-body { display: block; }
 
 /* ASSESS GRID */
-.lv3-assess-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 40px; }
+.lv3-assess-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 0; }
 .lv3-assess-card { background: rgba(17,26,51,0.6); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; transition: border-color .2s, transform .2s; }
 .lv3-assess-card:hover { border-color: rgba(30,91,255,0.2); transform: translateY(-2px); }
 .lv3-assess-icon { font-size: 24px; margin-bottom: 12px; }
@@ -8578,9 +8587,9 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 .lv3-assess-card ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
 .lv3-assess-card li { font-size: 12px; color: #8899BB; padding-left: 14px; position: relative; }
 .lv3-assess-card li::before { content: '·'; position: absolute; left: 0; color: #00E5D4; }
-.lv3-assess-stats { display: flex; gap: 24px; justify-content: center; }
+.lv3-assess-stats { display: flex; gap: 24px; justify-content: center; margin-top: 0; margin-bottom: 40px; }
 .lv3-astat { text-align: center; padding: 16px 24px; background: rgba(17,26,51,0.4); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; }
-.lv3-astat b { display: block; font-size: 28px; font-weight: 800; color: #00E5D4; }
+.lv3-astat b { display: block; font-size: 36px; font-weight: 800; background: linear-gradient(135deg, #7B61FF, #1E5BFF, #00E5D4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; filter: drop-shadow(0 0 12px rgba(123,97,255,0.5)); }
 .lv3-astat span { font-size: 12px; color: #4A5568; }
 
 /* CTA BLOCK */
@@ -8595,23 +8604,41 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 .lv3-steps { display: flex; flex-direction: column; gap: 0; }
 .lv3-step { display: flex; gap: 24px; align-items: flex-start; padding: 24px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
 .lv3-step:last-child { border-bottom: none; }
-.lv3-step-num { font-size: 32px; font-weight: 800; color: rgba(30,91,255,0.3); line-height: 1; flex-shrink: 0; width: 48px; }
+.lv3-step-num { font-size: 36px; font-weight: 800; line-height: 1; flex-shrink: 0; width: 56px; text-align: center; }
+.lv3-step:nth-child(1) .lv3-step-num { background: linear-gradient(135deg, #1E5BFF, #00E5D4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; filter: drop-shadow(0 0 8px rgba(0,229,212,0.5)); }
+.lv3-step:nth-child(2) .lv3-step-num { background: linear-gradient(135deg, #7B61FF, #1E5BFF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; filter: drop-shadow(0 0 8px rgba(123,97,255,0.5)); }
+.lv3-step:nth-child(3) .lv3-step-num { background: linear-gradient(135deg, #00E5D4, #1E5BFF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; filter: drop-shadow(0 0 8px rgba(0,229,212,0.5)); }
+.lv3-step:nth-child(4) .lv3-step-num { background: linear-gradient(135deg, #1E5BFF, #7B61FF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; filter: drop-shadow(0 0 8px rgba(30,91,255,0.5)); }
+.lv3-step:nth-child(5) .lv3-step-num { background: linear-gradient(135deg, #00E5D4, #7B61FF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; filter: drop-shadow(0 0 8px rgba(0,229,212,0.5)); }
 .lv3-step h4 { font-size: 16px; font-weight: 700; color: #E6F2FF; margin: 0 0 6px; }
 .lv3-step p { font-size: 14px; color: #8899BB; margin: 0; line-height: 1.6; }
 
 /* REPORTS GRID */
 .lv3-reports-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-.lv3-report-card { background: rgba(17,26,51,0.6); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; transition: border-color .2s, transform .2s; }
-.lv3-report-card:hover { border-color: rgba(30,91,255,0.2); transform: translateY(-2px); }
+.lv3-report-card { background: rgba(17,26,51,0.6); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 12px; transition: border-color .3s, transform .3s, box-shadow .3s; position: relative; overflow: hidden; }
+.lv3-report-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(30,91,255,0.05) 0%, transparent 60%); opacity: 0; transition: opacity .3s; }
+.lv3-report-card:hover { border-color: rgba(30,91,255,0.35); transform: translateY(-4px); box-shadow: 0 12px 40px rgba(30,91,255,0.15), 0 0 0 1px rgba(0,229,212,0.08); }
+.lv3-report-card:hover::before { opacity: 1; }
+.lv3-rc-preview { height: 80px; border-radius: 8px; margin-bottom: 4px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.lv3-rc-preview-bar { position: absolute; bottom: 8px; left: 10px; right: 10px; display: flex; gap: 4px; align-items: flex-end; }
+.lv3-rc-preview-bar span { flex: 1; border-radius: 2px 2px 0 0; animation: rcBarGrow 1.2s ease forwards; opacity: 0.8; }
+@keyframes rcBarGrow { from { transform: scaleY(0); transform-origin: bottom; } to { transform: scaleY(1); transform-origin: bottom; } }
 .lv3-rc-top { display: flex; gap: 12px; align-items: flex-start; }
 .lv3-rc-icon { font-size: 20px; flex-shrink: 0; }
 .lv3-rc-top h4 { font-size: 13px; font-weight: 700; color: #E6F2FF; margin: 0 0 4px; }
 .lv3-rc-top p { font-size: 12px; color: #8899BB; margin: 0; line-height: 1.4; }
 
 /* IMPLEMENT */
-.lv3-impl-steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
-.lv3-impl-step { background: rgba(17,26,51,0.6); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; }
-.lv3-impl-num { width: 32px; height: 32px; background: linear-gradient(135deg, #1E5BFF, #00E5D4); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; color: #fff; margin-bottom: 12px; }
+.lv3-impl-steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; position: relative; }
+.lv3-impl-steps::before { content: ''; position: absolute; top: 16px; left: 10%; right: 10%; height: 2px; background: linear-gradient(90deg, #1E5BFF, #00E5D4, #7B61FF, #1E5BFF); opacity: 0.3; z-index: 0; }
+.lv3-impl-step { background: rgba(17,26,51,0.6); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; position: relative; z-index: 1; margin: 0 8px; transition: transform .3s, border-color .3s, box-shadow .3s; }
+.lv3-impl-step:hover { transform: translateY(-4px); border-color: rgba(30,91,255,0.3); box-shadow: 0 8px 32px rgba(30,91,255,0.15); }
+.lv3-impl-num { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; color: #fff; margin-bottom: 12px; }
+.lv3-impl-step:nth-child(1) .lv3-impl-num { background: linear-gradient(135deg, #1E5BFF, #00E5D4); box-shadow: 0 0 12px rgba(0,229,212,0.4); }
+.lv3-impl-step:nth-child(2) .lv3-impl-num { background: linear-gradient(135deg, #7B61FF, #1E5BFF); box-shadow: 0 0 12px rgba(123,97,255,0.4); }
+.lv3-impl-step:nth-child(3) .lv3-impl-num { background: linear-gradient(135deg, #00E5D4, #1E5BFF); box-shadow: 0 0 12px rgba(0,229,212,0.4); }
+.lv3-impl-step:nth-child(4) .lv3-impl-num { background: linear-gradient(135deg, #1E5BFF, #7B61FF); box-shadow: 0 0 12px rgba(30,91,255,0.4); }
+.lv3-impl-step:nth-child(5) .lv3-impl-num { background: linear-gradient(135deg, #00E5D4, #7B61FF); box-shadow: 0 0 12px rgba(0,229,212,0.4); }
 .lv3-impl-step h4 { font-size: 13px; font-weight: 700; color: #E6F2FF; margin: 0 0 6px; }
 .lv3-impl-step p { font-size: 12px; color: #8899BB; margin: 0; line-height: 1.5; }
 
@@ -9572,8 +9599,8 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   max-width: 100% !important;
   margin: 0 !important;
   background: #0A0F1E;
-  /* Pull up slightly to overlap with the fading feat-bg for a seamless join */
-  margin-top: -2px !important;
+  margin-top: 48px !important;
+  margin-bottom: 48px !important;
 }
 
 /* ── Aurora background ── */
