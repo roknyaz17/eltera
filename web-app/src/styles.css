@@ -7885,7 +7885,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 
 /* SECTIONS */
 .lv3-section { padding: 80px 48px; max-width: 1160px; margin: 0 auto; }
-#lv3-assess { padding-top: 48px; }
+#lv3-assess { padding-top: 64px; }
 .lv3-section-head { text-align: center; margin-bottom: 48px; }
 .lv3-section-head h2 { font-size: clamp(24px, 3vw, 40px); font-weight: 800; color: #E6F2FF; margin: 0 0 12px; }
 .lv3-section-head p { font-size: 16px; color: #8899BB; margin: 0 auto; max-width: 560px; }
@@ -9567,7 +9567,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 
 .lv3-ai-section {
   position: relative;
-  padding: 0 0 0 0;
+  padding: 48px 0 0 0;
   overflow: hidden;
   max-width: 100% !important;
   margin: 0 !important;
