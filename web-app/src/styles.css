@@ -8546,11 +8546,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 .lv3-red { color: #F87171; font-weight: 700; }
 
 /* AI SECTION */
-.lv3-ai-section { background: rgba(17,26,51,0.4); border-top: 1px solid rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.04); max-width: 100%; padding: 80px 48px; }
-.lv3-ai-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: start; max-width: 1200px; margin: 0 auto; }
-.lv3-ai-left h2 { font-size: 32px; font-weight: 800; color: #E6F2FF; margin: 0 0 16px; }
-.lv3-ai-left p { font-size: 15px; color: #8899BB; line-height: 1.7; margin: 0 0 16px; }
-.lv3-ai-note-box { background: rgba(0,229,212,0.06); border: 1px solid rgba(0,229,212,0.12); border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #8899BB; line-height: 1.5; }
+/* lv3-ai-section old rules removed — see new rules below at lv3-ai-section redesign */
 
 /* ACCORDION */
 .lv3-accordion { display: flex; flex-direction: column; gap: 8px; }
