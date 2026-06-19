@@ -493,7 +493,7 @@ export function renderLanding(tariffs) {
               <div class="lv3-folder-content">
                 <div class="lv3-folder-text">
                   <div class="lv3-folder-tag">AI-помощник</div>
-                  <h3>Спроси AI, если не знаешь как действовать</h3>
+                  <h3>Спроси AI, если не знаешь<br>как действовать</h3>
                   <p>Не знаете как провести оценку 360, на кого из кандидатов обратить внимание или как интерпретировать результаты? AI ответит на любой HR-вопрос за секунды.</p>
                   <ul class="lv3-folder-list">
                     <li>Рекомендации по кандидатам</li>
@@ -505,21 +505,21 @@ export function renderLanding(tariffs) {
                 <div class="lv3-folder-visual">
                   <div class="lv3-ai-chat" id="lv3AiChat">
                     <div class="lv3-ai-chat-header">
-                      <span class="lv3-ai-avatar">✦</span>
-                      <span>Eltera AI</span>
-                      <span class="lv3-live-dot">● Online</span>
+                      <span class="lv3-ai-star-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6z" fill="#1E5BFF" stroke="#1E5BFF" stroke-width="1"/></svg>
+                      </span>
+                      <span class="lv3-ai-chat-name">Eltera AI</span>
+                      <span class="lv3-ai-online"><span class="lv3-ai-online-dot"></span>Online</span>
                     </div>
                     <div class="lv3-ai-chat-messages" id="lv3AiMessages">
-                      <div class="lv3-ai-msg lv3-ai-msg-user lv3-ai-msg-visible">Как провести оценку 360 для руководителя?</div>
-                      <div class="lv3-ai-msg lv3-ai-msg-bot lv3-ai-msg-visible">Для оценки 360 выберите профиль «Руководитель», добавьте 5–8 коллег и подчинённых как оценщиков, установите срок 7 дней. Я автоматически сформирую сводный отчёт. 📊</div>
-                      <div class="lv3-ai-msg lv3-ai-msg-user">На кого из кандидатов обратить внимание?</div>
-                      <div class="lv3-ai-msg lv3-ai-msg-bot">Рекомендую Анну К. — fit к роли 94%, высокая обучаемость и стрессоустойчивость. Красных флагов нет. ✅</div>
-                      <div class="lv3-ai-msg lv3-ai-msg-user">Что значит низкий показатель вовлечённости?</div>
-                      <div class="lv3-ai-msg lv3-ai-msg-bot">Вовлечённость ниже 60% — сигнал риска выгорания. Рекомендую 1-on-1 с сотрудником и пересмотр нагрузки. 🔥</div>
+                      <div class="lv3-ai-msg lv3-ai-msg-user lv3-ai-msg-visible">На кого из кандидатов обратить внимание?</div>
+                      <div class="lv3-ai-msg lv3-ai-msg-bot lv3-ai-msg-visible">Рекомендую Анну К. — fit к роли 94%, высокая обучаемость. Красных флагов нет. ✅</div>
                     </div>
                     <div class="lv3-ai-chat-input">
                       <input type="text" placeholder="Задайте вопрос AI..." readonly>
-                      <button>↑</button>
+                      <button class="lv3-ai-send-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M5 12l7-7 7 7" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      </button>
                     </div>
                   </div>
                 </div>
