@@ -7966,11 +7966,12 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 .lv3-folder-tabs {
   display: flex;
   gap: 0;
-  background: #0B1020;
+  background: rgba(11,16,32,0.9);
   border-radius: 16px 16px 0 0;
-  border: 1px solid rgba(255,255,255,0.07);
+  border: 1px solid rgba(30,91,255,0.18);
   border-bottom: none;
   overflow: hidden;
+  backdrop-filter: blur(12px);
 }
 .lv3-folder-tab {
   flex: 1;
@@ -7994,7 +7995,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 .lv3-folder-tab:hover { color: #8899BB; background: rgba(255,255,255,0.03); }
 .lv3-folder-tab.active {
   color: #E6F2FF;
-  background: #111A33;
+  background: rgba(30,91,255,0.12);
 }
 .lv3-folder-tab.active::after {
   content: '';
@@ -8024,11 +8025,12 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   color: #7AA8FF;
 }
 .lv3-folder-panels {
-  background: #111A33;
-  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(11,16,32,0.85);
+  border: 1px solid rgba(30,91,255,0.18);
   border-top: none;
   border-radius: 0 0 16px 16px;
-  min-height: 360px;
+  min-height: 380px;
+  backdrop-filter: blur(12px);
 }
 .lv3-folder-panel { display: none; }
 .lv3-folder-panel.active { display: block; animation: folderFadeIn .3s ease; }
@@ -8060,17 +8062,18 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 
 /* ── Dashboard Preview (Slide 1) ── */
 .lv3-dash-preview {
-  background: #0A0F1E;
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 12px;
-  padding: 20px;
+  background: rgba(17,26,51,0.95);
+  border: 1px solid rgba(30,91,255,0.2);
+  border-radius: 14px;
+  padding: 24px;
   font-size: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 .lv3-dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .lv3-dash-title { font-size: 13px; font-weight: 600; color: #E6F2FF; }
 .lv3-live-dot { font-size: 11px; color: #00E5D4; }
 .lv3-dash-kpis { display: flex; gap: 16px; margin-bottom: 16px; }
-.lv3-dash-kpi { flex: 1; background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px; text-align: center; }
+.lv3-dash-kpi { flex: 1; background: rgba(30,91,255,0.08); border: 1px solid rgba(30,91,255,0.15); border-radius: 10px; padding: 12px 10px; text-align: center; }
 .lv3-dash-kpi-val { display: block; font-size: 20px; font-weight: 700; margin-bottom: 2px; }
 .lv3-dash-kpi-label { font-size: 10px; color: #4A5568; }
 .lv3-dash-bars { display: flex; flex-direction: column; gap: 8px; }
@@ -8082,11 +8085,12 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 
 /* ── AI Chat (Slide 2) ── */
 .lv3-ai-chat {
-  background: #0A0F1E;
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 12px;
+  background: rgba(17,26,51,0.95);
+  border: 1px solid rgba(30,91,255,0.2);
+  border-radius: 14px;
   overflow: hidden;
   font-size: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 .lv3-ai-chat-header {
   display: flex;

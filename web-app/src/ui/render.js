@@ -379,8 +379,8 @@ export function renderLanding(tariffs) {
         <div class="lv3-scroll-sticky" id="lv3ScrollSticky">
           <section class="lv3-section lv3-features-section" id="lv3-for-whom">
             <div class="lv3-section-head">
-              <h2>Почему выбирают Eltera</h2>
-              <p>Пять причин, которые делают оценку людей простой и эффективной</p>
+              <h2>Оценка никогда не была <span class="lv3-grad">настолько удобной</span></h2>
+              <p>Пять причин, которые делают её простой и эффективной</p>
             </div>
             <!-- Progress dots -->
             <div class="lv3-scroll-dots" id="lv3ScrollDots">
