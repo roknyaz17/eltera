@@ -7874,7 +7874,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 .lv3-ticker-track { overflow: hidden; flex: 1; }
 .lv3-ticker-inner { display: flex; gap: 32px; animation: lv3Ticker 20s linear infinite; width: max-content; }
 .lv3-ticker-inner span { font-size: 13px; font-weight: 600; color: #4A5568; white-space: nowrap; }
-@keyframes lv3Ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+@keyframes lv3Ticker { 0% { transform: translateX(-50%); } 100% { transform: translateX(0); } }
 
 /* SECTIONS */
 .lv3-section { padding: 80px 48px; max-width: 1200px; margin: 0 auto; }
