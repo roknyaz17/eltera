@@ -9618,9 +9618,9 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 .lv3-ai-glass {
   position: relative;
   z-index: 1;
-  max-width: 1160px;
+  max-width: 1064px;
   margin: 0 auto;
-  padding: 0 48px;
+  padding: 0;
   background: rgba(11, 16, 32, 0.72);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
