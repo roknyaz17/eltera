@@ -576,10 +576,11 @@ export function renderLanding(tariffs) {
 
             <!-- Slide 4: Company Structure -->
             <div class="lv3-folder-panel" data-folder-panel="3">
-              <div class="lv3-folder-content">
+              <div class="lv3-folder-content lv3-folder-content--org">
+                <!-- Left: text -->
                 <div class="lv3-folder-text">
                   <div class="lv3-folder-tag">Структура</div>
-                  <h3>Вся структура компании и данные о каждом</h3>
+                  <h3>Вся структура компании<br>и данные о каждом</h3>
                   <p>Видите полную оргструктуру: отделы, руководителей, сотрудников. Кликните на любого — получите его профиль, оценки, риски и ИПР.</p>
                   <ul class="lv3-folder-list">
                     <li>Оргструктура с drill-down</li>
@@ -588,42 +589,104 @@ export function renderLanding(tariffs) {
                     <li>Риски и рекомендации по каждому</li>
                   </ul>
                 </div>
-                <div class="lv3-folder-visual">
-                  <div class="lv3-org-preview">
-                    <div class="lv3-org-node lv3-org-root" id="lv3OrgRoot">
-                      <span class="lv3-org-avatar">ГД</span>
-                      <span>Генеральный директор</span>
+                <!-- Right: org chart -->
+                <div class="lv3-folder-visual lv3-folder-visual--org">
+                  <div class="lv3-org2">
+                    <!-- Level 0: CEO -->
+                    <div class="lv3-org2-level lv3-org2-level--ceo">
+                      <div class="lv3-org2-card lv3-org2-card--ceo">
+                        <img class="lv3-org2-photo" src="/public/assets/org/ceo.jpg" alt="CEO" loading="lazy">
+                        <div class="lv3-org2-info">
+                          <div class="lv3-org2-name">Генеральный<br>директор</div>
+                          <div class="lv3-org2-score lv3-org2-score--green">94%</div>
+                        </div>
+                      </div>
                     </div>
-                    <div class="lv3-org-branches">
-                      <div class="lv3-org-branch">
-                        <div class="lv3-org-node lv3-org-dept" id="lv3OrgDept1">
-                          <span class="lv3-org-avatar lv3-org-blue">HR</span>
-                          <span>HR-отдел</span>
-                        </div>
-                        <div class="lv3-org-children" id="lv3OrgHr">
-                          <div class="lv3-org-leaf"><span class="lv3-org-dot lv3-green"></span>Анна К. <span class="lv3-org-fit">94%</span></div>
-                          <div class="lv3-org-leaf"><span class="lv3-org-dot lv3-teal"></span>Мария С. <span class="lv3-org-fit">88%</span></div>
-                        </div>
+                    <!-- SVG connector: CEO → 3 depts -->
+                    <div class="lv3-org2-connectors lv3-org2-connectors--l1">
+                      <svg viewBox="0 0 600 48" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                        <!-- vertical from CEO -->
+                        <line x1="300" y1="0" x2="300" y2="24" stroke="#1E5BFF" stroke-width="1.5" opacity="0.6"/>
+                        <!-- horizontal bar -->
+                        <line x1="100" y1="24" x2="500" y2="24" stroke="#1E5BFF" stroke-width="1.5" opacity="0.6"/>
+                        <!-- drops to each dept -->
+                        <line x1="100" y1="24" x2="100" y2="48" stroke="#1E5BFF" stroke-width="1.5" opacity="0.6"/>
+                        <line x1="300" y1="24" x2="300" y2="48" stroke="#1E5BFF" stroke-width="1.5" opacity="0.6"/>
+                        <line x1="500" y1="24" x2="500" y2="48" stroke="#1E5BFF" stroke-width="1.5" opacity="0.6"/>
+                      </svg>
+                    </div>
+                    <!-- Level 1: Departments -->
+                    <div class="lv3-org2-level lv3-org2-level--depts">
+                      <!-- HR -->
+                      <div class="lv3-org2-dept lv3-org2-dept--blue">
+                        <svg class="lv3-org2-dept-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="7" cy="7" r="3" stroke="#7AA8FF" stroke-width="1.5"/><circle cx="13" cy="7" r="3" stroke="#7AA8FF" stroke-width="1.5"/><path d="M1 17c0-3 2.5-5 6-5M19 17c0-3-2.5-5-6-5M7 12c1 3 5 3 6 0" stroke="#7AA8FF" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        <span>HR-отдел</span>
                       </div>
-                      <div class="lv3-org-branch">
-                        <div class="lv3-org-node lv3-org-dept" id="lv3OrgDept2">
-                          <span class="lv3-org-avatar lv3-org-purple">IT</span>
-                          <span>IT-отдел</span>
-                        </div>
-                        <div class="lv3-org-children" id="lv3OrgIt">
-                          <div class="lv3-org-leaf"><span class="lv3-org-dot lv3-green"></span>Дмитрий В. <span class="lv3-org-fit">91%</span></div>
-                          <div class="lv3-org-leaf"><span class="lv3-org-dot lv3-amber"></span>Павел Н. <span class="lv3-org-fit">67%</span></div>
-                        </div>
+                      <!-- IT -->
+                      <div class="lv3-org2-dept lv3-org2-dept--purple">
+                        <svg class="lv3-org2-dept-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 8l-4 2 4 2M14 8l4 2-4 2M11 6l-2 8" stroke="#A78BFA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <span>IT-отдел</span>
                       </div>
-                      <div class="lv3-org-branch">
-                        <div class="lv3-org-node lv3-org-dept" id="lv3OrgDept3">
-                          <span class="lv3-org-avatar lv3-org-teal">ПР</span>
-                          <span>Продажи</span>
-                        </div>
-                        <div class="lv3-org-children" id="lv3OrgSales">
-                          <div class="lv3-org-leaf"><span class="lv3-org-dot lv3-green"></span>Алексей И. <span class="lv3-org-fit">89%</span></div>
-                          <div class="lv3-org-leaf"><span class="lv3-org-dot lv3-red"></span>Сергей М. <span class="lv3-org-fit">45%</span></div>
-                        </div>
+                      <!-- Sales -->
+                      <div class="lv3-org2-dept lv3-org2-dept--teal">
+                        <svg class="lv3-org2-dept-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><polyline points="2,14 7,9 11,12 18,5" stroke="#00E5D4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><polyline points="14,5 18,5 18,9" stroke="#00E5D4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <span>Продажи</span>
+                      </div>
+                    </div>
+                    <!-- SVG connector: depts → employees -->
+                    <div class="lv3-org2-connectors lv3-org2-connectors--l2">
+                      <svg viewBox="0 0 600 48" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                        <!-- HR branch -->
+                        <line x1="100" y1="0" x2="100" y2="24" stroke="#1E5BFF" stroke-width="1.5" opacity="0.6"/>
+                        <line x1="50" y1="24" x2="150" y2="24" stroke="#1E5BFF" stroke-width="1.5" opacity="0.6"/>
+                        <line x1="50" y1="24" x2="50" y2="48" stroke="#1E5BFF" stroke-width="1.5" opacity="0.6"/>
+                        <line x1="150" y1="24" x2="150" y2="48" stroke="#1E5BFF" stroke-width="1.5" opacity="0.6"/>
+                        <!-- IT branch -->
+                        <line x1="300" y1="0" x2="300" y2="24" stroke="#1E5BFF" stroke-width="1.5" opacity="0.6"/>
+                        <line x1="250" y1="24" x2="350" y2="24" stroke="#1E5BFF" stroke-width="1.5" opacity="0.6"/>
+                        <line x1="250" y1="24" x2="250" y2="48" stroke="#1E5BFF" stroke-width="1.5" opacity="0.6"/>
+                        <line x1="350" y1="24" x2="350" y2="48" stroke="#1E5BFF" stroke-width="1.5" opacity="0.6"/>
+                        <!-- Sales branch -->
+                        <line x1="500" y1="0" x2="500" y2="24" stroke="#1E5BFF" stroke-width="1.5" opacity="0.6"/>
+                        <line x1="450" y1="24" x2="550" y2="24" stroke="#1E5BFF" stroke-width="1.5" opacity="0.6"/>
+                        <line x1="450" y1="24" x2="450" y2="48" stroke="#1E5BFF" stroke-width="1.5" opacity="0.6"/>
+                        <line x1="550" y1="24" x2="550" y2="48" stroke="#1E5BFF" stroke-width="1.5" opacity="0.6"/>
+                      </svg>
+                    </div>
+                    <!-- Level 2: Employees -->
+                    <div class="lv3-org2-level lv3-org2-level--employees">
+                      <!-- HR employees -->
+                      <div class="lv3-org2-emp">
+                        <img class="lv3-org2-emp-photo" src="/public/assets/org/anna.jpg" alt="Анна К." loading="lazy">
+                        <div class="lv3-org2-emp-name">Анна К.</div>
+                        <div class="lv3-org2-score lv3-org2-score--green">94%</div>
+                      </div>
+                      <div class="lv3-org2-emp">
+                        <img class="lv3-org2-emp-photo" src="/public/assets/org/maria.jpg" alt="Мария С." loading="lazy">
+                        <div class="lv3-org2-emp-name">Мария С.</div>
+                        <div class="lv3-org2-score lv3-org2-score--green">88%</div>
+                      </div>
+                      <!-- IT employees -->
+                      <div class="lv3-org2-emp">
+                        <img class="lv3-org2-emp-photo" src="/public/assets/org/dmitry.jpg" alt="Дмитрий В." loading="lazy">
+                        <div class="lv3-org2-emp-name">Дмитрий В.</div>
+                        <div class="lv3-org2-score lv3-org2-score--green">91%</div>
+                      </div>
+                      <div class="lv3-org2-emp">
+                        <img class="lv3-org2-emp-photo" src="/public/assets/org/pavel.jpg" alt="Павел Н." loading="lazy">
+                        <div class="lv3-org2-emp-name">Павел Н.</div>
+                        <div class="lv3-org2-score lv3-org2-score--amber">67%</div>
+                      </div>
+                      <!-- Sales employees -->
+                      <div class="lv3-org2-emp">
+                        <img class="lv3-org2-emp-photo" src="/public/assets/org/alexey.jpg" alt="Алексей И." loading="lazy">
+                        <div class="lv3-org2-emp-name">Алексей И.</div>
+                        <div class="lv3-org2-score lv3-org2-score--green">89%</div>
+                      </div>
+                      <div class="lv3-org2-emp">
+                        <img class="lv3-org2-emp-photo" src="/public/assets/org/sergey.jpg" alt="Сергей М." loading="lazy">
+                        <div class="lv3-org2-emp-name">Сергей М.</div>
+                        <div class="lv3-org2-score lv3-org2-score--red">45%</div>
                       </div>
                     </div>
                   </div>
