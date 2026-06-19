@@ -9849,7 +9849,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 .lv3-ref2-bal-num {
   font-size: 28px;
   font-weight: 800;
-  color: #E05599;
+  color: #8B5CF6;
   letter-spacing: -0.5px;
   line-height: 1;
 }
@@ -9857,7 +9857,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 .lv3-ref2-bal-cur {
   font-size: 16px;
   font-weight: 700;
-  color: #E05599;
+  color: #8B5CF6;
 }
 
 .lv3-ref2-bal-rub {
@@ -9895,11 +9895,13 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   flex: 1;
   font-size: 14px;
   font-weight: 600;
-  color: rgba(230,242,255,0.85);
-  font-family: 'Manrope', monospace;
+  color: #00E5D4;
+  font-family: 'Courier New', 'JetBrains Mono', 'Fira Code', monospace;
+  letter-spacing: 0.03em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-shadow: 0 0 12px rgba(0,229,212,0.35);
 }
 
 .lv3-ref2-copy-btn {
