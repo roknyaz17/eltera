@@ -7656,7 +7656,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  animation: lv3GradShift 4s linear infinite;
+  animation: lv3GradShift 8s ease-in-out infinite;
 }
 /* Purple animated gradient for AI-оценка */
 .lv3-grad-purple {
@@ -7665,10 +7665,11 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  animation: lv3GradShift 4s linear infinite;
+  animation: lv3GradShift 8s ease-in-out infinite;
 }
 @keyframes lv3GradShift {
   0%   { background-position: 0% center; }
+  50%  { background-position: 150% center; }
   100% { background-position: 300% center; }
 }
 /* White glow for кандидатов и сотрудников */
