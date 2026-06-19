@@ -743,30 +743,94 @@ export function renderLanding(tariffs) {
 
       <!-- AI SECTION -->
       <section class="lv3-section lv3-ai-section" id="lv3-ai" data-reveal>
-        <div class="lv3-ai-inner">
-          <div class="lv3-ai-left">
-            <div class="lv3-section-tag">AI-оценка</div>
-            <h2>AI анализирует, вы <span class="lv3-grad">принимаете решение</span></h2>
-            <p>AI анализирует ответы, компетенции, кейсы и поведенческие маркеры, а затем формирует понятный отчёт: сильные стороны, зоны риска, красные флаги, рекомендацию и индивидуальный план развития.</p>
-            <div class="lv3-ai-note-box">Важно: AI помогает структурировать оценку и подсветить риски, но финальное решение остаётся за человеком.</div>
-          </div>
-          <div class="lv3-ai-right">
-            <div class="lv3-accordion" id="lv3Accordion">
-              <div class="lv3-acc-item active" data-acc="0">
-                <div class="lv3-acc-head"><span class="lv3-acc-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#00E5D4" stroke-width="1.2"/><circle cx="8" cy="8" r="3" fill="#00E5D4" fill-opacity="0.4"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2" stroke="#00E5D4" stroke-width="1.2" stroke-linecap="round"/></svg></span><span>Профиль компетенций</span><svg class="lv3-acc-arrow" width="16" height="16" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
-                <div class="lv3-acc-body">Визуальный radar с процентами по каждой компетенции. Сразу видно сильные стороны и зоны развития.</div>
+        <!-- Aurora background -->
+        <div class="lv3-ai-bg">
+          <div class="lv3-ai-orb lv3-ai-orb--1"></div>
+          <div class="lv3-ai-orb lv3-ai-orb--2"></div>
+          <canvas class="lv3-ai-particles" id="lv3AiParticles"></canvas>
+        </div>
+        <!-- Glassmorphism wrapper -->
+        <div class="lv3-ai-glass">
+          <div class="lv3-ai-inner">
+            <!-- Left column -->
+            <div class="lv3-ai-left">
+              <div class="lv3-section-tag lv3-tag-teal">AI-ОЦЕНКА</div>
+              <h2 class="lv3-ai-heading">AI анализирует,<br>вы <span class="lv3-grad-teal">принимаете<br>решение</span></h2>
+              <p class="lv3-ai-desc">AI анализирует ответы, компетенции, кейсы и поведенческие маркеры, а затем формирует понятный отчёт: сильные стороны, зоны риска, красные флаги, рекомендацию и индивидуальный план развития.</p>
+              <div class="lv3-ai-note">
+                <div class="lv3-ai-note-icon">
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" stroke="#00E5D4" stroke-width="1.4"/><path d="M9 8v5" stroke="#00E5D4" stroke-width="1.5" stroke-linecap="round"/><circle cx="9" cy="5.5" r="1" fill="#00E5D4"/></svg>
+                </div>
+                <p>Важно! AI помогает структурировать оценку и подсветить риски, но финальное решение остаётся за человеком.</p>
               </div>
-              <div class="lv3-acc-item" data-acc="1">
-                <div class="lv3-acc-head"><span class="lv3-acc-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v7" stroke="#FF6B6B" stroke-width="1.4" stroke-linecap="round"/><circle cx="8" cy="13" r="1.2" fill="#FF6B6B"/><path d="M3 2h10L11 7H5L3 2z" stroke="#FF6B6B" stroke-width="1.2" fill="#FF6B6B" fill-opacity="0.15"/></svg></span><span>Красные флаги и риски</span><svg class="lv3-acc-arrow" width="16" height="16" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
-                <div class="lv3-acc-body">AI выделяет тревожные сигналы и зоны внимания. Вы видите риски до принятия решения.</div>
-              </div>
-              <div class="lv3-acc-item" data-acc="2">
-                <div class="lv3-acc-head"><span class="lv3-acc-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#00E5D4" stroke-width="1.2"/><path d="M5 8l2 2 4-4" stroke="#00E5D4" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Рекомендация по кандидату</span><svg class="lv3-acc-arrow" width="16" height="16" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
-                <div class="lv3-acc-body">Приглашать / наблюдать / не рекомендовать — с обоснованием и конкретными аргументами.</div>
-              </div>
-              <div class="lv3-acc-item" data-acc="3">
-                <div class="lv3-acc-head"><span class="lv3-acc-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 12l4-4 3 3 5-7" stroke="#1E5BFF" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="14" cy="4" r="1.5" fill="#1E5BFF"/></svg></span><span>ИПР — план развития</span><svg class="lv3-acc-arrow" width="16" height="16" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
-                <div class="lv3-acc-body">Индивидуальный план развития с конкретными шагами, целями и сроками для каждого сотрудника.</div>
+            </div>
+            <!-- Right column: accordion -->
+            <div class="lv3-ai-right">
+              <div class="lv3-accordion2" id="lv3Accordion">
+
+                <!-- Item 1: active -->
+                <div class="lv3-acc2-item lv3-acc2-item--active" data-acc="0">
+                  <div class="lv3-acc2-head">
+                    <div class="lv3-acc2-icon lv3-acc2-icon--teal">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <polygon points="12,2 22,8 22,16 12,22 2,16 2,8" stroke="#00E5D4" stroke-width="1.5" fill="none"/>
+                        <circle cx="12" cy="12" r="3" stroke="#00E5D4" stroke-width="1.3" fill="rgba(0,229,212,0.15)"/>
+                        <path d="M12 2v3M12 19v3M2 8l2.5 1.5M19.5 14.5L22 16M2 16l2.5-1.5M19.5 9.5L22 8" stroke="#00E5D4" stroke-width="1.1" stroke-linecap="round"/>
+                      </svg>
+                    </div>
+                    <span class="lv3-acc2-title">Профиль компетенций</span>
+                    <svg class="lv3-acc2-arrow lv3-acc2-arrow--open" width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M5 11l4-4 4 4" stroke="#00E5D4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </div>
+                  <div class="lv3-acc2-divider"></div>
+                  <div class="lv3-acc2-body">Визуальный radar с процентами по каждой компетенции.<br>Сразу видно сильные стороны и зоны развития.</div>
+                </div>
+
+                <!-- Item 2 -->
+                <div class="lv3-acc2-item" data-acc="1">
+                  <div class="lv3-acc2-head">
+                    <div class="lv3-acc2-icon lv3-acc2-icon--red">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 3L3 20h18L12 3z" stroke="#E05555" stroke-width="1.5" fill="rgba(224,85,85,0.12)" stroke-linejoin="round"/>
+                        <path d="M12 9v5" stroke="#E05555" stroke-width="1.6" stroke-linecap="round"/>
+                        <circle cx="12" cy="16.5" r="1.1" fill="#E05555"/>
+                      </svg>
+                    </div>
+                    <span class="lv3-acc2-title">Красные флаги и риски</span>
+                    <svg class="lv3-acc2-arrow" width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M5 7l4 4 4-4" stroke="rgba(230,242,255,0.5)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </div>
+                  <div class="lv3-acc2-body">AI выделяет тревожные сигналы и зоны внимания. Вы видите риски до принятия решения.</div>
+                </div>
+
+                <!-- Item 3 -->
+                <div class="lv3-acc2-item" data-acc="2">
+                  <div class="lv3-acc2-head">
+                    <div class="lv3-acc2-icon lv3-acc2-icon--teal">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="9" stroke="#00E5D4" stroke-width="1.5" fill="rgba(0,229,212,0.08)"/>
+                        <path d="M7.5 12l3 3 6-6" stroke="#00E5D4" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                    </div>
+                    <span class="lv3-acc2-title">Рекомендация по кандидату</span>
+                    <svg class="lv3-acc2-arrow" width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M5 7l4 4 4-4" stroke="rgba(230,242,255,0.5)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </div>
+                  <div class="lv3-acc2-body">Приглашать / наблюдать / не рекомендовать — с обоснованием и конкретными аргументами.</div>
+                </div>
+
+                <!-- Item 4 -->
+                <div class="lv3-acc2-item" data-acc="3">
+                  <div class="lv3-acc2-head">
+                    <div class="lv3-acc2-icon lv3-acc2-icon--blue">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M4 17l5-5 4 4 7-9" stroke="#1E5BFF" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="20" cy="5" r="2" fill="#1E5BFF" fill-opacity="0.3" stroke="#1E5BFF" stroke-width="1.2"/>
+                      </svg>
+                    </div>
+                    <span class="lv3-acc2-title">ИПР — план развития</span>
+                    <svg class="lv3-acc2-arrow" width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M5 7l4 4 4-4" stroke="rgba(230,242,255,0.5)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </div>
+                  <div class="lv3-acc2-body">Индивидуальный план развития с конкретными шагами, целями и сроками для каждого сотрудника.</div>
+                </div>
+
               </div>
             </div>
           </div>

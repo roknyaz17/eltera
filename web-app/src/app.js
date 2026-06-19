@@ -1959,7 +1959,7 @@ function initLv3Landing() {
     });
   });
 
-  // ACCORDION
+  // ACCORDION (old)
   const accItems = document.querySelectorAll('.lv3-acc-item');
   accItems.forEach(item => {
     const head = item.querySelector('.lv3-acc-head');
@@ -1970,6 +1970,28 @@ function initLv3Landing() {
         if (!isActive) item.classList.add('active');
       });
     }
+  });
+
+  // ACCORDION2 (AI section)
+  const acc2Items = document.querySelectorAll('.lv3-acc2-item');
+  acc2Items.forEach(item => {
+    const head = item.querySelector('.lv3-acc2-head');
+    if (!head) return;
+    head.addEventListener('click', () => {
+      const isActive = item.classList.contains('lv3-acc2-item--active');
+      // close all
+      acc2Items.forEach(i => {
+        i.classList.remove('lv3-acc2-item--active');
+        const arrow = i.querySelector('.lv3-acc2-arrow');
+        if (arrow) { arrow.classList.remove('lv3-acc2-arrow--open'); arrow.style.color = ''; }
+      });
+      // open clicked (if was closed)
+      if (!isActive) {
+        item.classList.add('lv3-acc2-item--active');
+        const arrow = item.querySelector('.lv3-acc2-arrow');
+        if (arrow) { arrow.classList.add('lv3-acc2-arrow--open'); }
+      }
+    });
   });
 
   // BILLING TOGGLE
