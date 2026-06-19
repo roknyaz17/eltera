@@ -7909,6 +7909,9 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   height: 100%;
   width: 100%;
   background: #0A0F1E;
+  /* Fade out at the bottom so the transition to the next section is seamless */
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 70%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 0%, black 70%, transparent 100%);
 }
 .lv3-feat-bg::before {
   content: '';
@@ -9562,11 +9565,13 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 
 .lv3-ai-section {
   position: relative;
-  padding: 80px 0 80px 0;
+  padding: 0 0 80px 0;
   overflow: hidden;
   max-width: 100% !important;
   margin: 0 !important;
   background: #0A0F1E;
+  /* Pull up slightly to overlap with the fading feat-bg for a seamless join */
+  margin-top: -2px !important;
 }
 
 /* ── Aurora background ── */
