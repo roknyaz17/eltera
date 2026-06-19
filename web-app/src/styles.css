@@ -9561,7 +9561,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 
 .lv3-ai-section {
   position: relative;
-  padding: 80px 0;
+  padding: 0 0 80px 0;
   overflow: hidden;
   max-width: 100% !important;
   margin: 0 !important;
