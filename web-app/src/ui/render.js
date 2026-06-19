@@ -379,19 +379,11 @@ export function renderLanding(tariffs) {
         <div class="lv3-scroll-sticky" id="lv3ScrollSticky">
           <section class="lv3-section lv3-features-section" id="lv3-for-whom">
             <div class="lv3-section-head">
-              <h2>Оценка никогда не была <span class="lv3-grad">настолько удобной</span></h2>
+              <h2>Оценка никогда не была <span class="lv3-grad-teal">настолько удобной</span></h2>
               <p>Пять причин, которые делают её простой и эффективной</p>
             </div>
-            <!-- Progress dots -->
-            <div class="lv3-scroll-dots" id="lv3ScrollDots">
-              <div class="lv3-scroll-dot active" data-dot="0"></div>
-              <div class="lv3-scroll-dot" data-dot="1"></div>
-              <div class="lv3-scroll-dot" data-dot="2"></div>
-              <div class="lv3-scroll-dot" data-dot="3"></div>
-              <div class="lv3-scroll-dot" data-dot="4"></div>
-            </div>
         <div class="lv3-folders" id="lv3Folders">
-          <!-- Folder tabs -->
+          <!-- Folder tabs - horizontal row at top -->
           <div class="lv3-folder-tabs">
             <button class="lv3-folder-tab active" data-folder="0">
               <span class="lv3-folder-icon">
@@ -433,11 +425,11 @@ export function renderLanding(tariffs) {
               <div class="lv3-folder-content">
                 <div class="lv3-folder-text">
                   <div class="lv3-folder-tag">Аналитика</div>
-                  <h3>Удобная аналитика в одном кабинете</h3>
+                  <h3>Вся аналитика,<br>как на ладони</h3>
                   <p>Видите полную картину компании: KPI, воронку найма, риски, вовлечённость и потенциал каждого сотрудника — всё в одном визуальном дашборде.</p>
                   <ul class="lv3-folder-list">
                     <li>Дашборд HR-директора и собственника</li>
-                    <li>Radar компетенций и 9-box матрица</li>
+                    <li>Радар компетенций и 9-box матрица</li>
                     <li>Тепловая карта рисков команды</li>
                     <li>Воронка подбора в реальном времени</li>
                   </ul>
@@ -446,42 +438,42 @@ export function renderLanding(tariffs) {
                   <div class="lv3-dash-preview">
                     <div class="lv3-dash-header">
                       <span class="lv3-dash-title">HR Dashboard</span>
-                      <span class="lv3-live-dot">● Live</span>
+                      <span class="lv3-live-dot"><span class="lv3-live-green-dot"></span>Live</span>
                     </div>
                     <div class="lv3-dash-kpis">
                       <div class="lv3-dash-kpi">
-                        <span class="lv3-dash-kpi-val lv3-teal">47</span>
-                        <span class="lv3-dash-kpi-label">Оценок</span>
+                        <span class="lv3-dash-kpi-val" style="color:#00E5D4">47</span>
+                        <span class="lv3-dash-kpi-label">оценок</span>
                       </div>
                       <div class="lv3-dash-kpi">
-                        <span class="lv3-dash-kpi-val lv3-green">81%</span>
-                        <span class="lv3-dash-kpi-label">Конверсия</span>
+                        <span class="lv3-dash-kpi-val" style="color:#00E5D4">81%</span>
+                        <span class="lv3-dash-kpi-label">конверсия</span>
                       </div>
                       <div class="lv3-dash-kpi">
-                        <span class="lv3-dash-kpi-val lv3-amber">3</span>
-                        <span class="lv3-dash-kpi-label">Риска</span>
+                        <span class="lv3-dash-kpi-val" style="color:#F59E0B">3</span>
+                        <span class="lv3-dash-kpi-label">риска</span>
                       </div>
                     </div>
                     <div class="lv3-dash-bars">
                       <div class="lv3-dash-bar-row">
-                        <span>Коммуникация</span>
-                        <div class="lv3-dash-bar"><div class="lv3-dash-bar-fill" style="width:87%"></div></div>
-                        <span>87%</span>
+                        <span class="lv3-dash-bar-label">Коммуникация</span>
+                        <div class="lv3-dash-bar"><div class="lv3-dash-bar-fill" data-w="87"></div></div>
+                        <span class="lv3-dash-bar-pct">87%</span>
                       </div>
                       <div class="lv3-dash-bar-row">
-                        <span>Лидерство</span>
-                        <div class="lv3-dash-bar"><div class="lv3-dash-bar-fill" style="width:72%"></div></div>
-                        <span>72%</span>
+                        <span class="lv3-dash-bar-label">Лидерство</span>
+                        <div class="lv3-dash-bar"><div class="lv3-dash-bar-fill" data-w="72"></div></div>
+                        <span class="lv3-dash-bar-pct">72%</span>
                       </div>
                       <div class="lv3-dash-bar-row">
-                        <span>Стрессоустойчивость</span>
-                        <div class="lv3-dash-bar"><div class="lv3-dash-bar-fill lv3-bar-amber" style="width:54%"></div></div>
-                        <span>54%</span>
+                        <span class="lv3-dash-bar-label">Стрессоустойчивость</span>
+                        <div class="lv3-dash-bar"><div class="lv3-dash-bar-fill lv3-bar-amber" data-w="54"></div></div>
+                        <span class="lv3-dash-bar-pct">54%</span>
                       </div>
                       <div class="lv3-dash-bar-row">
-                        <span>Обучаемость</span>
-                        <div class="lv3-dash-bar"><div class="lv3-dash-bar-fill" style="width:91%"></div></div>
-                        <span>91%</span>
+                        <span class="lv3-dash-bar-label">Обучаемость</span>
+                        <div class="lv3-dash-bar"><div class="lv3-dash-bar-fill" data-w="91"></div></div>
+                        <span class="lv3-dash-bar-pct">91%</span>
                       </div>
                     </div>
                   </div>

@@ -7677,6 +7677,13 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   color: #FFFFFF;
   text-shadow: 0 0 20px rgba(255,255,255,0.2);
 }
+/* Blue-teal gradient for section headings */
+.lv3-grad-teal {
+  background: linear-gradient(90deg, #1E5BFF 0%, #00E5D4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
 .lv3-hero-left p { font-size: 16px; line-height: 1.7; color: #8899BB; margin: 0; }
 .lv3-hero-btns { display: flex; gap: 12px; flex-wrap: wrap; }
 .lv3-hero-meta { font-size: 12px; color: #4A5568; }
@@ -7963,15 +7970,16 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 /* ── Folder Tabs (Features Section) ── */
 .lv3-features-section { }
 .lv3-folders { display: flex; flex-direction: column; gap: 0; }
+/* Tabs row — matches reference: dark glass bg, top-rounded, horizontal */
 .lv3-folder-tabs {
   display: flex;
   gap: 0;
-  background: rgba(11,16,32,0.9);
+  background: rgba(8,13,28,0.95);
   border-radius: 16px 16px 0 0;
-  border: 1px solid rgba(30,91,255,0.18);
+  border: 1px solid rgba(30,91,255,0.22);
   border-bottom: none;
   overflow: hidden;
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
 }
 .lv3-folder-tab {
   flex: 1;
@@ -7981,21 +7989,24 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   gap: 8px;
   background: transparent;
   border: none;
-  border-right: 1px solid rgba(255,255,255,0.06);
+  border-right: 1px solid rgba(255,255,255,0.05);
   color: #4A5568;
   font-size: 13px;
   font-weight: 600;
-  padding: 16px 12px;
+  padding: 18px 12px;
   cursor: pointer;
   transition: all .25s;
   font-family: inherit;
   position: relative;
+  white-space: nowrap;
 }
 .lv3-folder-tab:last-child { border-right: none; }
 .lv3-folder-tab:hover { color: #8899BB; background: rgba(255,255,255,0.03); }
+/* Active tab: lighter bg + bottom blue line — matches reference */
 .lv3-folder-tab.active {
   color: #E6F2FF;
-  background: rgba(30,91,255,0.12);
+  background: rgba(17,26,51,0.9);
+  border-bottom: 2px solid transparent;
 }
 .lv3-folder-tab.active::after {
   content: '';
@@ -8004,12 +8015,13 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   height: 2px;
   background: linear-gradient(90deg, #1E5BFF, #00E5D4);
 }
+/* Icon box — teal bg when active, matches reference */
 .lv3-folder-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 8px;
   background: rgba(30, 91, 255, 0.1);
   color: #5B8AFF;
@@ -8017,69 +8029,94 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   transition: all .25s;
 }
 .lv3-folder-tab.active .lv3-folder-icon {
-  background: rgba(0, 229, 212, 0.12);
+  background: rgba(0, 229, 212, 0.15);
   color: #00E5D4;
+  box-shadow: 0 0 12px rgba(0,229,212,0.2);
 }
 .lv3-folder-tab:hover .lv3-folder-icon {
   background: rgba(30, 91, 255, 0.15);
   color: #7AA8FF;
 }
+/* Panel container — dark glass, bottom-rounded, connects to tabs */
 .lv3-folder-panels {
-  background: rgba(11,16,32,0.85);
-  border: 1px solid rgba(30,91,255,0.18);
+  background: rgba(10,15,30,0.92);
+  border: 1px solid rgba(30,91,255,0.22);
   border-top: none;
-  border-radius: 0 0 16px 16px;
-  min-height: 380px;
-  backdrop-filter: blur(12px);
+  border-radius: 0 0 20px 20px;
+  min-height: 400px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04);
 }
 .lv3-folder-panel { display: none; }
 .lv3-folder-panel.active { display: block; animation: folderFadeIn .3s ease; }
 @keyframes folderFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+/* Content grid: left text + right visual — matches reference 50/50 */
 .lv3-folder-content {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 48px;
+  grid-template-columns: 1fr 1.1fr;
+  gap: 40px;
   padding: 40px 48px;
   align-items: center;
 }
+/* Tag pill — teal border, matches reference */
 .lv3-folder-tag {
   display: inline-block;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: .1em;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
   color: #00E5D4;
   background: rgba(0,229,212,0.08);
-  border: 1px solid rgba(0,229,212,0.2);
-  padding: 4px 10px;
+  border: 1px solid rgba(0,229,212,0.25);
+  padding: 5px 12px;
   border-radius: 100px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
-.lv3-folder-text h3 { font-size: 22px; font-weight: 700; color: #E6F2FF; margin: 0 0 12px; line-height: 1.3; }
-.lv3-folder-text p { font-size: 14px; color: #8899BB; line-height: 1.7; margin: 0 0 20px; }
-.lv3-folder-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
-.lv3-folder-list li { font-size: 13px; color: #8899BB; padding-left: 20px; position: relative; }
+.lv3-folder-text h3 { font-size: 24px; font-weight: 700; color: #E6F2FF; margin: 0 0 14px; line-height: 1.3; }
+.lv3-folder-text p { font-size: 14px; color: #8899BB; line-height: 1.7; margin: 0 0 22px; }
+.lv3-folder-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.lv3-folder-list li { font-size: 13.5px; color: #8899BB; padding-left: 22px; position: relative; }
 .lv3-folder-list li::before { content: '✓'; position: absolute; left: 0; color: #00E5D4; font-weight: 700; }
 
 /* ── Dashboard Preview (Slide 1) ── */
 .lv3-dash-preview {
-  background: rgba(17,26,51,0.95);
-  border: 1px solid rgba(30,91,255,0.2);
-  border-radius: 14px;
-  padding: 24px;
+  background: rgba(13,19,40,0.98);
+  border: 1px solid rgba(30,91,255,0.22);
+  border-radius: 16px;
+  padding: 24px 28px;
   font-size: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06);
+  box-shadow: 0 12px 48px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05);
 }
-.lv3-dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.lv3-dash-title { font-size: 13px; font-weight: 600; color: #E6F2FF; }
-.lv3-live-dot { font-size: 11px; color: #00E5D4; }
-.lv3-dash-kpis { display: flex; gap: 16px; margin-bottom: 16px; }
-.lv3-dash-kpi { flex: 1; background: rgba(30,91,255,0.08); border: 1px solid rgba(30,91,255,0.15); border-radius: 10px; padding: 12px 10px; text-align: center; }
-.lv3-dash-kpi-val { display: block; font-size: 20px; font-weight: 700; margin-bottom: 2px; }
-.lv3-dash-kpi-label { font-size: 10px; color: #4A5568; }
-.lv3-dash-bars { display: flex; flex-direction: column; gap: 8px; }
-.lv3-dash-bar-row { display: grid; grid-template-columns: 110px 1fr 36px; align-items: center; gap: 8px; font-size: 11px; color: #8899BB; }
-.lv3-dash-bar { height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
-.lv3-dash-bar-fill { height: 100%; background: linear-gradient(90deg, #1E5BFF, #00E5D4); border-radius: 3px; width: 0; transition: width 1s ease; }
+.lv3-dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.lv3-dash-title { font-size: 14px; font-weight: 700; color: #E6F2FF; }
+/* Live dot — green circle + text, matches reference */
+.lv3-live-dot { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #E6F2FF; font-weight: 500; }
+.lv3-live-green-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #22C55E;
+  box-shadow: 0 0 6px rgba(34,197,94,0.7);
+  animation: livePulse 2s ease-in-out infinite;
+}
+@keyframes livePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+/* KPI cards — dark navy bg with blue border, matches reference */
+.lv3-dash-kpis { display: flex; gap: 12px; margin-bottom: 20px; }
+.lv3-dash-kpi {
+  flex: 1;
+  background: rgba(17,26,51,0.9);
+  border: 1px solid rgba(30,91,255,0.2);
+  border-radius: 12px;
+  padding: 16px 10px;
+  text-align: center;
+}
+.lv3-dash-kpi-val { display: block; font-size: 26px; font-weight: 800; margin-bottom: 4px; line-height: 1; }
+.lv3-dash-kpi-label { font-size: 11px; color: #6B7FA3; font-weight: 500; }
+/* Progress bars — matches reference layout */
+.lv3-dash-bars { display: flex; flex-direction: column; gap: 10px; }
+.lv3-dash-bar-row { display: grid; grid-template-columns: 130px 1fr 38px; align-items: center; gap: 10px; font-size: 12px; color: #8899BB; }
+.lv3-dash-bar-label { color: #8899BB; font-size: 12px; }
+.lv3-dash-bar-pct { color: #8899BB; font-size: 12px; text-align: right; }
+.lv3-dash-bar { height: 7px; background: rgba(255,255,255,0.07); border-radius: 4px; overflow: hidden; }
+.lv3-dash-bar-fill { height: 100%; background: linear-gradient(90deg, #1E5BFF, #00E5D4); border-radius: 4px; width: 0; transition: width 1.2s cubic-bezier(.4,0,.2,1); }
 .lv3-bar-amber { background: linear-gradient(90deg, #F59E0B, #FBBF24) !important; }
 .lv3-dash-bar-fill.animated { }
 

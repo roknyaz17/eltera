@@ -2274,9 +2274,9 @@ function initLv3Landing() {
       panel.classList.add('active');
       if (idx === 0) {
         panel.querySelectorAll('.lv3-dash-bar-fill').forEach((bar, i) => {
-          const w = bar.style.width;
+          const w = bar.dataset.w ? bar.dataset.w + '%' : bar.style.width;
           bar.style.width = '0';
-          folderTimers[`bar${i}`] = setTimeout(() => { bar.style.width = w; }, 100 + i * 120);
+          folderTimers[`bar${i}`] = setTimeout(() => { bar.style.width = w; }, 150 + i * 150);
         });
       }
       if (idx === 1) startAiChatLoop();
@@ -2299,9 +2299,9 @@ function initLv3Landing() {
   // Animate bars on initial load (slide 0 is active)
   setTimeout(() => {
     document.querySelectorAll('.lv3-folder-panel[data-folder-panel="0"] .lv3-dash-bar-fill').forEach((bar, i) => {
-      const w = bar.style.width;
+      const w = bar.dataset.w ? bar.dataset.w + '%' : bar.style.width;
       bar.style.width = '0';
-      setTimeout(() => { bar.style.width = w; }, 300 + i * 120);
+      setTimeout(() => { bar.style.width = w; }, 400 + i * 150);
     });
   }, 600);
 
