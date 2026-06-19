@@ -9344,3 +9344,88 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   text-align: center;
   white-space: nowrap;
 }
+
+/* ── Aurora Background (Структура tab) ── */
+.lv3-folder-visual--org {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Aurora orb container */
+.lv3-org2-aurora {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+/* Org chart sits above aurora */
+.lv3-org2 {
+  position: relative;
+  z-index: 1;
+}
+
+/* Individual orbs */
+.lv3-org2-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(55px);
+  opacity: 0.55;
+  will-change: transform;
+}
+
+/* Orb 1 — синий, верхний левый */
+.lv3-org2-orb--1 {
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, rgba(30,91,255,0.7) 0%, rgba(30,91,255,0) 70%);
+  top: -40px;
+  left: 10%;
+  animation: lv3AuroraOrb1 8s ease-in-out infinite;
+}
+
+/* Orb 2 — бирюзовый, нижний правый */
+.lv3-org2-orb--2 {
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(0,229,212,0.6) 0%, rgba(0,229,212,0) 70%);
+  bottom: -30px;
+  right: 5%;
+  animation: lv3AuroraOrb2 10s ease-in-out infinite;
+}
+
+/* Orb 3 — фиолетовый, центр */
+.lv3-org2-orb--3 {
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(139,92,246,0.45) 0%, rgba(139,92,246,0) 70%);
+  top: 30%;
+  left: 40%;
+  animation: lv3AuroraOrb3 12s ease-in-out infinite;
+}
+
+@keyframes lv3AuroraOrb1 {
+  0%   { transform: translate(0, 0) scale(1); }
+  25%  { transform: translate(40px, 20px) scale(1.12); }
+  50%  { transform: translate(20px, 50px) scale(0.95); }
+  75%  { transform: translate(-20px, 30px) scale(1.08); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes lv3AuroraOrb2 {
+  0%   { transform: translate(0, 0) scale(1); }
+  30%  { transform: translate(-50px, -30px) scale(1.15); }
+  60%  { transform: translate(-20px, -60px) scale(0.9); }
+  80%  { transform: translate(30px, -20px) scale(1.05); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes lv3AuroraOrb3 {
+  0%   { transform: translate(0, 0) scale(1); }
+  20%  { transform: translate(-30px, 40px) scale(1.1); }
+  50%  { transform: translate(50px, 20px) scale(0.88); }
+  70%  { transform: translate(20px, -30px) scale(1.12); }
+  100% { transform: translate(0, 0) scale(1); }
+}

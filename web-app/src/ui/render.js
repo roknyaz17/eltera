@@ -591,6 +591,12 @@ export function renderLanding(tariffs) {
                 </div>
                 <!-- Right: org chart -->
                 <div class="lv3-folder-visual lv3-folder-visual--org">
+                  <!-- Aurora orbs -->
+                  <div class="lv3-org2-aurora" aria-hidden="true">
+                    <div class="lv3-org2-orb lv3-org2-orb--1"></div>
+                    <div class="lv3-org2-orb lv3-org2-orb--2"></div>
+                    <div class="lv3-org2-orb lv3-org2-orb--3"></div>
+                  </div>
                   <div class="lv3-org2">
                     <!-- Level 0: CEO -->
                     <div class="lv3-org2-level lv3-org2-level--ceo">
