@@ -7960,7 +7960,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   background-size: 60px 60px;
   mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 0%, transparent 70%);
 }
-.lv3-scroll-features > * {
+.lv3-scroll-features > *:not(.lv3-feat-bg) {
   position: relative;
   z-index: 1;
 }
