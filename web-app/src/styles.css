@@ -7651,25 +7651,25 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 .lv3-hero-left h1 { font-size: clamp(32px, 4vw, 52px); font-weight: 800; line-height: 1.15; color: #FFFFFF; margin: 0; }
 /* Blue-teal animated gradient for за 5 минут */
 .lv3-grad {
-  background: linear-gradient(135deg, #1E5BFF 0%, #00E5D4 40%, #1E5BFF 70%, #00E5D4 100%);
-  background-size: 200% auto;
+  background: linear-gradient(90deg, #1E5BFF 0%, #00E5D4 25%, #1E5BFF 50%, #00E5D4 75%, #1E5BFF 100%);
+  background-size: 300% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  animation: authGradientShift 5s linear infinite;
+  animation: lv3GradShift 4s linear infinite;
 }
 /* Purple animated gradient for AI-оценка */
 .lv3-grad-purple {
-  background: linear-gradient(135deg, #A855F7 0%, #7C3AED 30%, #C084FC 60%, #7B61FF 100%);
-  background-size: 200% auto;
+  background: linear-gradient(90deg, #A855F7 0%, #7C3AED 25%, #C084FC 50%, #7C3AED 75%, #A855F7 100%);
+  background-size: 300% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  animation: lv3PurpleShift 4s linear infinite;
+  animation: lv3GradShift 4s linear infinite;
 }
-@keyframes lv3PurpleShift {
+@keyframes lv3GradShift {
   0%   { background-position: 0% center; }
-  100% { background-position: 200% center; }
+  100% { background-position: 300% center; }
 }
 /* White glow for кандидатов и сотрудников */
 .lv3-grad-white {
