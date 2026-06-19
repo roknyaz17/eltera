@@ -9807,3 +9807,190 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   max-height: 200px;
   padding: 16px 20px 20px;
 }
+
+/* ════════════════════════════════════════════
+   REFERRAL PANEL — redesigned (lv3-ref2)
+   ════════════════════════════════════════════ */
+
+.lv3-tag-ref {
+  color: #8B5CF6 !important;
+  border-color: rgba(139,92,246,0.3) !important;
+  background: rgba(139,92,246,0.08) !important;
+}
+
+.lv3-ref2 {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+/* Balance card */
+.lv3-ref2-balance {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(17,26,51,0.75);
+  border: 1px solid rgba(30,91,255,0.2);
+  border-radius: 14px;
+  padding: 18px 20px;
+  backdrop-filter: blur(12px);
+}
+
+.lv3-ref2-bal-label {
+  font-size: 12px;
+  color: rgba(230,242,255,0.5);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.lv3-ref2-bal-val {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.lv3-ref2-bal-num {
+  font-size: 28px;
+  font-weight: 800;
+  color: #E05599;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+
+.lv3-ref2-bal-cur {
+  font-size: 16px;
+  font-weight: 700;
+  color: #E05599;
+}
+
+.lv3-ref2-bal-rub {
+  font-size: 13px;
+  color: rgba(230,242,255,0.45);
+  margin-left: 4px;
+}
+
+.lv3-ref2-bal-icon {
+  flex-shrink: 0;
+}
+
+/* Ref link block */
+.lv3-ref2-link-block {
+  background: rgba(17,26,51,0.6);
+  border: 1px solid rgba(30,91,255,0.18);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.lv3-ref2-link-label {
+  font-size: 11px;
+  color: rgba(230,242,255,0.45);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.lv3-ref2-link-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lv3-ref2-link-url {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(230,242,255,0.85);
+  font-family: 'Manrope', monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lv3-ref2-copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #1E5BFF;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, box-shadow 0.2s;
+  flex-shrink: 0;
+}
+
+.lv3-ref2-copy-btn:hover {
+  background: #2a6bff;
+  box-shadow: 0 0 16px rgba(30,91,255,0.4);
+}
+
+/* Stats row */
+.lv3-ref2-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.lv3-ref2-stat {
+  background: rgba(17,26,51,0.6);
+  border: 1px solid rgba(30,91,255,0.15);
+  border-radius: 10px;
+  padding: 12px 10px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lv3-ref2-stat-val {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.lv3-ref2-stat-label {
+  font-size: 11px;
+  color: rgba(230,242,255,0.45);
+  font-weight: 500;
+}
+
+/* History */
+.lv3-ref2-history {
+  background: rgba(17,26,51,0.6);
+  border: 1px solid rgba(30,91,255,0.15);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.lv3-ref2-hist-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(30,91,255,0.08);
+  transition: background 0.15s;
+}
+
+.lv3-ref2-hist-row:last-child {
+  border-bottom: none;
+}
+
+.lv3-ref2-hist-row:hover {
+  background: rgba(30,91,255,0.06);
+}
+
+.lv3-ref2-hist-name {
+  font-size: 13px;
+  color: rgba(230,242,255,0.75);
+  font-weight: 500;
+}
+
+.lv3-ref2-hist-amt {
+  font-size: 13px;
+  font-weight: 700;
+  color: #00E5D4;
+}

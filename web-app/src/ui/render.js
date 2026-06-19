@@ -687,49 +687,84 @@ export function renderLanding(tariffs) {
             <!-- Slide 5: Referral -->
             <div class="lv3-folder-panel" data-folder-panel="4">
               <div class="lv3-folder-content">
+                <!-- Left text -->
                 <div class="lv3-folder-text">
-                  <div class="lv3-folder-tag">Реферальная программа</div>
-                  <h3>Зарабатывай криптовалюту и выводи рублями</h3>
-                  <p>Приглашайте компании в Eltera и получайте 10% от каждой их оплаты. Бонусы начисляются в USDT и выводятся на российскую карту в рублях.</p>
+                  <div class="lv3-folder-tag lv3-tag-ref">Реферальная программа</div>
+                  <h3>Зарабатывай токены<br>и выводи рублями</h3>
+                  <p>Приглашайте компании в Eltera и получайте 10% от каждой их оплаты. Бонусы начисляются в Merit — криптовалюте платформы — и выводятся на российскую карту в рублях.</p>
                   <ul class="lv3-folder-list">
                     <li>10% от оплаты каждой приглашённой компании</li>
-                    <li>Начисление в USDT</li>
+                    <li>Начисление в Merit</li>
                     <li>Вывод на карту РФ в рублях</li>
                     <li>Реальные выплаты без ограничений</li>
                   </ul>
                 </div>
+                <!-- Right panel -->
                 <div class="lv3-folder-visual">
-                  <div class="lv3-ref-preview">
-                    <div class="lv3-ref-balance">
-                      <span class="lv3-ref-bal-label">Ваш баланс</span>
-                      <span class="lv3-ref-bal-val">$142.50 <span class="lv3-ref-rub">≈ 13 200 ₽</span></span>
-                    </div>
-                    <div class="lv3-ref-link-block">
-                      <div class="lv3-ref-link-label">Ваша реферальная ссылка</div>
-                      <div class="lv3-ref-link-row">
-                        <span class="lv3-ref-link-url">eltera.ai/ref/xK9mP2qR</span>
-                        <button class="lv3-ref-copy-btn" id="lv3RefCopyBtn">Скопировать</button>
+                  <div class="lv3-ref2">
+
+                    <!-- Balance card -->
+                    <div class="lv3-ref2-balance">
+                      <div class="lv3-ref2-bal-left">
+                        <div class="lv3-ref2-bal-label">Ваш баланс</div>
+                        <div class="lv3-ref2-bal-val">
+                          <span class="lv3-ref2-bal-num">142.50</span>
+                          <span class="lv3-ref2-bal-cur">MRT</span>
+                          <span class="lv3-ref2-bal-rub">≈ 13 200 ₽</span>
+                        </div>
+                      </div>
+                      <div class="lv3-ref2-bal-icon">
+                        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                          <circle cx="14" cy="14" r="13" stroke="#8B5CF6" stroke-width="1.5" fill="rgba(139,92,246,0.12)"/>
+                          <text x="14" y="19" text-anchor="middle" font-size="13" font-weight="700" fill="#8B5CF6">M</text>
+                        </svg>
                       </div>
                     </div>
-                    <div class="lv3-ref-stats">
-                      <div class="lv3-ref-stat">
-                        <span class="lv3-ref-stat-val lv3-teal">7</span>
-                        <span class="lv3-ref-stat-label">Компаний</span>
-                      </div>
-                      <div class="lv3-ref-stat">
-                        <span class="lv3-ref-stat-val lv3-green">$142</span>
-                        <span class="lv3-ref-stat-label">Заработано</span>
-                      </div>
-                      <div class="lv3-ref-stat">
-                        <span class="lv3-ref-stat-val lv3-amber">$38</span>
-                        <span class="lv3-ref-stat-label">Ожидает</span>
+
+                    <!-- Ref link -->
+                    <div class="lv3-ref2-link-block">
+                      <div class="lv3-ref2-link-label">Ваша реферальная ссылка</div>
+                      <div class="lv3-ref2-link-row">
+                        <span class="lv3-ref2-link-url">eltera.ai/ref/xK9mP2qR</span>
+                        <button class="lv3-ref2-copy-btn" id="lv3RefCopyBtn">
+                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="5" y="5" width="9" height="9" rx="2" stroke="#E6F2FF" stroke-width="1.3"/><path d="M3 11V3h8" stroke="#E6F2FF" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                          Скопировать
+                        </button>
                       </div>
                     </div>
-                    <div class="lv3-ref-history">
-                      <div class="lv3-ref-hist-row"><span>ООО «Ритейл Групп»</span><span class="lv3-green">+$18.00</span></div>
-                      <div class="lv3-ref-hist-row"><span>IT-компания «Devs»</span><span class="lv3-green">+$24.50</span></div>
-                      <div class="lv3-ref-hist-row"><span>Контакт-центр «Плюс»</span><span class="lv3-green">+$12.00</span></div>
+
+                    <!-- Stats row -->
+                    <div class="lv3-ref2-stats">
+                      <div class="lv3-ref2-stat">
+                        <span class="lv3-ref2-stat-val" style="color:#00E5D4">7</span>
+                        <span class="lv3-ref2-stat-label">Компаний</span>
+                      </div>
+                      <div class="lv3-ref2-stat">
+                        <span class="lv3-ref2-stat-val" style="color:#00E5D4">$142</span>
+                        <span class="lv3-ref2-stat-label">Заработано</span>
+                      </div>
+                      <div class="lv3-ref2-stat">
+                        <span class="lv3-ref2-stat-val" style="color:#FFB347">$38</span>
+                        <span class="lv3-ref2-stat-label">Ожидает</span>
+                      </div>
                     </div>
+
+                    <!-- History -->
+                    <div class="lv3-ref2-history">
+                      <div class="lv3-ref2-hist-row">
+                        <span class="lv3-ref2-hist-name">ООО «Ритейл Групп»</span>
+                        <span class="lv3-ref2-hist-amt">+$18.00</span>
+                      </div>
+                      <div class="lv3-ref2-hist-row">
+                        <span class="lv3-ref2-hist-name">IT-компания «Devs»</span>
+                        <span class="lv3-ref2-hist-amt">+$24.50</span>
+                      </div>
+                      <div class="lv3-ref2-hist-row">
+                        <span class="lv3-ref2-hist-name">Контакт-центр «Плюс»</span>
+                        <span class="lv3-ref2-hist-amt">+$12.00</span>
+                      </div>
+                    </div>
+
                   </div>
                 </div>
               </div>
