@@ -8003,7 +8003,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   box-shadow: 0 0 8px rgba(0,229,212,0.5);
 }
 /* ── Folder Tabs (Features Section) ── */
-.lv3-features-section { }
+.lv3-features-section { padding-top: 48px !important; }
 .lv3-folders {
   display: flex;
   flex-direction: column;
@@ -9567,7 +9567,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 
 .lv3-ai-section {
   position: relative;
-  padding: 48px 0 0 0;
+  padding: 0;
   overflow: hidden;
   max-width: 100% !important;
   margin: 0 !important;
