@@ -8149,9 +8149,36 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 .lv3-dash-bar-row { display: grid; grid-template-columns: 130px 1fr 38px; align-items: center; gap: 10px; font-size: 12px; color: #8899BB; }
 .lv3-dash-bar-label { color: #8899BB; font-size: 12px; }
 .lv3-dash-bar-pct { color: #8899BB; font-size: 12px; text-align: right; }
-.lv3-dash-bar { height: 7px; background: rgba(255,255,255,0.07); border-radius: 4px; overflow: hidden; }
-.lv3-dash-bar-fill { height: 100%; background: linear-gradient(90deg, #1E5BFF, #00E5D4); border-radius: 4px; width: 0; transition: width 1.2s cubic-bezier(.4,0,.2,1); }
-.lv3-bar-amber { background: linear-gradient(90deg, #F59E0B, #FBBF24) !important; }
+.lv3-dash-bar { height: 7px; background: rgba(255,255,255,0.07); border-radius: 4px; overflow: visible; position: relative; }
+.lv3-dash-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1E5BFF, #00E5D4);
+  border-radius: 4px;
+  width: 0;
+  transition: width 1.2s cubic-bezier(.4,0,.2,1);
+  box-shadow: 0 0 8px rgba(0,229,212,0.55), 0 0 16px rgba(30,91,255,0.35);
+  position: relative;
+}
+.lv3-dash-bar-fill::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #00E5D4;
+  box-shadow: 0 0 6px 2px rgba(0,229,212,0.8);
+}
+.lv3-bar-amber {
+  background: linear-gradient(90deg, #F59E0B, #FBBF24) !important;
+  box-shadow: 0 0 8px rgba(251,191,36,0.5), 0 0 16px rgba(245,158,11,0.3) !important;
+}
+.lv3-bar-amber::after {
+  background: #FBBF24 !important;
+  box-shadow: 0 0 6px 2px rgba(251,191,36,0.8) !important;
+}
 .lv3-dash-bar-fill.animated { }
 
 /* ── AI Chat (Slide 2) ── */
