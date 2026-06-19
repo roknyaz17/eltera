@@ -356,6 +356,13 @@ export function renderLanding(tariffs) {
       </div>
 
       <!-- FOR WHOM -->
+      <!-- SHARED DUAL-BG: wraps both the tabs card and the AI card -->
+      <div class="lv3-dual-bg">
+        <div class="lv3-dual-bg-orbs">
+          <div class="lv3-dual-orb lv3-dual-orb--1"></div>
+          <div class="lv3-dual-orb lv3-dual-orb--2"></div>
+          <div class="lv3-dual-orb lv3-dual-orb--3"></div>
+        </div>
       <!-- FEATURES FOLDER TABS (scroll-driven sticky) -->
       <div class="lv3-scroll-features" id="lv3ScrollFeatures">
         <!-- Background: same as hero -->
@@ -871,6 +878,7 @@ export function renderLanding(tariffs) {
           </div>
         </div>
       </section>
+      </div><!-- /lv3-dual-bg -->
 
       <!-- WHAT CAN BE ASSESSED -->
       <section class="lv3-section" id="lv3-assess" data-reveal>

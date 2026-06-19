@@ -7905,7 +7905,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 .lv3-scroll-features {
   position: relative;
   background: transparent;
-  overflow: hidden;
+  overflow: visible;
   padding-bottom: 0;
   margin-bottom: 0;
 }
@@ -7914,14 +7914,11 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   position: absolute;
   inset: 0;
   overflow: hidden;
+  /* background handled by parent .lv3-dual-bg */
   pointer-events: none;
   z-index: 0;
   height: 100%;
   width: 100%;
-  background: #0A0F1E;
-  /* Fade out at the bottom so the transition to the next section is seamless */
-  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 70%, transparent 100%);
-  mask-image: linear-gradient(to bottom, black 0%, black 70%, transparent 100%);
 }
 .lv3-feat-bg::before {
   content: '';
@@ -8565,6 +8562,49 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 
 /* AI SECTION */
 /* lv3-ai-section old rules removed — see new rules below at lv3-ai-section redesign */
+
+/* ── DUAL BACKGROUND: shared wrapper for tabs card + AI card ── */
+.lv3-dual-bg {
+  position: relative;
+  background: #0A0F1E;
+  padding: 48px 0 64px;
+  overflow: hidden;
+}
+.lv3-dual-bg-orbs {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.lv3-dual-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+}
+.lv3-dual-orb--1 {
+  width: 600px; height: 500px;
+  top: -100px; left: -150px;
+  background: radial-gradient(circle, rgba(30,91,255,0.22) 0%, transparent 70%);
+  animation: dualOrb1 14s ease-in-out infinite alternate;
+}
+.lv3-dual-orb--2 {
+  width: 500px; height: 400px;
+  bottom: -80px; right: -100px;
+  background: radial-gradient(circle, rgba(0,229,212,0.18) 0%, transparent 70%);
+  animation: dualOrb2 16s ease-in-out infinite alternate;
+}
+.lv3-dual-orb--3 {
+  width: 400px; height: 350px;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(123,97,255,0.10) 0%, transparent 70%);
+  animation: dualOrb3 18s ease-in-out infinite alternate;
+}
+@keyframes dualOrb1 { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(60px, 40px) scale(1.15); } }
+@keyframes dualOrb2 { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(-40px, -30px) scale(1.1); } }
+@keyframes dualOrb3 { 0% { transform: translate(-50%,-50%) scale(1); } 100% { transform: translate(-50%,-50%) scale(1.2); } }
+/* Children inside dual-bg sit above the orbs */
+.lv3-dual-bg > *:not(.lv3-dual-bg-orbs) { position: relative; z-index: 1; }
 
 /* ACCORDION */
 .lv3-accordion { display: flex; flex-direction: column; gap: 8px; }
@@ -9598,9 +9638,9 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   overflow: hidden;
   max-width: 100% !important;
   margin: 0 !important;
-  background: #0A0F1E;
+  background: transparent;
   margin-top: 48px !important;
-  margin-bottom: 48px !important;
+  margin-bottom: 0 !important;
 }
 
 /* ── Aurora background ── */
