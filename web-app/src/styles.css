@@ -7894,7 +7894,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 /* ── Scroll-driven Sticky Features ── */
 .lv3-scroll-features {
   position: relative;
-  background: #0A0F1E;
+  background: transparent;
   overflow: hidden;
 }
 /* ── Features background: identical to hero ── */
@@ -7906,6 +7906,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   z-index: 0;
   height: 100%;
   width: 100%;
+  background: #0A0F1E;
 }
 .lv3-feat-bg::before {
   content: '';
