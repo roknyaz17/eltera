@@ -9523,77 +9523,35 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   100% { left: 130%; opacity: 0; }
 }
 
-/* ── Hero cards: Shimmer + Aurora effects ── */
+/* ── Hero bars: glow matching second screen ── */
 
-/* Aurora orbs behind hero card */
-.lv3-hcard {
+/* Track: same as folder bars */
+.lv3-hbar {
   position: relative;
-  overflow: hidden;
+  overflow: visible !important;
 }
 
-.lv3-hcard::after {
+/* Fill glow */
+.lv3-hbar-fill {
+  position: relative;
+  box-shadow:
+    0 0 8px rgba(0,229,212,0.55),
+    0 0 18px rgba(30,91,255,0.35);
+}
+
+/* Glowing dot at the end of the bar */
+.lv3-hbar-fill::after {
   content: '';
   position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background:
-    radial-gradient(ellipse 60% 40% at 80% 20%, rgba(30,91,255,0.10) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 35% at 20% 80%, rgba(0,229,212,0.08) 0%, transparent 70%);
-  animation: lv3HcardAurora 8s ease-in-out infinite alternate;
-}
-
-@keyframes lv3HcardAurora {
-  0%   { opacity: 0.6; transform: scale(1) translate(0, 0); }
-  50%  { opacity: 1;   transform: scale(1.05) translate(4px, -6px); }
-  100% { opacity: 0.7; transform: scale(1) translate(-4px, 4px); }
-}
-
-/* Shimmer glint on hero cards */
-.lv3-hcard::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -120%;
-  width: 55%;
-  height: 100%;
-  background: linear-gradient(
-    105deg,
-    transparent 20%,
-    rgba(255,255,255,0.06) 40%,
-    rgba(0,229,212,0.10) 50%,
-    rgba(255,255,255,0.06) 60%,
-    transparent 80%
-  );
-  transform: skewX(-15deg);
-  animation: lv3HcardShimmer 5s ease-in-out infinite;
-  pointer-events: none;
-  z-index: 2;
-}
-
-@keyframes lv3HcardShimmer {
-  0%   { left: -120%; opacity: 0; }
-  8%   { opacity: 1; }
-  55%  { left: 130%; opacity: 1; }
-  60%  { opacity: 0; }
-  100% { left: 130%; opacity: 0; }
-}
-
-/* Stagger shimmer per slide */
-.lv3-hslide[data-slide="0"] .lv3-hcard::before { animation-delay: 0s; }
-.lv3-hslide[data-slide="1"] .lv3-hcard::before { animation-delay: 0.9s; }
-.lv3-hslide[data-slide="2"] .lv3-hcard::before { animation-delay: 1.8s; }
-.lv3-hslide[data-slide="3"] .lv3-hcard::before { animation-delay: 2.7s; }
-.lv3-hslide[data-slide="4"] .lv3-hcard::before { animation-delay: 3.6s; }
-.lv3-hslide[data-slide="5"] .lv3-hcard::before { animation-delay: 4.5s; }
-
-/* Ensure card content is above aurora/shimmer layers */
-.lv3-hcard-header,
-.lv3-hcard-person,
-.lv3-hcard-metrics,
-.lv3-hcard-ai,
-.lv3-9box-wrap,
-.lv3-9box-legend {
-  position: relative;
-  z-index: 1;
+  right: -3px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #00E5D4;
+  box-shadow:
+    0 0 6px rgba(0,229,212,0.9),
+    0 0 14px rgba(0,229,212,0.6),
+    0 0 24px rgba(30,91,255,0.4);
 }
