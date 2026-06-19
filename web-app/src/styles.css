@@ -7897,41 +7897,66 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   background: #0A0F1E;
   overflow: hidden;
 }
-/* Orbs matching hero style */
-.lv3-scroll-features::before {
-  content: '';
-  position: absolute;
-  width: 700px;
-  height: 700px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(30,91,255,0.14), transparent 70%);
-  filter: blur(80px);
-  top: -150px;
-  right: -100px;
-  pointer-events: none;
-  animation: lv3OrbFloat 10s ease-in-out infinite;
-}
-.lv3-scroll-features::after {
-  content: '';
-  position: absolute;
-  width: 500px;
-  height: 500px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(0,229,212,0.10), transparent 70%);
-  filter: blur(80px);
-  bottom: -80px;
-  left: -60px;
-  pointer-events: none;
-  animation: lv3OrbFloat 12s ease-in-out infinite reverse;
-}
-/* Subtle grid overlay */
-.lv3-features-grid-bg {
+/* ── Features background: identical to hero ── */
+.lv3-feat-bg {
   position: absolute;
   inset: 0;
-  background-image: linear-gradient(rgba(30,91,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(30,91,255,0.03) 1px, transparent 1px);
-  background-size: 60px 60px;
+  overflow: hidden;
   pointer-events: none;
   z-index: 0;
+}
+.lv3-feat-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 70% 40%, rgba(0,229,212,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 40% at 20% 60%, rgba(30,91,255,0.08) 0%, transparent 60%);
+}
+/* Canvas particles for features */
+.lv3-feat-particles {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+/* Orbs — same as hero */
+.lv3-feat-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+}
+.lv3-feat-orb--1 {
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(30,91,255,0.18), transparent 70%);
+  top: -120px; left: -80px;
+  animation: lv3OrbFloat 8s ease-in-out infinite;
+}
+.lv3-feat-orb--2 {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(0,229,212,0.14), transparent 70%);
+  bottom: -80px; right: 160px;
+  animation: lv3OrbFloat 10s ease-in-out infinite reverse;
+}
+.lv3-feat-orb--3 {
+  width: 320px; height: 320px;
+  background: radial-gradient(circle, rgba(123,97,255,0.16), transparent 70%);
+  top: 50%; left: 55%;
+  transform: translate(-50%, -50%);
+  animation: lv3OrbFloat 9s ease-in-out infinite;
+}
+/* Grid overlay */
+.lv3-feat-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 0%, transparent 70%);
 }
 .lv3-scroll-features > * {
   position: relative;

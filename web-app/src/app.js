@@ -2169,6 +2169,81 @@ function initLv3Landing() {
     heroObs.observe(canvas.parentElement.parentElement);
   }
 
+  // CANVAS PARTICLES — FEATURES SECTION (identical to hero)
+  const featCanvas = document.getElementById('lv3FeatParticles');
+  if (featCanvas) {
+    const fCtx = featCanvas.getContext('2d');
+    let fParticles = [];
+    let fAnimFrame;
+
+    function resizeFeatCanvas() {
+      const section = featCanvas.closest('.lv3-scroll-features');
+      if (section) {
+        featCanvas.width = section.offsetWidth;
+        featCanvas.height = section.offsetHeight;
+      }
+    }
+
+    function createFeatParticles() {
+      fParticles = [];
+      const count = Math.floor(featCanvas.width / 12);
+      for (let i = 0; i < count; i++) {
+        fParticles.push({
+          x: Math.random() * featCanvas.width,
+          y: Math.random() * featCanvas.height,
+          r: Math.random() * 1.5 + 0.3,
+          vx: (Math.random() - 0.5) * 0.3,
+          vy: (Math.random() - 0.5) * 0.3,
+          alpha: Math.random() * 0.5 + 0.1,
+          color: Math.random() > 0.5 ? '30,91,255' : '0,229,212'
+        });
+      }
+    }
+
+    function drawFeatParticles() {
+      fCtx.clearRect(0, 0, featCanvas.width, featCanvas.height);
+      fParticles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0) p.x = featCanvas.width;
+        if (p.x > featCanvas.width) p.x = 0;
+        if (p.y < 0) p.y = featCanvas.height;
+        if (p.y > featCanvas.height) p.y = 0;
+        fCtx.beginPath();
+        fCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        fCtx.fillStyle = `rgba(${p.color},${p.alpha})`;
+        fCtx.fill();
+      });
+      for (let i = 0; i < fParticles.length; i++) {
+        for (let j = i + 1; j < fParticles.length; j++) {
+          const dx = fParticles[i].x - fParticles[j].x;
+          const dy = fParticles[i].y - fParticles[j].y;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          if (dist < 80) {
+            fCtx.beginPath();
+            fCtx.moveTo(fParticles[i].x, fParticles[i].y);
+            fCtx.lineTo(fParticles[j].x, fParticles[j].y);
+            fCtx.strokeStyle = `rgba(30,91,255,${0.08 * (1 - dist/80)})`;
+            fCtx.lineWidth = 0.5;
+            fCtx.stroke();
+          }
+        }
+      }
+      fAnimFrame = requestAnimationFrame(drawFeatParticles);
+    }
+
+    resizeFeatCanvas();
+    createFeatParticles();
+    drawFeatParticles();
+    window.addEventListener('resize', () => { resizeFeatCanvas(); createFeatParticles(); }, { passive: true });
+
+    const featObs = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) { cancelAnimationFrame(fAnimFrame); }
+      else { drawFeatParticles(); }
+    }, { threshold: 0 });
+    featObs.observe(featCanvas.closest('.lv3-scroll-features'));
+  }
+
   // COMPARE TABLE TOGGLE
   const compareToggle = document.getElementById('lv3CompareToggle');
   const compareTable = document.getElementById('lv3CompareTable');

@@ -374,7 +374,14 @@ export function renderLanding(tariffs) {
       <!-- FOR WHOM -->
       <!-- FEATURES FOLDER TABS (scroll-driven sticky) -->
       <div class="lv3-scroll-features" id="lv3ScrollFeatures">
-        <div class="lv3-features-grid-bg"></div>
+        <!-- Background: same as hero -->
+        <div class="lv3-feat-bg">
+          <canvas class="lv3-feat-particles" id="lv3FeatParticles"></canvas>
+          <div class="lv3-feat-orb lv3-feat-orb--1"></div>
+          <div class="lv3-feat-orb lv3-feat-orb--2"></div>
+          <div class="lv3-feat-orb lv3-feat-orb--3"></div>
+          <div class="lv3-feat-grid"></div>
+        </div>
         <!-- Sticky panel -->
         <div class="lv3-scroll-sticky" id="lv3ScrollSticky">
           <section class="lv3-section lv3-features-section" id="lv3-for-whom">
