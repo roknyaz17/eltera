@@ -7904,6 +7904,8 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   overflow: hidden;
   pointer-events: none;
   z-index: 0;
+  height: 100%;
+  width: 100%;
 }
 .lv3-feat-bg::before {
   content: '';

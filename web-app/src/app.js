@@ -2179,8 +2179,8 @@ function initLv3Landing() {
     function resizeFeatCanvas() {
       const section = featCanvas.closest('.lv3-scroll-features');
       if (section) {
-        featCanvas.width = section.offsetWidth;
-        featCanvas.height = section.offsetHeight;
+        featCanvas.width = section.offsetWidth || window.innerWidth;
+        featCanvas.height = Math.max(section.scrollHeight, section.offsetHeight, 600);
       }
     }
 
@@ -2235,6 +2235,13 @@ function initLv3Landing() {
     resizeFeatCanvas();
     createFeatParticles();
     drawFeatParticles();
+    // Re-init after layout settles to pick up correct section height
+    setTimeout(() => {
+      cancelAnimationFrame(fAnimFrame);
+      resizeFeatCanvas();
+      createFeatParticles();
+      drawFeatParticles();
+    }, 300);
     window.addEventListener('resize', () => { resizeFeatCanvas(); createFeatParticles(); }, { passive: true });
 
     const featObs = new IntersectionObserver(([entry]) => {
