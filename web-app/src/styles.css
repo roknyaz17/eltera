@@ -9189,16 +9189,21 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 .lv3-org2-level--depts { justify-content: space-around; padding: 0 4px; }
 .lv3-org2-level--employees { justify-content: space-around; padding: 0 2px; }
 
-/* CEO card */
+/* CEO card — glassmorphism */
 .lv3-org2-card--ceo {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: rgba(17,26,51,0.95);
-  border: 1.5px solid rgba(30,91,255,0.5);
+  background: rgba(17, 26, 51, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1.5px solid rgba(30, 91, 255, 0.45);
   border-radius: 14px;
   padding: 10px 18px 10px 10px;
-  box-shadow: 0 0 20px rgba(30,91,255,0.18), inset 0 1px 0 rgba(255,255,255,0.05);
+  box-shadow:
+    0 0 32px rgba(30, 91, 255, 0.28),
+    0 0 64px rgba(0, 229, 212, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
   min-width: 180px;
 }
 .lv3-org2-photo {
@@ -9274,19 +9279,28 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   justify-content: center;
 }
 .lv3-org2-dept--blue {
-  background: rgba(30,91,255,0.12);
-  border: 1px solid rgba(30,91,255,0.3);
+  background: rgba(30, 91, 255, 0.1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(30, 91, 255, 0.35);
   color: #7AA8FF;
+  box-shadow: 0 0 18px rgba(30, 91, 255, 0.2), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 .lv3-org2-dept--purple {
-  background: rgba(139,92,246,0.12);
-  border: 1px solid rgba(139,92,246,0.3);
+  background: rgba(139, 92, 246, 0.1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(139, 92, 246, 0.35);
   color: #A78BFA;
+  box-shadow: 0 0 18px rgba(139, 92, 246, 0.2), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 .lv3-org2-dept--teal {
-  background: rgba(0,229,212,0.1);
-  border: 1px solid rgba(0,229,212,0.3);
+  background: rgba(0, 229, 212, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 229, 212, 0.35);
   color: #00E5D4;
+  box-shadow: 0 0 18px rgba(0, 229, 212, 0.18), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 .lv3-org2-dept-icon {
   width: 18px;
@@ -9294,7 +9308,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   flex-shrink: 0;
 }
 
-/* Employee cards */
+/* Employee cards — glassmorphism */
 .lv3-org2-emp {
   display: flex;
   flex-direction: column;
@@ -9302,13 +9316,26 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   gap: 6px;
   flex: 1;
   max-width: 88px;
+  background: rgba(17, 26, 51, 0.45);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(30, 91, 255, 0.2);
+  border-radius: 12px;
+  padding: 10px 6px 8px;
+  box-shadow: 0 0 16px rgba(30, 91, 255, 0.12), inset 0 1px 0 rgba(255,255,255,0.05);
+  transition: box-shadow 0.25s, border-color 0.25s;
+}
+.lv3-org2-emp:hover {
+  border-color: rgba(0, 229, 212, 0.4);
+  box-shadow: 0 0 24px rgba(0, 229, 212, 0.22), inset 0 1px 0 rgba(255,255,255,0.08);
 }
 .lv3-org2-emp-photo {
   width: 52px;
   height: 52px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid rgba(30,91,255,0.3);
+  border: 2px solid rgba(30, 91, 255, 0.4);
+  box-shadow: 0 0 10px rgba(30, 91, 255, 0.3);
 }
 .lv3-org2-emp-name {
   font-size: 11px;
