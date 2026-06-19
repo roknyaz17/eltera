@@ -7896,6 +7896,8 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   position: relative;
   background: transparent;
   overflow: hidden;
+  padding-bottom: 0;
+  margin-bottom: 0;
 }
 /* ── Features background: identical to hero ── */
 .lv3-feat-bg {
@@ -7970,6 +7972,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
 }
 .lv3-scroll-sticky .lv3-features-section {
   width: 100%;
+  padding-bottom: 0 !important;
 }
 .lv3-scroll-sentinel {
   display: none;
@@ -9560,6 +9563,8 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   position: relative;
   padding: 80px 0;
   overflow: hidden;
+  max-width: 100% !important;
+  margin: 0 !important;
   background: #0A0F1E;
 }
 
