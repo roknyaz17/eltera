@@ -105,21 +105,11 @@ export function renderLanding(tariffs) {
                   </div>
                   <div class="lv3-hcard-person">
                     <div class="lv3-hcard-avatar lv3-hcard-avatar--photo">
-                      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="20" cy="20" r="20" fill="url(#avatarBg)"/>
-                        <circle cx="20" cy="15" r="7" fill="rgba(255,255,255,0.85)"/>
-                        <ellipse cx="20" cy="34" rx="12" ry="8" fill="rgba(255,255,255,0.7)"/>
-                        <defs>
-                          <linearGradient id="avatarBg" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-                            <stop offset="0%" stop-color="#1E5BFF"/>
-                            <stop offset="100%" stop-color="#7B61FF"/>
-                          </linearGradient>
-                        </defs>
-                      </svg>
+                      <img src="/public/assets/org/candidate_f.jpg" alt="Екатерина Лебедева" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid rgba(30,91,255,0.5);">
                     </div>
                     <div>
-                      <div class="lv3-hcard-name">Менеджер по подбору</div>
-                      <div class="lv3-hcard-sub">ID: 7a-4fi-21 · Оценка завершена</div>
+                      <div class="lv3-hcard-name">Екатерина Лебедева</div>
+                      <div class="lv3-hcard-sub">Менеджер по подбору · ID: 7a-4fi-21</div>
                     </div>
                   </div>
                   <div class="lv3-hcard-metrics">
@@ -153,10 +143,12 @@ export function renderLanding(tariffs) {
                     <span class="lv3-live-dot"><span class="lv3-pulse"></span>Live</span>
                   </div>
                   <div class="lv3-hcard-person">
-                    <div class="lv3-hcard-avatar lv3-hcard-avatar--blue">А</div>
+                    <div class="lv3-hcard-avatar lv3-hcard-avatar--photo">
+                      <img src="/public/assets/org/anna.jpg" alt="Анна Козлова" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid rgba(30,91,255,0.5);">
+                    </div>
                     <div>
-                      <div class="lv3-hcard-name">Руководитель группы</div>
-                      <div class="lv3-hcard-sub">Стаж 3 года · Отдел продаж</div>
+                      <div class="lv3-hcard-name">Анна Козлова</div>
+                      <div class="lv3-hcard-sub">Руководитель группы · Отдел продаж</div>
                     </div>
                   </div>
                   <div class="lv3-hcard-metrics">
@@ -228,21 +220,11 @@ export function renderLanding(tariffs) {
                   </div>
                   <div class="lv3-hcard-person">
                     <div class="lv3-hcard-avatar lv3-hcard-avatar--photo">
-                      <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                        <circle cx="20" cy="20" r="20" fill="url(#avatarBg2)"/>
-                        <circle cx="20" cy="15" r="7" fill="rgba(255,255,255,0.85)"/>
-                        <ellipse cx="20" cy="34" rx="12" ry="8" fill="rgba(255,255,255,0.7)"/>
-                        <defs>
-                          <linearGradient id="avatarBg2" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-                            <stop offset="0%" stop-color="#00E5D4"/>
-                            <stop offset="100%" stop-color="#1E5BFF"/>
-                          </linearGradient>
-                        </defs>
-                      </svg>
+                      <img src="/public/assets/org/dmitry.jpg" alt="Дмитрий Волков" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid rgba(0,229,212,0.5);">
                     </div>
                     <div>
-                      <div class="lv3-hcard-name">Аналитик по данным</div>
-                      <div class="lv3-hcard-sub">Стаж 1.5 года · Отдел аналитики</div>
+                      <div class="lv3-hcard-name">Дмитрий Волков</div>
+                      <div class="lv3-hcard-sub">Аналитик по данным · Отдел аналитики</div>
                     </div>
                   </div>
                   <div class="lv3-hcard-metrics">
@@ -310,10 +292,12 @@ export function renderLanding(tariffs) {
                     <span class="lv3-live-dot"><span class="lv3-pulse"></span>Live</span>
                   </div>
                   <div class="lv3-hcard-person">
-                    <div class="lv3-hcard-avatar lv3-hcard-avatar--purple">Р</div>
+                    <div class="lv3-hcard-avatar lv3-hcard-avatar--photo">
+                      <img src="/public/assets/org/manager_m.jpg" alt="Роман Петров" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid rgba(123,97,255,0.5);">
+                    </div>
                     <div>
-                      <div class="lv3-hcard-name">Руководитель отдела</div>
-                      <div class="lv3-hcard-sub">Оценивают: команда, коллеги, собственник</div>
+                      <div class="lv3-hcard-name">Роман Петров</div>
+                      <div class="lv3-hcard-sub">Руководитель отдела · 360°</div>
                     </div>
                   </div>
                   <div class="lv3-hcard-metrics">
