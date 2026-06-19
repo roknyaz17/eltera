@@ -8004,6 +8004,7 @@ table tbody tr:nth-child(8) { animation-delay: 175ms; }
   display: flex;
   flex-direction: column;
   gap: 0;
+  width: 100%;
   /* Blue glow around the entire folders block */
   filter: drop-shadow(0 0 32px rgba(30,91,255,0.28)) drop-shadow(0 0 80px rgba(30,91,255,0.12));
 }
