@@ -1,5 +1,6 @@
 """ORM-модели. Импортируются здесь, чтобы Alembic видел все таблицы."""
 from app.models.adaptation import AdaptationCheckin, AdaptationCycle
+from app.models.auth import RefreshToken
 from app.models.assessment import (
     AiScoringJob,
     AssessmentLink,
@@ -16,9 +17,12 @@ from app.models.organization import Organization, User
 from app.models.person import CandidateProfile, EmployeeProfile, Person
 from app.models.test import (
     AnswerOption,
+    Category,
     Question,
     QuestionVersion,
     Test,
+    TestCategory,
+    TestLevel,
     TestVersion,
     TestVersionCompetency,
     TestVersionItem,
@@ -51,4 +55,8 @@ __all__ = [
     "AdaptationCheckin",
     "Notification",
     "HHConnection",
+    "RefreshToken",
+    "Category",
+    "TestCategory",
+    "TestLevel",
 ]

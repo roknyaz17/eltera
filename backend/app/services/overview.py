@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.org_context import get_current_org
 from app.crud import candidate as candidate_crud
 from app.crud import employee as employee_crud
 from app.crud import adaptation as adaptation_crud
@@ -65,23 +66,39 @@ async def _employees_summary(session: AsyncSession) -> OverviewEmployees:
     )
 
 
+def _org_cycle(stmt):
+    """Фильтрует запрос по AdaptationCycle.organization_id (если есть контекст орг.)."""
+    o = get_current_org()
+    return stmt.where(AdaptationCycle.organization_id == o) if o is not None else stmt
+
+
+def _org_checkin(stmt):
+    """Чек-ины фильтруем через join к циклу по организации."""
+    o = get_current_org()
+    if o is None:
+        return stmt
+    return stmt.join(AdaptationCycle, AdaptationCycle.id == AdaptationCheckin.cycle_id).where(
+        AdaptationCycle.organization_id == o
+    )
+
+
 async def _adaptation_summary(session: AsyncSession, alerts_count: int) -> OverviewAdaptation:
     today = _today()
-    active = (await session.execute(
+    active = (await session.execute(_org_cycle(
         select(func.count()).select_from(AdaptationCycle).where(AdaptationCycle.status == "active")
-    )).scalar_one()
-    closed = (await session.execute(
+    ))).scalar_one()
+    closed = (await session.execute(_org_cycle(
         select(func.count()).select_from(AdaptationCycle).where(AdaptationCycle.status == "completed")
-    )).scalar_one()
-    due_now = (await session.execute(
+    ))).scalar_one()
+    due_now = (await session.execute(_org_checkin(
         select(func.count()).select_from(AdaptationCheckin).where(
             AdaptationCheckin.status == "scheduled",
             AdaptationCheckin.due_date <= today,
         )
-    )).scalar_one()
-    sent_pending = (await session.execute(
+    ))).scalar_one()
+    sent_pending = (await session.execute(_org_checkin(
         select(func.count()).select_from(AdaptationCheckin).where(AdaptationCheckin.status == "sent")
-    )).scalar_one()
+    ))).scalar_one()
     return OverviewAdaptation(
         active_cycles=active,
         completed_cycles=closed,
@@ -116,13 +133,17 @@ async def _attention(session: AsyncSession) -> list[OverviewAttentionItem]:
                 target_id=a.person_id,
             ))
 
+    _org = get_current_org()
     # 2) Кандидаты «зависли» — есть профиль, но нет завершённой оценки и нет недавней активности.
-    stuck_count = (await session.execute(
+    _stuck_stmt = (
         select(func.count()).select_from(CandidateProfile)
         .join(Person, Person.id == CandidateProfile.person_id)
         .outerjoin(AssessmentSession, AssessmentSession.person_id == Person.id)
         .where(AssessmentSession.id.is_(None))
-    )).scalar_one()
+    )
+    if _org is not None:
+        _stuck_stmt = _stuck_stmt.where(Person.organization_id == _org)
+    stuck_count = (await session.execute(_stuck_stmt)).scalar_one()
     if stuck_count > 0:
         items.append(OverviewAttentionItem(
             kind="candidate_stuck",
@@ -136,12 +157,15 @@ async def _attention(session: AsyncSession) -> list[OverviewAttentionItem]:
     # 3) Сотрудники со стажем >90 дней без оценки.
     today = _today()
     threshold = today - timedelta(days=90)
-    not_assessed_long = (await session.execute(
+    _na_stmt = (
         select(func.count())
         .select_from(EmployeeProfile)
         .join(Person, Person.id == EmployeeProfile.person_id)
         .where(EmployeeProfile.fit.is_(None), EmployeeProfile.start_date <= threshold)
-    )).scalar_one()
+    )
+    if _org is not None:
+        _na_stmt = _na_stmt.where(Person.organization_id == _org)
+    not_assessed_long = (await session.execute(_na_stmt)).scalar_one()
     if not_assessed_long > 0:
         items.append(OverviewAttentionItem(
             kind="employee_not_assessed",
@@ -153,12 +177,12 @@ async def _attention(session: AsyncSession) -> list[OverviewAttentionItem]:
         ))
 
     # 4) Дозревшие чек-ины адаптации (нужна рассылка).
-    due_now = (await session.execute(
+    due_now = (await session.execute(_org_checkin(
         select(func.count()).select_from(AdaptationCheckin).where(
             AdaptationCheckin.status == "scheduled",
             AdaptationCheckin.due_date <= today,
         )
-    )).scalar_one()
+    ))).scalar_one()
     if due_now > 0:
         items.append(OverviewAttentionItem(
             kind="adaptation_due",
@@ -174,12 +198,14 @@ async def _attention(session: AsyncSession) -> list[OverviewAttentionItem]:
 async def _events(session: AsyncSession) -> list[OverviewEvent]:
     """Лента «Последние события»: пройденные оценки + новые люди + новые циклы."""
     events: list[OverviewEvent] = []
+    _org = get_current_org()
+    _oc = ([Person.organization_id == _org] if _org is not None else [])
 
     # Пройденные оценки (по submitted_at, fallback на created_at).
     sess_rows = (await session.execute(
         select(AssessmentSession, Person.full_name)
         .join(Person, Person.id == AssessmentSession.person_id)
-        .where(AssessmentSession.status.in_(DONE_STATUSES))
+        .where(AssessmentSession.status.in_(DONE_STATUSES), *_oc)
         .order_by(AssessmentSession.submitted_at.desc().nullslast(), AssessmentSession.created_at.desc())
         .limit(EVENTS_LIMIT)
     )).all()
@@ -198,6 +224,7 @@ async def _events(session: AsyncSession) -> list[OverviewEvent]:
     new_emps = (await session.execute(
         select(Person, EmployeeProfile.start_date)
         .join(EmployeeProfile, EmployeeProfile.person_id == Person.id)
+        .where(*_oc)
         .order_by(Person.created_at.desc())
         .limit(EVENTS_LIMIT)
     )).all()
@@ -213,6 +240,7 @@ async def _events(session: AsyncSession) -> list[OverviewEvent]:
     new_cands = (await session.execute(
         select(Person)
         .join(CandidateProfile, CandidateProfile.person_id == Person.id)
+        .where(*_oc)
         .order_by(Person.created_at.desc())
         .limit(EVENTS_LIMIT)
     )).scalars().all()
@@ -227,6 +255,7 @@ async def _events(session: AsyncSession) -> list[OverviewEvent]:
     new_cycles = (await session.execute(
         select(AdaptationCycle, Person.full_name)
         .join(Person, Person.id == AdaptationCycle.person_id)
+        .where(*([AdaptationCycle.organization_id == _org] if _org is not None else []))
         .order_by(AdaptationCycle.created_at.desc())
         .limit(EVENTS_LIMIT)
     )).all()
@@ -253,6 +282,7 @@ async def _upcoming(session: AsyncSession) -> list[OverviewUpcoming]:
             AdaptationCycle.status == "active",
             AdaptationCheckin.status.in_(["scheduled", "sent"]),
             AdaptationCheckin.due_date <= horizon,
+            *([AdaptationCycle.organization_id == get_current_org()] if get_current_org() is not None else []),
         )
         .order_by(AdaptationCheckin.due_date.asc())
         .limit(12)

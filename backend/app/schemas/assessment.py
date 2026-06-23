@@ -20,6 +20,8 @@ class TestRead(BaseModel):
     summary: str | None = None
     current_version_id: str | None = None
     questions_count: int = 0
+    categories: list[dict] = []   # [{"slug","title","kind"}]
+    levels: list[str] = []        # коды уровней должности
 
 
 # --- Ссылка-приглашение ---

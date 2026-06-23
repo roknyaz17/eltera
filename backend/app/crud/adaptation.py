@@ -2,6 +2,7 @@
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.org_context import get_current_org
 from app.models.adaptation import AdaptationCheckin, AdaptationCycle
 from app.models.assessment import AssessmentLink, AssessmentSession
 from app.models.enums import SessionStatus
@@ -21,9 +22,11 @@ _RISK_BELOW = 55
 
 
 async def list_cycles(session: AsyncSession) -> CycleList:
-    cycles = (await session.execute(
-        select(AdaptationCycle).order_by(AdaptationCycle.start_date.desc())
-    )).scalars().all()
+    _org = get_current_org()
+    _stmt = select(AdaptationCycle).order_by(AdaptationCycle.start_date.desc())
+    if _org is not None:
+        _stmt = _stmt.where(AdaptationCycle.organization_id == _org)
+    cycles = (await session.execute(_stmt)).scalars().all()
     if not cycles:
         return CycleList(items=[], total=0)
 
@@ -119,7 +122,8 @@ async def _standalone_surveys(session: AsyncSession, cycle_persons: set[str]) ->
 
 async def list_alerts(session: AsyncSession) -> AlertList:
     """Сигналы руководителю: риск (низкий балл) и пропущенные опросы."""
-    rows = (await session.execute(
+    _org = get_current_org()
+    _alert_stmt = (
         select(AdaptationCheckin, AdaptationCycle.person_id)
         .join(AdaptationCycle, AdaptationCycle.id == AdaptationCheckin.cycle_id)
         .where(or_(
@@ -127,7 +131,10 @@ async def list_alerts(session: AsyncSession) -> AlertList:
             AdaptationCheckin.status == "missed",
         ))
         .order_by(AdaptationCheckin.due_date.desc())
-    )).all()
+    )
+    if _org is not None:
+        _alert_stmt = _alert_stmt.where(AdaptationCycle.organization_id == _org)
+    rows = (await session.execute(_alert_stmt)).all()
     if not rows:
         return AlertList(items=[], total=0)
 

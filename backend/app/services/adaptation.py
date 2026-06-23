@@ -19,16 +19,18 @@ from app.models.test import Test
 from app.schemas.assessment import LinkCreate
 from app.services import assessment_flow as flow
 
-# (оффсет в днях, название опроса-этапа)
+# (оффсет в днях, отображаемый этап, КЛЮЧ теста-опроса).
+# Единый источник опросов адаптации — импортированные тесты ADAPT-DAY-*
+# (по одному на день каденции). Привязка по key, а не по названию, чтобы
+# импорт/переименования не могли подменить опрос цикла.
 CADENCE = [
-    (1, "Адаптация · Старт"),
-    (3, "Адаптация · Старт"),
-    (7, "Адаптация · Старт"),
-    (14, "Адаптация · Интеграция"),
-    (30, "Адаптация · Интеграция"),
-    (60, "Адаптация · Закрепление"),
-    (90, "Адаптация · Закрепление"),
-    (180, "Адаптация · Итог"),
+    (1, "День 1", "ADAPT-DAY-001"),
+    (3, "День 3", "ADAPT-DAY-003"),
+    (7, "День 7", "ADAPT-DAY-007"),
+    (14, "День 14", "ADAPT-DAY-014"),
+    (30, "День 30", "ADAPT-DAY-030"),
+    (60, "День 60", "ADAPT-DAY-060"),
+    (90, "День 90", "ADAPT-DAY-090"),
 ]
 RISK_THRESHOLD = 55          # балл ниже → флаг риска
 OVERDUE_DAYS = 14            # не пройден дольше — помечаем missed
@@ -42,9 +44,10 @@ def _today():
 
 
 async def _stage_test_ids(session: AsyncSession) -> dict[str, str]:
-    titles = {t for _, t in CADENCE}
-    rows = (await session.execute(select(Test.id, Test.title).where(Test.title.in_(titles)))).all()
-    return {title: tid for tid, title in rows}
+    """Ключ опроса (ADAPT-DAY-*) → id теста. Источник — импортированные тесты."""
+    keys = {key for *_, key in CADENCE}
+    rows = (await session.execute(select(Test.id, Test.key).where(Test.key.in_(keys)))).all()
+    return {key: tid for tid, key in rows}
 
 
 async def ensure_cycles(session: AsyncSession) -> int:
@@ -67,13 +70,13 @@ async def ensure_cycles(session: AsyncSession) -> int:
         )
         session.add(cycle)
         await session.flush()
-        for offset, stage in CADENCE:
+        for offset, stage, key in CADENCE:
             due = ep.start_date + timedelta(days=offset)
             # backfill: прошедшие этапы не рассылаем задним числом
             status = "skipped" if due < today else "scheduled"
             session.add(AdaptationCheckin(
                 cycle_id=cycle.id, person_id=person.id, offset_days=offset,
-                due_date=due, stage=stage, test_id=stage_tests.get(stage), status=status,
+                due_date=due, stage=stage, test_id=stage_tests.get(key), status=status,
             ))
         created += 1
     await session.commit()
@@ -200,6 +203,10 @@ async def start_cycle(session: AsyncSession, person_id: str, start_date=None, se
     person = await session.get(Person, person_id)
     if person is None:
         return None
+    from app.core.org_context import get_current_org
+    _cur = get_current_org()
+    if _cur is not None and person.organization_id != _cur:
+        return None  # нельзя запускать адаптацию чужому сотруднику
     existing = (await session.execute(
         select(AdaptationCycle).where(
             AdaptationCycle.person_id == person_id, AdaptationCycle.status == "active"
@@ -209,6 +216,11 @@ async def start_cycle(session: AsyncSession, person_id: str, start_date=None, se
         return existing  # идемпотентно — не плодим циклы
 
     today = _today()
+    # Если дата не задана — берём дату выхода сотрудника (каденция совпадёт с
+    # карточкой), иначе сегодня.
+    if start_date is None:
+        ep = await session.get(EmployeeProfile, person_id)
+        start_date = ep.start_date if ep and ep.start_date else None
     start = start_date or today
     stage_tests = await _stage_test_ids(session)
     cycle = AdaptationCycle(
@@ -218,12 +230,12 @@ async def start_cycle(session: AsyncSession, person_id: str, start_date=None, se
     session.add(cycle)
     await session.flush()
     checkins = []
-    for offset, stage in CADENCE:
+    for offset, stage, key in CADENCE:
         due = start + timedelta(days=offset)
         status = "skipped" if due < today else "scheduled"
         c = AdaptationCheckin(
             cycle_id=cycle.id, person_id=person_id, offset_days=offset,
-            due_date=due, stage=stage, test_id=stage_tests.get(stage), status=status,
+            due_date=due, stage=stage, test_id=stage_tests.get(key), status=status,
         )
         session.add(c)
         checkins.append(c)

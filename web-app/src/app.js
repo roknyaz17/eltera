@@ -15,6 +15,13 @@ import {
   fetchCandidateStats,
   fetchCandidateHeatmap,
   createCandidate,
+  convertCandidateToEmployee,
+  createEmployee,
+  startAdaptation,
+  assistantChat,
+  fetchTaxonomy,
+  getTokens,
+  authLogout,
   recordCandidateResult,
   createLink,
   fetchLinks,
@@ -92,7 +99,8 @@ import {
   renderThreeSixty,
   renderPerformance,
   renderStructure,
-  renderVacancies
+  renderVacancies,
+  ASSISTANT_GREETING
 } from "./ui/render.js";
 
 const app = document.querySelector("#app");
@@ -137,6 +145,8 @@ const competencyTitleById = {
 };
 
 let state = loadState();
+// Аутентификация — источник истины это наличие токенов в localStorage.
+state.authenticated = !!getTokens();
 // Данные кандидатов всегда загружаем заново с бэкенда (не из localStorage).
 state.candidatesStatus = "idle";
 state.candidatesApi = null;
@@ -157,6 +167,11 @@ state.constructorTests = null;
 state.constructorTest = null;
 state.linksStatus = "idle";
 state.linksApi = null;
+state.assistant = { open: false, messages: [], busy: false, greetingAnimated: false };
+// Библиотека тестов (Инструменты → Профили): серверные фильтры по секции/категории/уровню.
+state.taxonomy = null;
+state.taxonomyLoading = false;
+state.library = { section: "candidate", category: null, level: null, q: "", items: null, loading: false };
 state.reportsStatus = "idle";
 state.reportsApi = null;
 if (!state.linksFilter) state.linksFilter = "all"; // all | Кандидат | Сотрудник
@@ -706,6 +721,38 @@ async function loadTests() {
   }
 }
 
+// --- Библиотека тестов (серверные фильтры) ---
+async function loadTaxonomy() {
+  state.taxonomyLoading = true;
+  try {
+    state.taxonomy = await fetchTaxonomy();
+  } catch (error) {
+    console.warn("Не удалось загрузить таксономию:", error);
+    state.taxonomy = { directions: [], universal: [], levels: [] };
+  }
+  state.taxonomyLoading = false;
+  render();
+}
+
+async function loadLibrary() {
+  const lib = state.library;
+  lib.loading = true;
+  try {
+    lib.items = await fetchTests({
+      target_type: lib.section,
+      q: lib.q || undefined,
+      category: lib.category || undefined,
+      level: lib.level || undefined,
+      limit: 60,
+    });
+  } catch (error) {
+    console.warn("Не удалось загрузить библиотеку:", error);
+    lib.items = [];
+  }
+  lib.loading = false;
+  render();
+}
+
 // --- Оценочные ссылки (вкладка «Оценки») ---
 
 const linkStatusMap = {
@@ -817,6 +864,18 @@ async function loadConstructorTests(q) {
     console.warn("Не удалось загрузить тесты:", error);
     state.constructorTests = null;
     state.constructorStatus = "error";
+  }
+  render();
+}
+
+// Поиск кандидатских профилей для модалки «Добавить кандидата» (серверный, лимит 50).
+async function loadCandProfiles(q) {
+  state.candProfileQuery = q || "";
+  try {
+    state.candProfileResults = await fetchTests({ q: state.candProfileQuery, target_type: "candidate", limit: 50 });
+  } catch (error) {
+    console.warn("Не удалось загрузить профили:", error);
+    state.candProfileResults = [];
   }
   render();
 }
@@ -1123,7 +1182,8 @@ function render() {
     content = renderVacancies(state);
   }
   if (state.view === "assessments") {
-    if (!state.testsApi) loadTests();
+    if (!state.taxonomy && !state.taxonomyLoading) loadTaxonomy();
+    if (state.library.items === null && !state.library.loading) loadLibrary();
     content = renderAssessments(state);
   }
   if (state.view === "adaptation" || state.view === "360") {
@@ -1276,33 +1336,47 @@ function createLinkFromForm(form) {
 
 // Создаёт кандидата в бэкенде по данным ссылки, регистрирует ссылку-приглашение
 // (для метрики «Оценка отправлена») и сохраняет id на ссылке.
-// Кнопка «Добавить кандидата»: просто заводим кандидата в базе, без оценки.
+// Кнопка «Добавить кандидата»: заводим кандидата и — если включён тумблер и есть
+// профиль + email — сразу создаём ссылку-приглашение (письмо уходит кандидату).
 async function addCandidateFromForm(formEl) {
   const fd = new FormData(formEl);
   const lastName = String(fd.get("lastName") || "").trim();
   const firstName = String(fd.get("firstName") || "").trim();
   const patronymic = String(fd.get("patronymic") || "").trim();
   const fullName = [lastName, firstName, patronymic].filter(Boolean).join(" ");
+  const email = String(fd.get("email") || "").trim();
+  const testId = String(fd.get("professionId") || "").trim();
+  const sendNow = fd.get("sendNow") != null;
   if (!fullName) {
     alert("Укажите хотя бы фамилию или имя кандидата.");
     return;
   }
+  // Отправляем оценку сразу только если включён тумблер, выбран профиль и есть email.
+  const willSend = sendNow && Boolean(testId) && Boolean(email);
+  if (sendNow && !willSend) {
+    alert("Чтобы сразу отправить оценку, укажите профиль и email. Иначе снимите галочку — кандидат добавится без оценки.");
+    return;
+  }
   try {
-    await createCandidate({
+    const created = await createCandidate({
       last_name: lastName || null,
       first_name: firstName || null,
       patronymic: patronymic || null,
       full_name: fullName,
-      email: String(fd.get("email") || "").trim() || null,
+      email: email || null,
       phone: String(fd.get("phone") || "").trim() || null,
       vacancy_title: String(fd.get("vacancy") || "").trim() || null,
       source: "Добавлен вручную",
       selection_type: "Точечный подбор",
-      stage: "new"
+      stage: willSend ? "assessment_sent" : "new"
     });
+    if (willSend) {
+      await createLink({ test_id: testId, person_id: created.id, recipient_type: "candidate" });
+    }
     state.modal = null;
     state.candidatesStatus = "idle";
     await loadCandidatesFromApi();
+    showToast(willSend ? "Кандидат добавлен, оценка отправлена" : "Кандидат добавлен");
   } catch (error) {
     console.warn("Не удалось добавить кандидата в бэкенде:", error);
     alert("Не удалось добавить кандидата. Попробуйте позже.");
@@ -1310,6 +1384,136 @@ async function addCandidateFromForm(formEl) {
 }
 
 // Простое тост-уведомление (визуально совпадает с тостами мастера оценки).
+// ─── ИИ-ассистент ─────────────────────────────────────────────────────────────
+const ASSISTANT_VIEWS = new Set([
+  "dashboard", "candidates", "employees", "structure", "constructor",
+  "adaptation", "performance", "reports", "settings", "support"
+]);
+
+function scrollAssistant() {
+  requestAnimationFrame(() => {
+    const b = document.getElementById("elt-asst-body");
+    if (b) b.scrollTop = b.scrollHeight;
+  });
+}
+
+function toggleAssistant() {
+  const a = state.assistant;
+  a.open = !a.open;
+  render();
+  if (a.open) {
+    scrollAssistant();
+    if (!a.greetingAnimated) typeAssistantGreeting();
+  }
+}
+
+// Печатающее приветствие (пишем прямо в DOM, без перерисовки — морфдом не мешает).
+function typeAssistantGreeting() {
+  const el = document.getElementById("elt-asst-greeting");
+  if (!el || state.assistant.greetingAnimated) return;
+  el.textContent = "";
+  let i = 0;
+  const tick = () => {
+    if (!state.assistant.open) return;
+    el.textContent = ASSISTANT_GREETING.slice(0, ++i);
+    if (i < ASSISTANT_GREETING.length) setTimeout(tick, 28);
+    else state.assistant.greetingAnimated = true;
+  };
+  setTimeout(tick, 250);
+}
+
+async function sendAssistant(text) {
+  const a = state.assistant;
+  const content = String(text || "").trim();
+  if (!content || a.busy) return;
+  a.greetingAnimated = true; // больше не анимируем приветствие
+  a.messages.push({ role: "user", content });
+  a.busy = true;
+  render();
+  scrollAssistant();
+  try {
+    const payload = a.messages.map((m) => ({ role: m.role, content: m.content }));
+    const res = await assistantChat(payload);
+    a.busy = false;
+    const act = res.action || {};
+    if (act.type === "add_candidate" || act.type === "add_employee") {
+      a.messages.push({
+        role: "assistant",
+        content: res.reply || "Подтвердите добавление:",
+        proposal: { entity: act.type === "add_candidate" ? "candidate" : "employee", params: act.params || {}, status: "pending" },
+      });
+    } else {
+      a.messages.push({ role: "assistant", content: res.reply || "…" });
+    }
+    render();
+    scrollAssistant();
+    if (act.type === "navigate" && act.params && ASSISTANT_VIEWS.has(act.params.view)) {
+      setHash(`#/app/${act.params.view}`);
+    }
+  } catch (error) {
+    console.warn("Ассистент недоступен:", error);
+    a.busy = false;
+    a.messages.push({ role: "assistant", content: "Не удалось связаться с ассистентом. Попробуйте ещё раз." });
+    render();
+    scrollAssistant();
+  }
+}
+
+// Разбивает «Фамилия Имя Отчество» на части (как в формах добавления).
+function splitFullName(full) {
+  const parts = String(full || "").trim().split(/\s+/).filter(Boolean);
+  return { last_name: parts[0] || null, first_name: parts[1] || null, patronymic: parts[2] || null };
+}
+
+async function confirmAssistantProposal(idx) {
+  const m = (state.assistant.messages || [])[idx];
+  if (!m || !m.proposal || !["pending", "error"].includes(m.proposal.status)) return;
+  const p = m.proposal;
+  const fn = splitFullName(p.params.full_name);
+  p.status = "busy";
+  render();
+  try {
+    if (p.entity === "candidate") {
+      await createCandidate({
+        last_name: fn.last_name, first_name: fn.first_name, patronymic: fn.patronymic,
+        full_name: p.params.full_name, email: p.params.email || null, phone: p.params.phone || null,
+        vacancy_title: p.params.vacancy_title || null, source: "ИИ-ассистент",
+        selection_type: "Точечный подбор", stage: "new",
+      });
+      state.candidatesStatus = "idle";
+    } else {
+      await createEmployee({
+        last_name: fn.last_name, first_name: fn.first_name, patronymic: fn.patronymic,
+        full_name: p.params.full_name, position: p.params.position || null,
+        department_name: p.params.department_name || null, manager_name: p.params.manager_name || null,
+        project: p.params.project || null, start_date: p.params.start_date || null,
+      });
+      state.employeesStatus = "idle";
+    }
+    p.status = "done";
+    const view = p.entity === "candidate" ? "candidates" : "employees";
+    state.assistant.messages.push({
+      role: "assistant",
+      content: (p.entity === "candidate" ? "Кандидат" : "Сотрудник") + ` «${p.params.full_name}» добавлен ✓`,
+    });
+    render();
+    scrollAssistant();
+  } catch (error) {
+    console.warn("Не удалось добавить через ассистента:", error);
+    p.status = "error";
+    render();
+    scrollAssistant();
+  }
+}
+
+function cancelAssistantProposal(idx) {
+  const m = (state.assistant.messages || [])[idx];
+  if (m && m.proposal && m.proposal.status === "pending") {
+    m.proposal.status = "cancelled";
+    render();
+  }
+}
+
 function showToast(text, type = "success") {
   const t = document.createElement("div");
   t.className = `elt-toast elt-toast-${type}`;
@@ -1347,6 +1551,79 @@ async function sendAssessmentToCandidate(personId, testId) {
     state.modal = null;
     render();
     showToast("Не удалось отправить оценку", "info");
+  }
+}
+
+// «Добавить сотрудника»: создаём в бэкенде (Person + employee_profile); если
+// включён тумблер — сразу запускаем цикл адаптации (отправляется первый опрос).
+async function addEmployeeFromForm(formEl) {
+  const fd = new FormData(formEl);
+  const firstName = String(fd.get("firstName") || "").trim();
+  const lastName = String(fd.get("lastName") || "").trim();
+  const fullName = [lastName, firstName].filter(Boolean).join(" ");
+  if (!fullName) {
+    alert("Укажите имя и фамилию сотрудника.");
+    return;
+  }
+  const startDate = String(fd.get("start_date") || "").trim();
+  const sendAdaptation = fd.get("sendAdaptation") != null;
+  try {
+    const created = await createEmployee({
+      first_name: firstName || null,
+      last_name: lastName || null,
+      full_name: fullName,
+      position: String(fd.get("position") || "").trim() || null,
+      department_name: String(fd.get("department") || "").trim() || null,
+      manager_name: String(fd.get("manager") || "").trim() || null,
+      project: String(fd.get("project") || "").trim() || null,
+      start_date: startDate || null
+    });
+    if (sendAdaptation && created?.id) {
+      // Цикл стартует от даты выхода (или сегодня) и сразу шлёт первый опрос.
+      await startAdaptation([created.id]);
+    }
+    state.modal = null;
+    state.employeesStatus = "idle";
+    state.adaptationStatus = "idle";
+    state.linksApi = null; // появится новая ссылка-опрос
+    await loadEmployeesFromApi();
+    showToast(sendAdaptation ? "Сотрудник добавлен, адаптация запущена" : "Сотрудник добавлен");
+  } catch (error) {
+    console.warn("Не удалось добавить сотрудника:", error);
+    showToast("Не удалось добавить сотрудника", "info");
+  }
+}
+
+// «Перевести в сотрудники» из меню «три точки»: транзакция на бэке (создаёт
+// сотрудника, удаляет кандидата), затем обновляем обе вкладки.
+async function convertCandidateFromForm(formEl) {
+  const personId = state.modal?.personId;
+  if (!personId) return;
+  const fd = new FormData(formEl);
+  const position = String(fd.get("position") || "").trim();
+  const startDate = String(fd.get("start_date") || "").trim();
+  if (!position || !startDate) {
+    alert("Укажите должность и дату выхода.");
+    return;
+  }
+  try {
+    await convertCandidateToEmployee(personId, {
+      position,
+      start_date: startDate,
+      department_name: String(fd.get("department_name") || "").trim() || null,
+      manager_name: String(fd.get("manager_name") || "").trim() || null,
+      project: String(fd.get("project") || "").trim() || null,
+      employment_type: String(fd.get("employment_type") || "").trim() || null,
+      carry_fit: true
+    });
+    state.modal = null;
+    state.candidatesStatus = "idle";
+    state.employeesStatus = "idle";
+    await loadCandidatesFromApi();
+    showToast("Кандидат переведён в сотрудники");
+  } catch (error) {
+    console.warn("Не удалось перевести кандидата:", error);
+    showToast("Не удалось перевести кандидата", "info");
   }
 }
 
@@ -1787,6 +2064,46 @@ function createWithdrawal(form) {
 }
 
 document.addEventListener("click", (event) => {
+  // ИИ-ассистент: открыть/закрыть и быстрые действия (чипы).
+  if (event.target.closest("[data-assistant-toggle]")) { toggleAssistant(); return; }
+  const chip = event.target.closest("[data-assistant-chip]");
+  if (chip) { sendAssistant(chip.dataset.assistantChip); return; }
+
+  // Выход из аккаунта.
+  if (event.target.closest('[data-action="logout"]')) {
+    authLogout().finally(() => {
+      state.authenticated = false;
+      state.user = null;
+      setHash("#/login");
+      render();
+    });
+    return;
+  }
+
+  // Библиотека тестов: секция / категория / уровень.
+  const libSection = event.target.closest("[data-library-section]");
+  if (libSection) {
+    state.library.section = libSection.dataset.librarySection;
+    state.library.category = null; state.library.level = null; state.library.q = "";
+    state.library.items = null; render(); loadLibrary(); return;
+  }
+  const libCat = event.target.closest("[data-library-category]");
+  if (libCat) {
+    const v = libCat.dataset.libraryCategory || "";
+    state.library.category = (!v || state.library.category === v) ? null : v;
+    state.library.items = null; render(); loadLibrary(); return;
+  }
+  const libLvl = event.target.closest("[data-library-level]");
+  if (libLvl) {
+    const v = libLvl.dataset.libraryLevel || "";
+    state.library.level = (!v || state.library.level === v) ? null : v;
+    state.library.items = null; render(); loadLibrary(); return;
+  }
+  const confirmProp = event.target.closest("[data-assistant-confirm]");
+  if (confirmProp) { confirmAssistantProposal(Number(confirmProp.dataset.assistantConfirm)); return; }
+  const cancelProp = event.target.closest("[data-assistant-cancel]");
+  if (cancelProp) { cancelAssistantProposal(Number(cancelProp.dataset.assistantCancel)); return; }
+
   const route = event.target.closest("[data-route]")?.dataset.route;
   if (route === "login") setHash("#/login");
 
@@ -1848,9 +2165,13 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "add-candidate") {
-    if (!state.testsApi) loadTests();
+    state.candProfileQuery = "";
+    state.candProfileResults = null;
+    state.candProfileSelId = null;
+    state.candProfileSelTitle = null;
     state.modal = { type: "add-candidate" };
     render();
+    loadCandProfiles("");
     return;
   }
   if (action === "open-create-test") {
@@ -2063,8 +2384,23 @@ document.addEventListener("click", (event) => {
     const id = sendAssessBtn.dataset.sendAssessmentId;
     const cand = (state.candidatesApi || []).find((c) => c.id === id);
     state.kebabMenu = null;
-    if (!state.testsApi) loadTests();
+    state.candProfileQuery = "";
+    state.candProfileResults = null;
+    state.candProfileSelId = null;
+    state.candProfileSelTitle = null;
     state.modal = { type: "send-assessment", personId: id, fullName: cand ? (cand.person?.fullName || cand.full_name) : "" };
+    render();
+    loadCandProfiles("");
+    return;
+  }
+
+  // «Перевести в сотрудники» из меню «три точки».
+  const convertBtn = event.target.closest("[data-convert-id]");
+  if (convertBtn) {
+    const id = convertBtn.dataset.convertId;
+    const cand = (state.candidatesApi || []).find((c) => c.id === id);
+    state.kebabMenu = null;
+    state.modal = { type: "convert-employee", personId: id, fullName: cand ? (cand.person?.fullName || cand.full_name) : "" };
     render();
     return;
   }
@@ -2085,6 +2421,21 @@ document.addEventListener("click", (event) => {
   }
 
   // Конструктор тестов
+  // Выбор/сброс кандидатского профиля в модалке «Добавить кандидата».
+  const cpPick = event.target.closest("[data-candprofile-pick]");
+  if (cpPick) {
+    state.candProfileSelId = cpPick.dataset.candprofilePick;
+    state.candProfileSelTitle = cpPick.dataset.candprofileTitle || "";
+    render();
+    return;
+  }
+  if (event.target.closest("[data-candprofile-clear]")) {
+    state.candProfileSelId = null;
+    state.candProfileSelTitle = null;
+    render();
+    return;
+  }
+
   const selectTest = event.target.closest("[data-select-test]")?.dataset.selectTest;
   if (selectTest) { selectConstructorTest(selectTest); return; }
   const delTest = event.target.closest("[data-delete-test]")?.dataset.deleteTest;
@@ -2102,6 +2453,11 @@ document.addEventListener("click", (event) => {
   const openList = event.target.closest("[data-open-list]")?.dataset.openList;
   if (openList) {
     state.modal = { type: "list", target: openList };
+    // Метрики про отправленные оценки/ссылки и опросы адаптации показывают
+    // список ссылок-опросов — подгрузим их.
+    if (/отправлен|ссыл|опрос/i.test(openList) && !state.linksApi) loadLinksFromApi();
+    // «Активные циклы» адаптации — нужен список циклов (на Главной не загружен).
+    if (/цикл/i.test(openList) && !state.adaptationCycles) loadAdaptationCycles();
     render();
   }
 
@@ -2344,6 +2700,15 @@ document.addEventListener("click", (event) => {
 document.addEventListener("submit", (event) => {
   // Login/register handled by authController
 
+  if (event.target.matches("[data-assistant-form]")) {
+    event.preventDefault();
+    const input = event.target.querySelector('input[name="msg"]');
+    const text = input ? input.value : "";
+    if (input) input.value = "";
+    sendAssistant(text);
+    return;
+  }
+
   if (event.target.matches("[data-create-link-form]")) {
     event.preventDefault();
     createLinkFromForm(event.target);
@@ -2358,6 +2723,11 @@ document.addEventListener("submit", (event) => {
     event.preventDefault();
     const fd = new FormData(event.target);
     sendAssessmentToCandidate(event.target.dataset.personId, String(fd.get("professionId") || ""));
+  }
+
+  if (event.target.matches("[data-convert-employee-form]")) {
+    event.preventDefault();
+    convertCandidateFromForm(event.target);
   }
 
   if (event.target.matches("[data-candidate-form]")) {
@@ -2384,29 +2754,7 @@ document.addEventListener("submit", (event) => {
 
   if (event.target.matches("[data-add-employee-form]")) {
     event.preventDefault();
-    const fd = new FormData(event.target);
-    const firstName = (fd.get("firstName") || "").trim();
-    const lastName = (fd.get("lastName") || "").trim();
-    const fullName = [lastName, firstName].filter(Boolean).join(" ");
-    if (!fullName) return;
-    const newEmp = {
-      id: `emp-${Date.now()}`,
-      fullName,
-      position: (fd.get("position") || "").trim(),
-      department: (fd.get("department") || "").trim() || "Без отдела",
-      project: (fd.get("project") || "").trim() || "Общий контур",
-      manager: (fd.get("manager") || "").trim() || "Не назначен",
-      startDate: new Date().toISOString().slice(0, 10),
-      fit: 0,
-      turnoverRisk: "не оценен",
-      burnout: "не оценен",
-      satisfaction: 0,
-      recommendation: "Оценка ещё не проведена."
-    };
-    state.employees.unshift(newEmp);
-    state.modal = null;
-    saveState();
-    render();
+    addEmployeeFromForm(event.target);
   }
   // Конструктор: создать тест.
   if (event.target.matches("[data-create-test-form]")) {
@@ -2560,7 +2908,25 @@ function handleAvatarUpload(event) {
 }
 
 let _ctrProfileSearchTimer = null;
+let _candProfTimer = null;
+let _libSearchTimer = null;
 document.addEventListener("input", (event) => {
+  // Поиск по библиотеке тестов (серверный, debounce).
+  const libInput = event.target.closest("[data-library-search]");
+  if (libInput) {
+    state.library.q = libInput.value;
+    clearTimeout(_libSearchTimer);
+    _libSearchTimer = setTimeout(() => { state.library.items = null; loadLibrary(); }, 280);
+    return;
+  }
+  // Поиск кандидатского профиля в модалке «Добавить кандидата» (серверный, debounce).
+  const cpInput = event.target.closest("[data-candprofile-search]");
+  if (cpInput) {
+    state.candProfileQuery = cpInput.value;
+    clearTimeout(_candProfTimer);
+    _candProfTimer = setTimeout(() => loadCandProfiles(state.candProfileQuery), 250);
+    return;
+  }
   // Поиск по профилям в конструкторе — серверный, с debounce (БД фильтрует
   // по подстроке мгновенно даже на тысячах профилей).
   const pInput = event.target.closest("[data-profile-search]");
@@ -2656,6 +3022,15 @@ initAuthController({
 initAiController({ getState, setState, saveState });
 
 window.addEventListener("hashchange", render);
+
+// Авто-логаут: токены протухли и refresh не удался (из api.js).
+window.addEventListener("eltera-logout", () => {
+  state.authenticated = false;
+  state.user = null;
+  setHash("#/login");
+  render();
+});
+
 render();
 
 // Лёгкий поллинг уведомлений (раз в 60с), пока пользователь в приложении и

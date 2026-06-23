@@ -3,9 +3,12 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, Up
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from pydantic import BaseModel
+
 from app.core.database import get_session
+from app.core.taxonomy import DIRECTIONS, LEVELS, LEVEL_CODES, UNIVERSAL
 from app.crud import test as crud
-from app.models.test import Test, TestVersionItem
+from app.models.test import Category, Test, TestCategory, TestLevel, TestVersionItem
 from app.schemas.assessment import TestRead
 from app.schemas.test import (
     LibraryImportResult,
@@ -48,23 +51,51 @@ async def import_library(file: UploadFile = File(...), session: AsyncSession = D
     return result
 
 
+@router.get("/taxonomy", summary="Таксономия библиотеки (направления, черты, уровни)")
+async def get_taxonomy():
+    return {
+        "directions": [{"slug": s, "title": t} for s, t in DIRECTIONS],
+        "universal": [{"slug": s, "title": t} for s, t in UNIVERSAL],
+        "levels": [{"code": c, "title": t} for c, t in LEVELS],
+    }
+
+
 @router.get("", response_model=list[TestRead], summary="Список тестов")
 async def list_tests(
     session: AsyncSession = Depends(get_session),
     target_type: str | None = None,
     q: str | None = Query(None, description="Поиск по названию (подстрока, регистронезависимо)"),
+    category: list[str] | None = Query(None, description="Слаги категорий (любая из)"),
+    level: list[str] | None = Query(None, description="Коды уровней должности (любой из)"),
     limit: int | None = Query(None, ge=1, le=500, description="Ограничить число результатов"),
 ):
+    from sqlalchemy import or_
+    from app.core.org_context import get_current_org
     stmt = select(Test)
+    _org = get_current_org()
+    if _org is not None:  # общий каталог (org IS NULL) + свои тесты
+        stmt = stmt.where(or_(Test.organization_id.is_(None), Test.organization_id == _org))
     if target_type:
         stmt = stmt.where(Test.target_type == target_type)
     if q and q.strip():
         stmt = stmt.where(Test.title.ilike(f"%{q.strip()}%"))
+    if category:
+        stmt = stmt.where(Test.id.in_(
+            select(TestCategory.test_id)
+            .join(Category, Category.id == TestCategory.category_id)
+            .where(Category.slug.in_(category))
+        ))
+    if level:
+        stmt = stmt.where(Test.id.in_(
+            select(TestLevel.test_id).where(TestLevel.level.in_(level))
+        ))
     stmt = stmt.order_by(Test.title)
     if limit:
         stmt = stmt.limit(limit)
     tests = (await session.execute(stmt)).scalars().all()
-    # Счётчики вопросов считаем только для выбранных версий (а не по всей таблице).
+    test_ids = [t.id for t in tests]
+
+    # Счётчики вопросов — только по выбранным версиям.
     version_ids = [t.current_version_id for t in tests if t.current_version_id]
     counts: dict[str, int] = {}
     if version_ids:
@@ -73,15 +104,73 @@ async def list_tests(
             .where(TestVersionItem.test_version_id.in_(version_ids))
             .group_by(TestVersionItem.test_version_id)
         )).all())
+
+    # Категории и уровни выбранных тестов (батч).
+    cats_by_test: dict[str, list[dict]] = {}
+    levels_by_test: dict[str, list[str]] = {}
+    if test_ids:
+        for tid, slug, title, kind in (await session.execute(
+            select(TestCategory.test_id, Category.slug, Category.title, Category.kind)
+            .join(Category, Category.id == TestCategory.category_id)
+            .where(TestCategory.test_id.in_(test_ids))
+        )).all():
+            cats_by_test.setdefault(tid, []).append({"slug": slug, "title": title, "kind": kind})
+        for tid, lvl in (await session.execute(
+            select(TestLevel.test_id, TestLevel.level).where(TestLevel.test_id.in_(test_ids))
+        )).all():
+            levels_by_test.setdefault(tid, []).append(lvl)
+
     return [
         TestRead(
             id=t.id, key=t.key, title=t.title, category=t.category,
             target_type=t.target_type, summary=t.summary,
             current_version_id=t.current_version_id,
             questions_count=counts.get(t.current_version_id, 0),
+            categories=cats_by_test.get(t.id, []),
+            levels=levels_by_test.get(t.id, []),
         )
         for t in tests
     ]
+
+
+class TestCategoriesIn(BaseModel):
+    slugs: list[str] = []
+
+
+class TestLevelsIn(BaseModel):
+    levels: list[str] = []
+
+
+@router.put("/{test_id}/categories", summary="Задать категории теста")
+async def set_categories(test_id: str, data: TestCategoriesIn, session: AsyncSession = Depends(get_session)):
+    from app.core.org_context import get_current_org
+    _t = await session.get(Test, test_id)
+    _cur = get_current_org()
+    if _t is None or (_cur is not None and _t.organization_id != _cur):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Тест не найден")
+    ids = (await session.execute(
+        select(Category.id).where(Category.slug.in_(data.slugs))
+    )).scalars().all() if data.slugs else []
+    await session.execute(TestCategory.__table__.delete().where(TestCategory.test_id == test_id))
+    for cid in ids:
+        session.add(TestCategory(test_id=test_id, category_id=cid))
+    await session.commit()
+    return {"ok": True, "count": len(ids)}
+
+
+@router.put("/{test_id}/levels", summary="Задать уровни должности теста")
+async def set_levels(test_id: str, data: TestLevelsIn, session: AsyncSession = Depends(get_session)):
+    from app.core.org_context import get_current_org
+    _t = await session.get(Test, test_id)
+    _cur = get_current_org()
+    if _t is None or (_cur is not None and _t.organization_id != _cur):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Тест не найден")
+    valid = [lv for lv in data.levels if lv in LEVEL_CODES]
+    await session.execute(TestLevel.__table__.delete().where(TestLevel.test_id == test_id))
+    for lv in valid:
+        session.add(TestLevel(test_id=test_id, level=lv))
+    await session.commit()
+    return {"ok": True, "count": len(valid)}
 
 
 @router.post("", response_model=TestDetail, status_code=status.HTTP_201_CREATED, summary="Создать тест")

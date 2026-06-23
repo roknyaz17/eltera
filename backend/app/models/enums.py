@@ -34,6 +34,7 @@ class TestTarget(StrEnum):
     candidate = "candidate"
     employee = "employee"
     group = "group"
+    universal = "universal"
 
 
 class VersionStatus(StrEnum):

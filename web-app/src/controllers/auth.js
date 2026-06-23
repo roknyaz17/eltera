@@ -3,6 +3,18 @@
  * Handles login, registration, dev portal authentication and library management.
  * Depends on: getState, setState, render, saveState, setHash
  */
+import { authLogin, authRegister, setTokens } from "../data/api.js";
+
+// Показывает текст ошибки под формой входа/регистрации.
+function authError(form, message) {
+  let box = form.querySelector(".authError");
+  if (!box) {
+    box = document.createElement("div");
+    box.className = "authError";
+    form.appendChild(box);
+  }
+  box.textContent = message;
+}
 
 const DEV_PASSWORD = "eltera-dev-2026";
 const DEV_LIB_KEY = "eltera-dev-library-v1";
@@ -32,32 +44,57 @@ export function initAuthController({ getState, setState, render, saveState, setH
     // Login
     if (event.target.matches("[data-login-form]")) {
       event.preventDefault();
-      setState(s => ({ ...s, authenticated: true }));
-      saveState();
-      setHash("#/app/dashboard");
+      const form = event.target;
+      const fd = new FormData(form);
+      const email = String(fd.get("email") || "").trim();
+      const password = String(fd.get("password") || "");
+      const btn = form.querySelector('button[type="submit"], button:not([type])');
+      if (btn) { btn.disabled = true; btn.dataset._t = btn.textContent; btn.textContent = "Вход…"; }
+      authLogin(email, password)
+        .then((resp) => {
+          setTokens({ access_token: resp.access_token, refresh_token: resp.refresh_token });
+          setState(s => ({ ...s, authenticated: true, user: resp.user }));
+          saveState();
+          setHash("#/app/dashboard");
+        })
+        .catch((e) => {
+          if (btn) { btn.disabled = false; btn.textContent = btn.dataset._t || "Войти"; }
+          authError(form, e.message || "Не удалось войти");
+        });
       return;
     }
 
-    // Register
+    // Register (создаёт новую компанию + админа)
     if (event.target.matches("[data-register-form]")) {
       event.preventDefault();
-      const fd = new FormData(event.target);
-      const firstName = fd.get("firstName") || "";
-      const lastName = fd.get("lastName") || "";
-      const company = fd.get("company") || "";
-      const contact = fd.get("contact") || "";
-      setState(s => ({
-        ...s,
-        authenticated: true,
-        company: {
-          ...s.company,
-          ...(company ? { name: company } : {}),
-          ...(firstName || lastName ? { contactName: `${firstName} ${lastName}`.trim() } : {}),
-          ...(contact ? { contactEmail: contact } : {})
-        }
-      }));
-      saveState();
-      setHash("#/app/dashboard");
+      const form = event.target;
+      const fd = new FormData(form);
+      const firstName = String(fd.get("firstName") || "").trim();
+      const lastName = String(fd.get("lastName") || "").trim();
+      const company = String(fd.get("company") || "").trim();
+      const contact = String(fd.get("contact") || "").trim();
+      const password = String(fd.get("password") || "");
+      const fullName = `${lastName} ${firstName}`.trim() || firstName || lastName;
+      if (!contact || !password || !company || !fullName) {
+        authError(form, "Заполните имя, компанию, email и пароль");
+        return;
+      }
+      const btn = form.querySelector('button[type="submit"], button:not([type])');
+      if (btn) { btn.disabled = true; btn.dataset._t = btn.textContent; btn.textContent = "Создаём…"; }
+      authRegister({ email: contact, password, full_name: fullName, company })
+        .then((resp) => {
+          setTokens({ access_token: resp.access_token, refresh_token: resp.refresh_token });
+          setState(s => ({
+            ...s, authenticated: true, user: resp.user,
+            company: { ...s.company, name: company, contactName: fullName, contactEmail: contact },
+          }));
+          saveState();
+          setHash("#/app/dashboard");
+        })
+        .catch((e) => {
+          if (btn) { btn.disabled = false; btn.textContent = btn.dataset._t || "Создать аккаунт"; }
+          authError(form, e.message || "Не удалось зарегистрироваться");
+        });
       return;
     }
   });

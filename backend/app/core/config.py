@@ -22,6 +22,12 @@ class Settings(BaseSettings):
 
     api_prefix: str = "/api"
 
+    # JWT-аутентификация. В проде ОБЯЗАТЕЛЬНО задать JWT_SECRET в окружении.
+    jwt_secret: str = "dev-insecure-change-me"
+    jwt_algorithm: str = "HS256"
+    access_token_ttl_min: int = 30        # время жизни access-токена, минут
+    refresh_token_ttl_days: int = 30      # время жизни refresh-токена, дней
+
     # Глобальный выключатель ИИ. False — ИИ не вызывается вообще
     # (детерминированный fallback / «Доделать»), даже если задан ключ.
     ai_enabled: bool = True

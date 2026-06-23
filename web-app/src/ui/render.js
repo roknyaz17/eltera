@@ -14,7 +14,7 @@ import {
   getVacancyHealthStatus,
   employeeAtRisk
 } from "./dashboard-components.js";
-import { renderPremiumDashboard, kpiCard, funnelChart, barChart } from "./dashboard-premium.js";
+import { renderPremiumDashboard, kpiCard, funnelChart, barChart, nineBoxGrid } from "./dashboard-premium.js";
 import { professionalCompetencies, commonCompetencies } from "../data/assessment-library.js";
 import { employeeImportTemplateUrl, candidateImportTemplateUrl, libraryImportTemplateUrl } from "../data/api.js";
 
@@ -204,6 +204,10 @@ export function renderAppShell(state, content) {
             <span class="elt-tariff-nav-label">Тариф</span>
             <span class="elt-tariff-nav-name">${state.company.tariff}</span>
           </button>
+          <button class="elt-nav-item" data-action="logout" title="Выйти из аккаунта">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style="opacity:.6"><path d="M6 2H3v12h3M10 11l3-3-3-3M13 8H6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Выйти${state.user && state.user.email ? ` · ${escapeHtml(state.user.email)}` : ""}</span>
+          </button>
         </div>
       </aside>
       <div class="appMain">
@@ -244,10 +248,90 @@ export function renderAppShell(state, content) {
             </button>
           </div>
         </header>
-        <main class="appContent">${content}${renderModal(state)}${renderKebabPopover(state)}</main>
+        <main class="appContent">${content}${renderModal(state)}${renderKebabPopover(state)}${renderAssistant(state)}</main>
       </div>
     </div>
   `;
+}
+
+// ─── ИИ-ассистент (виджет в правом нижнем углу) ──────────────────────────────
+export const ASSISTANT_GREETING = "Добрый день! Что я могу для вас сделать?";
+const ASST_BOT_SVG = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V4M9 4h6"/><circle cx="9" cy="13" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1.2" fill="currentColor" stroke="none"/><path d="M2 13v2M22 13v2"/></svg>`;
+const ASST_SEND_SVG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>`;
+const ASST_CHIPS = [
+  "Консультация по сотруднику",
+  "Подобрать компетенции",
+  "Как пользоваться платформой?",
+  "Открой раздел кандидатов",
+];
+
+const ASST_PROP_LABELS = {
+  candidate: { head: "Добавить кандидата", fields: { full_name: "ФИО", email: "Email", phone: "Телефон", vacancy_title: "Вакансия" } },
+  employee: { head: "Добавить сотрудника", fields: { full_name: "ФИО", position: "Должность", department_name: "Отдел", manager_name: "Руководитель", project: "Проект", start_date: "Дата выхода" } },
+};
+
+function renderAssistantProposal(m, i) {
+  const p = m.proposal;
+  const cfg = ASST_PROP_LABELS[p.entity] || ASST_PROP_LABELS.candidate;
+  const rows = Object.entries(cfg.fields)
+    .filter(([k]) => (p.params[k] || "").toString().trim())
+    .map(([k, lab]) => `<div class="elt-asst-prop-row"><span>${lab}</span><b>${escapeHtml(p.params[k])}</b></div>`)
+    .join("");
+  let footer;
+  if (p.status === "busy") footer = `<div class="elt-asst-prop-status">Добавляю…</div>`;
+  else if (p.status === "done") footer = `<div class="elt-asst-prop-status ok">✓ Добавлено</div>`;
+  else if (p.status === "cancelled") footer = `<div class="elt-asst-prop-status">Отменено</div>`;
+  else footer = `<div class="elt-asst-prop-actions">
+      ${p.status === "error" ? `<span class="elt-asst-prop-status err">Ошибка, попробуйте ещё раз</span>` : ""}
+      <button type="button" data-assistant-confirm="${i}">Подтвердить</button>
+      <button type="button" class="ghost" data-assistant-cancel="${i}">Отмена</button>
+    </div>`;
+  return `<div class="elt-asst-msg bot">
+    ${m.content ? escapeHtml(m.content) : ""}
+    <div class="elt-asst-prop-card">
+      <div class="elt-asst-prop-head">${cfg.head}</div>
+      ${rows || `<div class="elt-asst-prop-row"><span>—</span></div>`}
+      ${footer}
+    </div>
+  </div>`;
+}
+
+function renderAssistant(state) {
+  const a = state.assistant || {};
+  const open = a.open;
+  const fab = `<button class="elt-asst-fab${open ? " open" : ""}" data-assistant-toggle aria-label="ИИ-ассистент">${open ? "✕" : ASST_BOT_SVG}</button>`;
+  if (!open) return `<div class="elt-asst">${fab}</div>`;
+
+  const msgs = a.messages || [];
+  const greetDone = a.greetingAnimated;
+  const greet = `<div class="elt-asst-msg bot" id="elt-asst-greeting">${greetDone ? escapeHtml(ASSISTANT_GREETING) : ""}</div>`;
+  const bubbles = msgs.map((m, i) =>
+    m.proposal
+      ? renderAssistantProposal(m, i)
+      : `<div class="elt-asst-msg ${m.role === "user" ? "user" : "bot"}">${escapeHtml(m.content)}</div>`
+  ).join("");
+  const dots = a.busy ? `<div class="elt-asst-msg bot elt-asst-dots"><span></span><span></span><span></span></div>` : "";
+  const showChips = !msgs.some((m) => m.role === "user");
+  const chips = showChips
+    ? `<div class="elt-asst-chips">${ASST_CHIPS.map((c) => `<button type="button" class="elt-asst-chip" data-assistant-chip="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join("")}</div>`
+    : "";
+
+  return `<div class="elt-asst open">
+    ${fab}
+    <div class="elt-asst-panel">
+      <div class="elt-asst-head">
+        <span class="elt-asst-head-icon">${ASST_BOT_SVG}</span>
+        <div class="elt-asst-head-title"><b>Ассистент Eltera</b><span>ИИ-помощник</span></div>
+        <button class="elt-asst-x" data-assistant-toggle aria-label="Закрыть">✕</button>
+      </div>
+      <div class="elt-asst-body" id="elt-asst-body">${greet}${bubbles}${dots}</div>
+      ${chips}
+      <form class="elt-asst-input" data-assistant-form>
+        <input name="msg" placeholder="Спросите что-нибудь…" autocomplete="off" ${a.busy ? "disabled" : ""}>
+        <button type="submit" aria-label="Отправить" ${a.busy ? "disabled" : ""}>${ASST_SEND_SVG}</button>
+      </form>
+    </div>
+  </div>`;
 }
 
 const NOTIF_ICON = {
@@ -389,9 +473,9 @@ export function renderOverview(state) {
     { label: "Подходят", value: c.fit, caption: c.avg_percent ? `${Math.round(c.avg_percent)}% средний балл` : "под профиль", status: c.fit > 0 ? "good" : "neutral", iconName: "fit", target: "Кандидаты:Подходят", trend: c.assessment_passed ? `из ${c.assessment_passed} оценок` : "" },
     { label: "Зависли", value: c.stuck, caption: "кандидаты без движения", status: c.stuck > 0 ? "bad" : "good", iconName: "active", target: "Кандидаты:Зависли" },
     { label: "Сотрудников", value: e.total, caption: `${e.not_assessed} ещё не оценены`, status: "neutral", iconName: "employees", target: "Сотрудники:Сотрудников всего" },
-    { label: "Средний балл", value: `${Math.round(e.avg_fit)}%`, caption: "соответствие должности", status: e.avg_fit >= 70 ? "good" : e.avg_fit >= 50 ? "medium" : "bad", iconName: "completed", target: "Сотрудники:Средний результат" },
+    { label: "Средний балл", value: `${Math.round(e.avg_fit)}%`, caption: "соответствие должности", status: e.avg_fit >= 70 ? "good" : e.avg_fit >= 50 ? "medium" : "bad", iconName: "completed", target: "Сотрудники:Сотрудников всего" },
     { label: "В зоне риска", value: e.at_risk, caption: "сотрудники · нужен ИПР", status: e.at_risk > 0 ? "bad" : "good", iconName: "risk", target: "Сотрудники:В зоне риска" },
-    { label: "Циклов адаптации", value: a.active_cycles, caption: `${a.completed_cycles} завершено`, status: "neutral", iconName: "chart", target: "Адаптация:Новые сотрудники" },
+    { label: "Циклов адаптации", value: a.active_cycles, caption: `${a.completed_cycles} завершено`, status: "neutral", iconName: "chart", target: "Адаптация:Активные циклы" },
     { label: "Алерты адаптации", value: a.at_risk, caption: a.due_now ? `${a.due_now} опросов дозрели` : "риски и пропуски", status: a.at_risk > 0 ? "bad" : a.due_now > 0 ? "medium" : "good", iconName: "balance", target: "Адаптация:В зоне риска" },
   ];
 
@@ -686,7 +770,7 @@ export function renderEmployees(state) {
       { label: "Низкий результат", value: s.low_result, caption: "ниже 60%", status: "bad", target: "Сотрудники:Низкий результат", iconName: "risk" },
       { label: "В зоне риска", value: s.at_risk, caption: "требуют внимания", status: "bad", target: "Сотрудники:В зоне риска", iconName: "risk" },
       { label: "Выгорание", value: s.burnout, caption: "признаки", status: "medium", target: "Сотрудники:Выгорание", iconName: "balance" },
-      { label: "Средний балл", value: `${s.avg_fit}%`, caption: "соответствие", status: getFitStatus(s.avg_fit), target: "Сотрудники:Средний результат", iconName: "completed" },
+      { label: "Средний балл", value: `${s.avg_fit}%`, caption: "соответствие", status: getFitStatus(s.avg_fit), target: "Сотрудники:Сотрудников всего", iconName: "completed" },
       { label: "Удовлетворенность", value: `${s.avg_satisfaction}%`, caption: "средняя", status: "medium", target: "Сотрудники:Удовлетворенность", iconName: "completed" }
     ],
     charts: [
@@ -1202,32 +1286,62 @@ function hhVacanciesTableConfig(items, loading) {
   };
 }
 
+const LIB_SECTIONS = [
+  ["candidate", "Кандидаты"],
+  ["employee", "Сотрудники"],
+  ["group", "Группа"],
+  ["universal", "Универсальные"],
+];
+
 export function renderAssessments(state) {
   const defaultIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>`;
-  const TARGET_LABEL = { candidate: "Кандидаты", employee: "Сотрудники", group: "Группа" };
-  const tests = state.testsApi || [];
-  const loading = !state.testsApi;
+  const TARGET_LABEL = { candidate: "Кандидаты", employee: "Сотрудники", group: "Группа", universal: "Универсальные" };
   const SERVICE = ["360", "Адаптация", "Performance"];
-  const filter = state.profileTypeFilter || "all";
-  const shown = tests.filter((t) => filter === "all" || t.target_type === filter);
+  const lib = state.library;
+  const tax = state.taxonomy || { directions: [], universal: [], levels: [] };
+  const items = lib.items;
 
-  const pill = (val, label) => `<button class="elt-pill${filter === val ? ' active' : ''}" data-profile-filter="${val}">${label}</button>`;
+  // Категории секции: для «универсальных» — черты, иначе — профнаправления.
+  const cats = lib.section === "universal" ? tax.universal : tax.directions;
+
+  const sectionTabs = LIB_SECTIONS.map(([val, label]) =>
+    `<button class="ctr-mode-btn${lib.section === val ? " active" : ""}" data-library-section="${val}">${label}</button>`
+  ).join("");
+
+  const catChip = (slug, title) =>
+    `<button class="elt-pill${lib.category === slug ? " active" : ""}" data-library-category="${slug}">${escapeHtml(title)}</button>`;
+  const catBar = `<div class="elt-filter-bar lib-cats">
+    <button class="elt-pill${!lib.category ? " active" : ""}" data-library-category="">Все направления</button>
+    ${cats.map((c) => catChip(c.slug, c.title)).join("")}
+  </div>`;
+
+  const lvlChip = (code, title) =>
+    `<button class="elt-pill${lib.level === code ? " active" : ""}" data-library-level="${code}">${escapeHtml(title)}</button>`;
+  const lvlBar = `<div class="elt-filter-bar lib-levels">
+    <span class="lib-levels-label">Уровень:</span>
+    <button class="elt-pill${!lib.level ? " active" : ""}" data-library-level="">Любой</button>
+    ${tax.levels.map((l) => lvlChip(l.code, l.title)).join("")}
+  </div>`;
 
   let grid;
-  if (loading) {
+  if (items === null || lib.loading) {
     grid = `<p class="elt-card-caption" style="padding:16px">Загрузка профилей…</p>`;
-  } else if (!shown.length) {
-    grid = `<div class="elt-card ctr-empty-card"><div class="ctr-empty"><p>Готовых профилей нет. Соберите их в Конструкторе или импортируйте базу.</p><button class="elt-btn-primary" data-view="constructor">Открыть Конструктор</button></div></div>`;
+  } else if (!items.length) {
+    grid = `<div class="elt-card ctr-empty-card"><div class="ctr-empty"><p>Ничего не найдено по выбранным фильтрам.</p><button class="elt-btn-primary" data-view="constructor">Открыть Конструктор</button></div></div>`;
   } else {
-    grid = `<div class="elt-profiles-grid">${shown.map((t) => {
+    grid = `<div class="elt-profiles-grid">${items.map((t) => {
       const isService = SERVICE.includes(t.category);
+      const tags = (t.categories || []).slice(0, 3).map((c) => `<span class="lib-tag">${escapeHtml(c.title)}</span>`).join("");
+      const lvlNames = (t.levels || []).map((code) => (tax.levels.find((l) => l.code === code) || {}).title).filter(Boolean);
+      const lvls = lvlNames.length ? `<span class="lib-tag lib-tag-lvl">${escapeHtml(lvlNames.join(" · "))}</span>` : "";
       return `<article class="elt-profile-card">
         <div class="elt-profile-card-top">
           <div class="elt-profile-icon-wrap">${defaultIcon}</div>
-          <span class="elt-profile-category">${escapeHtml(t.category || TARGET_LABEL[t.target_type] || t.target_type)}</span>
+          <span class="elt-profile-category">${escapeHtml((t.categories && t.categories[0] && t.categories[0].title) || t.category || TARGET_LABEL[t.target_type] || t.target_type)}</span>
         </div>
         <h3 class="elt-profile-title">${escapeHtml(t.title)}${isService ? ' <span class="ctr-service-badge">сервисный</span>' : ''}</h3>
         <p class="elt-profile-summary">${escapeHtml(t.summary || "Готовый профиль оценки.")}</p>
+        ${(tags || lvls) ? `<div class="lib-tags">${tags}${lvls}</div>` : ""}
         <div class="elt-profile-meta">
           <span>${t.questions_count} вопросов</span>
           <span>${TARGET_LABEL[t.target_type] || t.target_type}</span>
@@ -1237,25 +1351,31 @@ export function renderAssessments(state) {
           <button class="elt-btn-ghost" data-open-profile-constructor="${t.id}">В конструкторе</button>
         </div>
       </article>`;
-    }).join('')}</div>`;
+    }).join('')}${items.length >= 60 ? `<p class="elt-card-caption" style="grid-column:1/-1;padding:8px">Показаны первые 60 — уточните поиск или фильтры.</p>` : ""}</div>`;
   }
+
+  const fitnessNote = lib.section === "employee"
+    ? `<p class="elt-page-subtitle" style="margin:-4px 0 10px">Профпригодность: тесты по должностям для действующих сотрудников (внутренняя оценка).</p>`
+    : "";
 
   return `
     <div class="elt-page-wrap">
       <div class="elt-page-header">
         <div class="elt-page-header-left">
-          <span class="elt-mini-label">Профили</span>
-          <h1 class="elt-page-title">Профили оценки профессий</h1>
-          <p class="elt-page-subtitle">Готовые профили из конструктора: запускайте оценку в один клик или открывайте для правки.</p>
+          <span class="elt-mini-label">Библиотека тестов</span>
+          <h1 class="elt-page-title">Профили и тесты</h1>
+          <p class="elt-page-subtitle">Единая структура: секции, профнаправления, универсальные черты и уровни должностей.</p>
         </div>
         <div class="elt-page-actions">
           <button class="elt-btn-ghost" data-view="constructor">Конструктор</button>
           <button class="elt-btn-primary" data-action="open-assess-wizard">+ Создать оценку</button>
         </div>
       </div>
-      <div class="elt-filter-bar">
-        ${pill("all", "Все")}${pill("candidate", "Кандидаты")}${pill("employee", "Сотрудники")}${pill("group", "Группа")}
-      </div>
+      <div class="ctr-mode-toggle">${sectionTabs}</div>
+      ${fitnessNote}
+      <div class="lib-search"><input type="search" class="elt-input" data-library-search placeholder="Поиск теста по названию…" value="${escapeHtml(lib.q || "")}" autocomplete="off"></div>
+      ${catBar}
+      ${lvlBar}
       ${grid}
     </div>
   `;
@@ -1662,17 +1782,6 @@ export function renderPerformance(state) {
   const hipo = assessed.filter((e) => hi(perf(e)) && hi(pot(e))).length;
   const reserve = assessed.filter((e) => hi(pot(e)) && !lo(perf(e))).length;
 
-  // 9-box сегменты (только по оценённым)
-  const seg = { hipo: 0, perspective: 0, stable: 0, develop: 0, risk: 0 };
-  assessed.forEach((e) => {
-    const P = perf(e), T = pot(e);
-    if (hi(P) && hi(T)) seg.hipo++;
-    else if (lo(P) && lo(T)) seg.risk++;
-    else if (hi(P) || hi(T)) seg.perspective++;
-    else if (lo(P) || lo(T)) seg.develop++;
-    else seg.stable++;
-  });
-
   const avg = (arr) => (arr.length ? Math.round(arr.reduce((s, x) => s + x, 0) / arr.length) : 0);
   const avgPerf = avg(assessed.map(perf));
   const avgPot = avg(assessed.map(pot));
@@ -1712,8 +1821,13 @@ export function renderPerformance(state) {
       { label: "Кадровый резерв", value: reserve, caption: "готовить", status: "good", target: "Performance Review:Кадровый резерв" },
       { label: "Не оценён", value: notAssessed, caption: "нет профильной оценки", status: "neutral", target: "Performance Review:Не оценён" }
     ],
+    matrixHtml: assessed.length
+      ? `<article class="elt-panel elt-chart-panel elt-wide">
+          <div class="elt-panel-head"><div class="elt-panel-head-left"><h2>9-box: Performance × Potential</h2></div><span class="elt-panel-caption">по ${assessed.length} оценённым</span></div>
+          ${nineBoxGrid(assessed, perf, pot)}
+        </article>`
+      : "",
     charts: [
-      { title: "9-box matrix", caption: "сегменты", items: [["HiPo", seg.hipo], ["Перспективные", seg.perspective], ["Стабильные", seg.stable], ["Зона развития", seg.develop], ["Зона риска", seg.risk]] },
       { title: "Performance / Potential", caption: "средние и сегменты", items: [["Ср. результативность", avgPerf], ["Ср. потенциал", avgPot], ["HiPo", hipo], ["Резерв", reserve]] }
     ],
     heatmap: employeeHeatmap(state),
@@ -2259,7 +2373,12 @@ function renderAssessFlow(link, apiForm, cand) {
   const answered = assessIsAnswered(q, answers);
   const isLast = idx === total - 1;
   const remaining = Math.max(0, Math.floor(((cand.deadlineTs || 0) - Date.now()) / 1000));
-  const dots = apiForm.questions.map((qq, i) => `<span class="assessDot${i === idx ? " active" : ""}${assessIsAnswered(qq, answers) ? " done" : ""}"></span>`).join("");
+  // Точки-индикаторы показываем только при небольшом числе вопросов — иначе
+  // (тесты на 100+ вопросов) ряд точек переполняет строку и «уносит» страницу.
+  // При большом числе достаточно прогресс-бара и счётчика «Вопрос N из M».
+  const dots = total <= 24
+    ? apiForm.questions.map((qq, i) => `<span class="assessDot${i === idx ? " active" : ""}${assessIsAnswered(qq, answers) ? " done" : ""}"></span>`).join("")
+    : "";
   const nextDisabled = q.type !== "open" && !answered;
   return `<div class="candidatePage assessPage"><main class="assessWizard">
     <div class="assessTopbar">
@@ -2305,6 +2424,37 @@ export function renderCandidateThanks() {
   return `<div class="candidatePage"><main class="candidateCard thanks"><img src="/assets/eltera_app_icon_4bars_glow.png" alt=""><h1>Спасибо, оценка завершена</h1><p>Результаты переданы компании. Внутренний отчет, рекомендации и красные флаги доступны только ответственному HR или руководителю.</p><a class="blueButton" href="#/">На сайт Eltera</a></main></div>`;
 }
 
+// Поисковый селектор кандидатского профиля (серверный поиск, лимит 50).
+// Хранит выбор в скрытом поле professionId (читает addCandidateFromForm).
+function candProfilePicker(state) {
+  const q = state.candProfileQuery || "";
+  const results = state.candProfileResults;
+  const selId = state.candProfileSelId || "";
+  const selTitle = state.candProfileSelTitle || "";
+  const selected = selId
+    ? `<div class="cand-prof-selected">Выбран: <b>${escapeHtml(selTitle)}</b><button type="button" class="cand-prof-clear" data-candprofile-clear title="Сбросить">✕</button></div>`
+    : "";
+  let list = "";
+  if (!selId) {
+    if (results == null) {
+      list = `<div class="cand-prof-hint">Загрузка…</div>`;
+    } else if (!results.length) {
+      list = `<div class="cand-prof-hint">${q ? "Ничего не найдено" : "Начните вводить название профиля"}</div>`;
+    } else {
+      list = `<div class="cand-prof-list">${results.map((t) =>
+        `<button type="button" class="cand-prof-opt" data-candprofile-pick="${t.id}" data-candprofile-title="${escapeHtml(t.title)}">${escapeHtml(t.title)}${t.category ? ` <span>· ${escapeHtml(t.category)}</span>` : ""}</button>`
+      ).join("")}${results.length >= 50 ? `<div class="cand-prof-hint">Показаны первые 50 — уточните поиск</div>` : ""}</div>`;
+    }
+  }
+  return `
+    <input type="hidden" name="professionId" value="${escapeHtml(selId)}">
+    <div class="cand-prof-picker">
+      <input class="elt-input" data-candprofile-search placeholder="Поиск профиля по названию…" value="${escapeHtml(q)}" autocomplete="off" onkeydown="if(event.key==='Enter')event.preventDefault()">
+      ${selected}
+      ${list}
+    </div>`;
+}
+
 function renderModal(state) {
   const mHead = (title, icon = '') => `<div class="modal-head"><div class="modal-head-left">${icon ? `<span class="modal-head-icon">${icon}</span>` : ''}<h2 class="modal-head-title">${title}</h2></div><button class="modal-close-btn" data-action="close-modal" title="Закрыть"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>`;
 
@@ -2314,6 +2464,24 @@ function renderModal(state) {
     // Отдельный scope, чтобы не пересекаться с дрилл-дауном KPI-карточек («Адаптация»).
     if (scope === "Этап адаптации") {
       return `<div class="modalBackdrop"><div class="modal modalWide">${mHead(`Этап адаптации: ${metricName}`, '🧭')}<div class="modal-inner">${renderAdaptationStageList(state, metricName)}</div></div></div>`;
+    }
+    // «Оценка отправлена / Отправлено ссылок» — это метрика по числу ССЫЛОК,
+    // поэтому показываем список ссылок, а не кандидатов.
+    if (scope === "Кандидаты" && /отправлен|ссыл/i.test(metricName || "")) {
+      const links = (state.linksApi || []).filter((l) => l.recipientType === "Кандидат");
+      const loading = state.linksApi == null;
+      const body = loading ? `<p class="elt-card-caption" style="padding:12px">Загрузка ссылок…</p>` : renderLinksTable(links);
+      return `<div class="modalBackdrop"><div class="modal modalWide">${mHead(`${scope}: ${metricName}`, '🔗')}<div class="modal-inner">${body}</div></div></div>`;
+    }
+    // Адаптация «Опросы отправлены/пройдены» — это число опросов (ссылок), а не
+    // людей: показываем список пульс-опросов адаптации (вкл. ADAPT-DAY).
+    if (scope === "Адаптация" && /опрос/i.test(metricName || "")) {
+      const done = /пройд/i.test(metricName || "");
+      const links = (state.linksApi || []).filter((l) =>
+        (l.professionTitle || "").startsWith("Адаптация") && l.recipientType === "Сотрудник" && (!done || l.status === "completed"));
+      const loading = state.linksApi == null;
+      const body = loading ? `<p class="elt-card-caption" style="padding:12px">Загрузка опросов…</p>` : renderLinksTable(links);
+      return `<div class="modalBackdrop"><div class="modal modalWide">${mHead(`${scope}: ${metricName}`, '🔗')}<div class="modal-inner">${body}</div></div></div>`;
     }
     const people = peopleForModal(state, scope, metricName);
     const icons = { 'Кандидаты': '👤', 'Сотрудники': '🏢', 'Вакансии': '📋', 'Отчеты': '📊' };
@@ -2513,22 +2681,24 @@ function renderModal(state) {
           <label class="elt-label">Отдел<select class="elt-select" name="department">${deptOptions}</select></label>
           <label class="elt-label">Руководитель<select class="elt-select" name="manager">${managerOptions}</select></label>
           <label class="elt-label">Проект<input class="elt-input" name="project" placeholder="Общий контур"></label>
+          <label class="elt-label">Дата выхода<input class="elt-input" type="date" name="start_date"></label>
         </div>
+        <label class="elt-label-full elt-checkbox-line" style="display:flex;align-items:center;gap:8px;margin-top:4px">
+          <input type="checkbox" name="sendAdaptation" checked>
+          <span>Выслать адаптационный тест (запустить цикл онбординга и отправить первый опрос)</span>
+        </label>
         <button class="blueButton" type="submit" style="margin-top:8px;width:100%">Добавить сотрудника</button>
       </div>
     </form></div>`;
   }
 
   if (state.modal?.type === "add-candidate") {
-    const profileOptions = Array.isArray(state.testsApi) && state.testsApi.length
-      ? state.testsApi.map((t) => `<option value="${t.id}">${t.title}${t.category ? ` · ${t.category}` : ""}</option>`).join('')
-      : `<option value="">Загрузка тестов…</option>`;
     return `<div class="modalBackdrop"><form class="modal modalWide" data-add-candidate-form>
       ${mHead('Добавить кандидата', '👤')}
       <div class="modal-inner">
-        <p class="modal-subtitle">Кандидат будет добавлен в базу без создания оценки. Оценку можно отправить позже.</p>
+        <p class="modal-subtitle">При включённой отправке кандидату сразу уйдёт письмо со ссылкой на оценку (нужны профиль и email).</p>
         <div class="elt-form-grid elt-form-grid-3">
-          <label class="elt-label elt-label-full">Профиль оценки<select class="elt-select" name="professionId">${profileOptions}</select></label>
+          <label class="elt-label elt-label-full">Профиль оценки${candProfilePicker(state)}</label>
           <label class="elt-label">Фамилия<input class="elt-input" name="lastName" placeholder="Иванов"></label>
           <label class="elt-label">Имя<input class="elt-input" name="firstName" placeholder="Иван"></label>
           <label class="elt-label">Отчество<input class="elt-input" name="patronymic" placeholder="Иванович"></label>
@@ -2536,23 +2706,43 @@ function renderModal(state) {
           <label class="elt-label">Email<input class="elt-input" name="email" placeholder="candidate@example.com"></label>
           <label class="elt-label">Вакансия<input class="elt-input" name="vacancy" placeholder="Менеджер по продажам"></label>
         </div>
+        <label class="elt-label-full elt-checkbox-line" style="display:flex;align-items:center;gap:8px;margin-top:4px">
+          <input type="checkbox" name="sendNow" checked>
+          <span>Сразу отправить оценку кандидату (письмо со ссылкой)</span>
+        </label>
         <div class="elt-label-full"><button class="elt-btn-primary" type="submit" style="width:100%">Добавить кандидата</button></div>
+      </div>
+    </form></div>`;
+  }
+
+  if (state.modal?.type === "convert-employee") {
+    const fullName = state.modal.fullName || "Кандидат";
+    return `<div class="modalBackdrop"><form class="modal" data-convert-employee-form>
+      ${mHead('Перевести в сотрудники', '🔁')}
+      <div class="modal-inner">
+        <p class="modal-subtitle"><b>${escapeHtml(fullName)}</b> станет сотрудником: создастся карточка сотрудника, запись кандидата удалится. Оценки, ответы и история сохранятся (тот же человек). Результат оценки перенесётся в «соответствие».</p>
+        <div class="elt-form-grid">
+          <label class="elt-label">Должность *<input class="elt-input" name="position" placeholder="Менеджер по продажам" required></label>
+          <label class="elt-label">Дата выхода *<input class="elt-input" type="date" name="start_date" required></label>
+          <label class="elt-label">Отдел<input class="elt-input" name="department_name" placeholder="Отдел продаж"></label>
+          <label class="elt-label">Руководитель<input class="elt-input" name="manager_name" placeholder="Иванов Иван"></label>
+          <label class="elt-label">Проект<input class="elt-input" name="project" placeholder="Общий контур"></label>
+          <label class="elt-label">Тип занятости<select class="elt-select" name="employment_type"><option value="">—</option><option>Штат</option><option>ГПХ</option><option>Стажировка</option><option>Удалённо</option></select></label>
+        </div>
+        <button class="elt-btn-primary" type="submit" style="margin-top:8px;width:100%">Перевести в сотрудники</button>
       </div>
     </form></div>`;
   }
 
   if (state.modal?.type === "send-assessment") {
     const { personId, fullName } = state.modal;
-    const profileOptions = Array.isArray(state.testsApi) && state.testsApi.length
-      ? state.testsApi.map((t) => `<option value="${t.id}">${t.title}${t.category ? ` · ${t.category}` : ""}</option>`).join('')
-      : `<option value="">Загрузка тестов…</option>`;
-    const ready = Array.isArray(state.testsApi) && state.testsApi.length;
+    const ready = Boolean(state.candProfileSelId);
     return `<div class="modalBackdrop"><form class="modal" data-send-assessment-form data-person-id="${personId}">
       ${mHead('Отправить оценку', '📨')}
       <div class="modal-inner">
-        <p class="modal-subtitle">Кандидату <b>${fullName || "—"}</b> будет создана оценочная ссылка по выбранному профилю.</p>
+        <p class="modal-subtitle">Кандидату <b>${escapeHtml(fullName || "—")}</b> будет создана оценочная ссылка по выбранному профилю.</p>
         <div class="elt-form-grid">
-          <label class="elt-label elt-label-full">Профиль оценки<select class="elt-select" name="professionId" ${ready ? "" : "disabled"}>${profileOptions}</select></label>
+          <label class="elt-label elt-label-full">Профиль оценки${candProfilePicker(state)}</label>
         </div>
         <button class="elt-btn-primary" type="submit" style="margin-top:8px;width:100%" ${ready ? "" : "disabled"}>Отправить оценку</button>
       </div>
@@ -2825,6 +3015,27 @@ function renderPeopleTable(people, scope = "Кандидаты") {
   }).join('') || `<tr><td colspan="6" style="text-align:center;padding:24px;color:rgba(230,242,255,.35)">Нет данных для выбранного фильтра.</td></tr>`}</tbody></table>`;
 }
 
+// Таблица оценочных ссылок (для дрилл-дауна «Оценка отправлена / Отправлено ссылок»).
+function renderLinksTable(links) {
+  const fmtDate = (d) => {
+    if (!d) return "—";
+    const t = Date.parse(d);
+    return Number.isNaN(t) ? "—" : new Date(t).toLocaleDateString("ru-RU");
+  };
+  const rows = (links || []).map((l) => {
+    const done = (l.status || "").toLowerCase().includes("пройд") || l.status === "completed";
+    const cat = done ? "good" : "neutral";
+    return `<tr>
+      <td class="modal-td-name">${escapeHtml(l.fullName || l.email || "—")}</td>
+      <td class="modal-td-role">${escapeHtml(l.professionTitle || "—")}</td>
+      <td><span class="modal-badge modal-badge-${cat}">${escapeHtml(l.status || "—")}</span></td>
+      <td>${l.percent != null ? `<span class="modal-score modal-score-${cat}">${l.percent}%</span>` : "—"}</td>
+      <td class="modal-td-date">${fmtDate(l.createdAt)}</td>
+    </tr>`;
+  }).join("");
+  return `<table><thead><tr><th>Получатель</th><th>Профиль оценки</th><th>Статус</th><th>Результат</th><th>Отправлена</th></tr></thead><tbody>${rows || `<tr><td colspan="5" style="text-align:center;padding:24px;color:rgba(230,242,255,.35)">Ссылок пока нет.</td></tr>`}</tbody></table>`;
+}
+
 function renderEmployeeTable(employees) {
   return `<table><thead><tr><th>ФИО</th><th>Должность</th><th>Отдел</th><th>Риск</th><th>Удовлетворенность</th><th>Действия</th></tr></thead><tbody>${employees.map((item) => `<tr><td>${item.fullName}</td><td>${item.position}</td><td>${item.department}</td><td>${item.turnoverRisk}</td><td>${item.satisfaction}%</td><td><div class="rowActions"><button class="button subtle" data-open-card="${item.id}">Карточка</button><button class="button subtle" data-open-answers="${item.id}">Ответы</button></div></td></tr>`).join("")}</tbody></table>`;
 }
@@ -3062,6 +3273,7 @@ function renderKebabPopover(state) {
   return `<div class="elt-kebab-backdrop" data-kebab-close></div>
     <div class="elt-kebab-pop" style="left:${x}px;top:${y}px">
       <button type="button" data-send-assessment-id="${id}">Отправить оценку</button>
+      <button type="button" data-convert-id="${id}">Перевести в сотрудники</button>
       <div class="elt-kebab-sep"></div>
       ${act("interview", "На интервью")}
       ${act("accepted", "Принять")}
@@ -3218,6 +3430,11 @@ function peopleForModal(state, scope, metricName) {
 
     if (scope === "Адаптация") {
       const newEmps = emps.filter((e) => { const d = daysSince(e.startDate); return d !== null && d <= 90; });
+      // «Активные циклы» — строго люди с активным циклом адаптации (а не «новые до 90 дней»).
+      if (has("цикл")) {
+        const activeIds = new Set((state.adaptationCycles || []).filter((c) => c.status === "active").map((c) => c.person_id));
+        return emps.filter((e) => activeIds.has(e.id));
+      }
       if (has("Новые")) return newEmps;
       if (has("процесс") || has("30")) return emps.filter((e) => { const d = daysSince(e.startDate); return d !== null && d <= 30; });
       if (has("Опрос")) return linkPeople("Адаптация сотрудника", has("пройден") ? (l) => l.status === "completed" : null);
@@ -3235,13 +3452,23 @@ function peopleForModal(state, scope, metricName) {
     ])].filter(Boolean);
     const dept = deptNames.find((name) => m.includes(name));
     const pool = dept ? emps.filter((e) => e.department === dept) : emps;
-    if (has("Высок")) return pool.filter((e) => e.fit >= 80);
-    if (has("Средн")) return pool.filter((e) => e.fit >= 60 && e.fit < 80);
-    if (has("Низк")) return pool.filter((e) => e.fit < 60);
+    if (has("Высок")) return pool.filter((e) => e.fit != null && e.fit >= 80);
+    if (has("Средн")) return pool.filter((e) => e.fit != null && e.fit >= 60 && e.fit < 80);
+    if (has("Низк")) return pool.filter((e) => e.fit != null && e.fit < 60);
     if (has("Выгорание")) return pool.filter((e) => e.burnout && !["—", "нет", ""].includes(String(e.burnout).toLowerCase()));
-    if (has("риск") || has("зоне")) return pool.filter(employeeAtRisk);
+    // «В зоне риска» на бэке = только повышенный риск увольнения (без учёта fit),
+    // поэтому здесь тот же критерий, а не employeeAtRisk (он шире).
+    if (has("риск") || has("зоне")) {
+      return pool.filter((e) => ["средний", "повышенный", "высокий"].includes(String(e.turnoverRisk || "").toLowerCase()));
+    }
+    if (has("удовлет")) return pool.filter((e) => e.satisfaction > 0);
     return pool;
   }
+  // Вакансии — метрики о состоянии вакансий (активные/закрытые/отклики), а не о
+  // людях: не подменяем их списком кандидатов (раньше так и было). Пустой список
+  // с понятным состоянием честнее, чем нерелевантные данные.
+  if (scope === "Вакансии") return [];
+
   // Кандидаты: при наличии данных из API фильтруем их, иначе — демо-сид.
   const usingApi = Boolean(state.candidateStats && state.candidatesApi);
   const candidates = usingApi

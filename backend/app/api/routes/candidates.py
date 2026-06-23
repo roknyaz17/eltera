@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
 from app.crud import candidate as crud
+from app.crud import employee as employee_crud
 from app.services.ai_report import generate_report_narrative
 from app.services.pdf_report import build_candidate_report
 from app.services.report_jobs import generate_and_store_narrative
@@ -17,7 +18,7 @@ from app.schemas.candidate import (
     CandidateStats,
     CandidateUpdate,
 )
-from app.schemas.employee import ImportResult
+from app.schemas.employee import ConvertToEmployee, ImportResult
 from app.services import candidate_import
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
@@ -149,6 +150,30 @@ async def read_candidate(candidate_id: str, session: AsyncSession = Depends(get_
     if candidate is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Кандидат не найден")
     return candidate
+
+
+@router.post("/{candidate_id}/convert", summary="Перевести кандидата в сотрудники")
+async def convert_to_employee(
+    candidate_id: str,
+    data: ConvertToEmployee,
+    session: AsyncSession = Depends(get_session),
+):
+    if not (data.position and data.position.strip()) or data.start_date is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Укажите должность и дату выхода")
+    result = await employee_crud.convert_candidate_to_employee(session, candidate_id, data)
+    if result is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Кандидат не найден")
+    if result == "not_candidate":
+        raise HTTPException(status.HTTP_409_CONFLICT, "Этот человек не является кандидатом")
+    if result == "already_employee":
+        raise HTTPException(status.HTTP_409_CONFLICT, "Этот человек уже сотрудник")
+    # Авто-старт цикла адаптации по дате выхода (как у обычных новых сотрудников).
+    try:
+        from app.services.adaptation import resync_or_create_for_person
+        await resync_or_create_for_person(session, candidate_id)
+    except Exception:  # noqa: BLE001 — адаптация не должна валить перевод
+        pass
+    return {"ok": True, "person_id": result}
 
 
 @router.post(

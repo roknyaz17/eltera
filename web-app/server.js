@@ -1,8 +1,10 @@
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
-import { extname, join, normalize } from "node:path";
+import { extname, join, normalize, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = process.cwd();
+// Корень — папка самого server.js (не зависит от текущего рабочего каталога).
+const root = dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT || 4173);
 
 const types = {

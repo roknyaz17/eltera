@@ -166,6 +166,56 @@ function radarChart(competencies) {
 
 // ─── 9-Box Matrix ─────────────────────────────────────────────────────────────
 
+// Параметризованный 3×3 грид: оси считаются переданными функциями perf/pot,
+// чтобы совпадать с логикой конкретной вкладки (а не иметь свои пороги).
+export function nineBoxGrid(employees, perfFn, potFn) {
+  const tier = (v) => (v >= 80 ? 2 : v >= 60 ? 1 : 0); // low / mid / high — как на вкладке
+  const cells = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  const names = [[[], [], []], [[], [], []], [[], [], []]];
+  (employees || []).forEach((e) => {
+    const pc = tier(perfFn(e) || 0);
+    const pt = tier(potFn(e) || 0);
+    cells[2 - pt][pc]++;
+    const nm = (e.fullName || "").split(" ")[0];
+    if (nm) names[2 - pt][pc].push(nm);
+  });
+  const cellLabels = [
+    ["Дилемма", "Перспективный", "Звезда"],
+    ["Наблюдение", "Ядро команды", "Лидер"],
+    ["Зона риска", "Исполнитель", "Эксперт"]
+  ];
+  const cellColors = [
+    ["bad", "medium", "good"],
+    ["bad", "neutral", "good"],
+    ["bad", "neutral", "good"]
+  ];
+  const yLabels = ["Высокий", "Средний", "Низкий"];
+  const xLabels = ["Низкая", "Средняя", "Высокая"];
+  return `
+    <div class="elt-9box">
+      <div class="elt-9box-ylabels">
+        <span class="elt-9box-axis-title">↑ Потенциал</span>
+        ${yLabels.map((l) => `<span>${l}</span>`).join("")}
+      </div>
+      <div class="elt-9box-main">
+        <div class="elt-9box-grid">
+          ${cells.map((row, ri) => row.map((count, ci) => `
+            <div class="elt-9box-cell ${statusClass(cellColors[ri][ci])}">
+              <span class="elt-9box-cell-label">${cellLabels[ri][ci]}</span>
+              <strong class="elt-9box-cell-count">${count}</strong>
+              ${names[ri][ci].length ? `<span class="elt-9box-names">${names[ri][ci].slice(0, 3).join(", ")}${names[ri][ci].length > 3 ? ` +${names[ri][ci].length - 3}` : ""}</span>` : ""}
+            </div>
+          `).join("")).join("")}
+        </div>
+        <div class="elt-9box-xlabels">
+          <span class="elt-9box-axis-title">Результативность →</span>
+          ${xLabels.map((l) => `<span>${l}</span>`).join("")}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function nineBoxMatrix(employees) {
   const cells = [[0,0,0],[0,0,0],[0,0,0]];
   const names = [[[],[],[]],[[],[],[]],[[],[],[]]];

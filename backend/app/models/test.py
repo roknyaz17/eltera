@@ -48,6 +48,40 @@ class Test(TimestampMixin, Base):
     )
 
 
+class Category(Base):
+    """Таксономия библиотеки: профнаправление (kind='direction') или
+    универсальная черта (kind='universal'). Источник значений — core.taxonomy."""
+    __tablename__ = "categories"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=gen_uuid)
+    slug: Mapped[str] = mapped_column(String(60), unique=True, index=True)
+    title: Mapped[str] = mapped_column(String(160))
+    kind: Mapped[str] = mapped_column(String(20), default="direction")  # direction | universal
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class TestCategory(Base):
+    """M2M: тест ↔ категории (один тест может быть в нескольких категориях)."""
+    __tablename__ = "test_categories"
+
+    test_id: Mapped[str] = mapped_column(
+        ForeignKey("tests.id", ondelete="CASCADE"), primary_key=True
+    )
+    category_id: Mapped[str] = mapped_column(
+        ForeignKey("categories.id", ondelete="CASCADE"), primary_key=True
+    )
+
+
+class TestLevel(Base):
+    """M2M: тест ↔ уровни должности (код из core.taxonomy.LEVELS)."""
+    __tablename__ = "test_levels"
+
+    test_id: Mapped[str] = mapped_column(
+        ForeignKey("tests.id", ondelete="CASCADE"), primary_key=True
+    )
+    level: Mapped[str] = mapped_column(String(20), primary_key=True)
+
+
 class TestVersion(Base):
     __tablename__ = "test_versions"
     __table_args__ = (UniqueConstraint("test_id", "version_no"),)

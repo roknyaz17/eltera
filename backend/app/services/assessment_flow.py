@@ -2,12 +2,15 @@
 
 Здесь же происходит подсчёт баллов по типам вопросов и AI-оценка открытых.
 """
+import asyncio
 import secrets
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
+
+from app.core.database import AsyncSessionLocal
 
 from app.models.assessment import (
     AiScoringJob,
@@ -140,11 +143,17 @@ async def create_link(session: AsyncSession, data: LinkCreate) -> AssessmentLink
     test_id = data.test_id or await _first_candidate_test_id(session)
     test, version = await _resolve_version(session, test_id)
 
-    org_id = test.organization_id
+    from app.core.org_context import get_current_org
+    _cur = get_current_org()
+    # Тест должен быть видим: общий (org IS NULL) или своей компании.
+    if _cur is not None and test.organization_id is not None and test.organization_id != _cur:
+        raise FlowError(404, "Тест недоступен")
+
+    org_id = _cur if _cur is not None else test.organization_id
     person = None
     if data.person_id:
         person = await session.get(Person, data.person_id)
-        if person is None:
+        if person is None or (_cur is not None and person.organization_id != _cur):
             raise FlowError(404, "Человек не найден")
         org_id = person.organization_id
 
@@ -222,11 +231,12 @@ async def _notify_invite(session, link, test, person) -> None:
 
 
 async def list_links(session: AsyncSession) -> list[LinkListItem]:
-    links = (
-        await session.execute(
-            select(AssessmentLink).order_by(AssessmentLink.created_at.desc()).limit(300)
-        )
-    ).scalars().all()
+    from app.core.org_context import get_current_org
+    _org = get_current_org()
+    stmt = select(AssessmentLink).order_by(AssessmentLink.created_at.desc()).limit(300)
+    if _org is not None:
+        stmt = stmt.where(AssessmentLink.organization_id == _org)
+    links = (await session.execute(stmt)).scalars().all()
     if not links:
         return []
     person_ids = {lk.person_id for lk in links if lk.person_id}
@@ -392,6 +402,7 @@ async def submit(session: AsyncSession, token: str, payload) -> AssessmentResult
     total_max = 0
     red_flags = 0
     unanswered = 0
+    has_open = False
 
     for qv in qvs:
         comp_id = qv.question.competency_id
@@ -433,36 +444,21 @@ async def submit(session: AsyncSession, token: str, payload) -> AssessmentResult
             await session.flush()
 
         elif qv.type == QuestionType.open.value:
+            # AI-скоринг открытых вопросов выносим в фон (finalize_session),
+            # чтобы пользователь не ждал N последовательных вызовов модели.
+            # Пока ставим 0 (провизорно) и помечаем pending.
             answer.answer_text = submitted.answer_text
             answer.ai_status = AiStatus.pending.value
+            answer.awarded_score = 0
             session.add(answer)
             await session.flush()
-
-            job = AiScoringJob(
+            session.add(AiScoringJob(
                 session_answer_id=answer.id,
                 status=AiJobStatus.running.value,
                 model="openai",
-            )
-            session.add(job)
-            await session.flush()
-
-            ai_score, rationale, raw = await score_open_answer(
-                question_text=qv.text,
-                answer_text=submitted.answer_text or "",
-                reference=qv.ai_reference,
-                criteria=qv.ai_criteria,
-                max_score=qv.max_score,
-            )
-            awarded = ai_score
-            answer.awarded_score = ai_score
-            answer.ai_score = ai_score
-            answer.ai_rationale = rationale
-            answer.ai_status = AiStatus.scored.value
-            job.status = AiJobStatus.done.value
-            job.score = ai_score
-            job.rationale = rationale
-            job.raw_response = raw
-            job.finished_at = _now()
+            ))
+            has_open = True
+            awarded = 0
 
         comp_score[comp_id] = comp_score.get(comp_id, 0) + awarded
         total_score += awarded
@@ -479,8 +475,9 @@ async def submit(session: AsyncSession, token: str, payload) -> AssessmentResult
     sess.unanswered_count = unanswered
     sess.recommendation_level = level.value
     sess.recommendation_text = level_text
-    sess.status = SessionStatus.scored.value
-    sess.scored_at = _now()
+    # Если есть открытые вопросы — итог провизорный, финализирует фон.
+    sess.status = SessionStatus.scoring.value if has_open else SessionStatus.scored.value
+    sess.scored_at = None if has_open else _now()
 
     competencies = []
     titles = await _competency_titles(session, comp_max.keys())
@@ -500,37 +497,36 @@ async def submit(session: AsyncSession, token: str, payload) -> AssessmentResult
             )
         )
 
-    # Закрываем ссылку и продвигаем кандидата по воронке.
+    # Закрываем ссылку всегда.
     link.status = LinkStatus.completed.value
     session.add(AssessmentLinkEvent(link_id=link.id, event="completed"))
 
-    person = await session.get(Person, link.person_id)
-    if person is not None and person.candidate_profile is not None:
-        if person.candidate_profile.stage in (
-            CandidateStage.new.value,
-            CandidateStage.assessment_sent.value,
-            CandidateStage.in_progress.value,
-        ):
-            if percent >= FIT_THRESHOLD:
-                person.candidate_profile.stage = CandidateStage.fit.value
-            elif percent >= RISK_THRESHOLD:
-                person.candidate_profile.stage = CandidateStage.conditional.value
-            else:
-                person.candidate_profile.stage = CandidateStage.not_fit.value
-    # Сотрудник: фиксируем соответствие (fit) — замыкаем цикл оценки сотрудников.
-    # Адаптация и 360 измеряют другие измерения (онбординг, круговая обратная
-    # связь), поэтому job-fit (соответствие должности) ими не перезаписываем.
-    test_obj = await session.get(Test, link.test_id)
-    category = (test_obj.category or "").strip().lower() if test_obj else ""
-    if person is not None and person.employee_profile is not None:
-        if category not in ("360", "адаптация"):
-            person.employee_profile.fit = percent
-
-    await session.commit()
-
-    # Письмо HR: оценка пройдена / отчёт готов. Не шлём для внутренних
-    # пульс-опросов (адаптация/360) — они идут в центр уведомлений, не в HR-почту.
-    await _notify_report_ready(link, person, test_obj, category, percent)
+    if has_open:
+        # Итог провизорный — воронку/fit/письмо HR доведёт finalize_session
+        # после фонового AI-скоринга открытых вопросов.
+        await session.commit()
+    else:
+        person = await session.get(Person, link.person_id)
+        if person is not None and person.candidate_profile is not None:
+            if person.candidate_profile.stage in (
+                CandidateStage.new.value,
+                CandidateStage.assessment_sent.value,
+                CandidateStage.in_progress.value,
+            ):
+                if percent >= FIT_THRESHOLD:
+                    person.candidate_profile.stage = CandidateStage.fit.value
+                elif percent >= RISK_THRESHOLD:
+                    person.candidate_profile.stage = CandidateStage.conditional.value
+                else:
+                    person.candidate_profile.stage = CandidateStage.not_fit.value
+        # Сотрудник: фиксируем соответствие (fit). Адаптация/360 не перезаписывают.
+        test_obj = await session.get(Test, link.test_id)
+        category = (test_obj.category or "").strip().lower() if test_obj else ""
+        if person is not None and person.employee_profile is not None:
+            if category not in ("360", "адаптация"):
+                person.employee_profile.fit = percent
+        await session.commit()
+        await _notify_report_ready(link, person, test_obj, category, percent)
 
     return AssessmentResult(
         session_id=sess.id,
@@ -544,3 +540,130 @@ async def submit(session: AsyncSession, token: str, payload) -> AssessmentResult
         recommendation_text=level_text,
         competencies=competencies,
     )
+
+
+async def _recompute_and_apply(session: AsyncSession, sess: AssessmentSession):
+    """Пересчитывает итоги сессии по всем ответам (после AI-скоринга открытых),
+    обновляет воронку/fit. Возвращает (link, person, test_obj, category, percent)
+    для письма HR (его шлём уже после commit). Сам не коммитит."""
+    all_qvs = await _ordered_question_versions(session, sess.test_version_id)
+    answers = (await session.execute(
+        select(SessionAnswer).where(SessionAnswer.session_id == sess.id)
+    )).scalars().all()
+    awarded_by_qid = {a.question_version_id: (a.awarded_score or 0) for a in answers}
+    red_flags = sum(1 for a in answers if a.is_red_flag)
+
+    comp_score: dict[str, int] = {}
+    comp_max: dict[str, int] = {}
+    total_score = 0
+    total_max = 0
+    for qv in all_qvs:
+        cid = qv.question.competency_id
+        comp_max[cid] = comp_max.get(cid, 0) + qv.max_score
+        total_max += qv.max_score
+        aw = awarded_by_qid.get(qv.id, 0)
+        comp_score[cid] = comp_score.get(cid, 0) + aw
+        total_score += aw
+
+    percent = round(total_score / total_max * 100) if total_max else 0
+    level, level_text = scoring.recommendation_for(percent, red_flags)
+    sess.score = total_score
+    sess.max_score = total_max
+    sess.percent = percent
+    sess.red_flags = red_flags
+    sess.recommendation_level = level.value
+    sess.recommendation_text = level_text
+    sess.status = SessionStatus.scored.value
+    sess.scored_at = _now()
+
+    # Пересоздаём баллы по компетенциям (были провизорные, без открытых).
+    await session.execute(
+        delete(SessionCompetencyScore).where(SessionCompetencyScore.session_id == sess.id)
+    )
+    for cid, cmax in comp_max.items():
+        cscore = comp_score.get(cid, 0)
+        session.add(SessionCompetencyScore(
+            session_id=sess.id, competency_id=cid, score=cscore, max_score=cmax,
+            percent=round(cscore / cmax * 100) if cmax else 0,
+        ))
+
+    link = await session.get(AssessmentLink, sess.link_id) if sess.link_id else None
+    person = await session.get(Person, sess.person_id)
+    if person is not None and person.candidate_profile is not None:
+        if person.candidate_profile.stage in (
+            CandidateStage.new.value,
+            CandidateStage.assessment_sent.value,
+            CandidateStage.in_progress.value,
+        ):
+            if percent >= FIT_THRESHOLD:
+                person.candidate_profile.stage = CandidateStage.fit.value
+            elif percent >= RISK_THRESHOLD:
+                person.candidate_profile.stage = CandidateStage.conditional.value
+            else:
+                person.candidate_profile.stage = CandidateStage.not_fit.value
+    test_obj = await session.get(Test, sess.test_id)
+    category = (test_obj.category or "").strip().lower() if test_obj else ""
+    if person is not None and person.employee_profile is not None:
+        if category not in ("360", "адаптация"):
+            person.employee_profile.fit = percent
+    return link, person, test_obj, category, percent
+
+
+async def finalize_session(session_id: str) -> None:
+    """Фоновая до-обработка после submit: AI-скоринг открытых вопросов (параллельно),
+    пересчёт итогов, воронка/fit, письмо HR, нарратив. Запускается как BackgroundTask,
+    чтобы пользователь не ждал AI при нажатии «Завершить»."""
+    async with AsyncSessionLocal() as session:
+        sess = await session.get(AssessmentSession, session_id)
+        if sess is None:
+            return
+        pending = (await session.execute(
+            select(SessionAnswer).where(
+                SessionAnswer.session_id == session_id,
+                SessionAnswer.ai_status == AiStatus.pending.value,
+            )
+        )).scalars().all()
+
+        if pending:
+            qv_ids = [a.question_version_id for a in pending]
+            qvs = {qv.id: qv for qv in (await session.execute(
+                select(QuestionVersion).where(QuestionVersion.id.in_(qv_ids))
+            )).scalars().all()}
+
+            async def _score(a):
+                qv = qvs.get(a.question_version_id)
+                if qv is None:
+                    return a, 0, "", ""
+                s, r, raw = await score_open_answer(
+                    question_text=qv.text, answer_text=a.answer_text or "",
+                    reference=qv.ai_reference, criteria=qv.ai_criteria, max_score=qv.max_score,
+                )
+                return a, s, r, raw
+
+            scored = await asyncio.gather(*[_score(a) for a in pending])
+            jobs = {j.session_answer_id: j for j in (await session.execute(
+                select(AiScoringJob).where(
+                    AiScoringJob.session_answer_id.in_([a.id for a in pending])
+                )
+            )).scalars().all()}
+            for a, s, r, raw in scored:
+                a.awarded_score = s
+                a.ai_score = s
+                a.ai_rationale = r
+                a.ai_status = AiStatus.scored.value
+                job = jobs.get(a.id)
+                if job is not None:
+                    job.status = AiJobStatus.done.value
+                    job.score = s
+                    job.rationale = r
+                    job.raw_response = raw
+                    job.finished_at = _now()
+
+            link, person, test_obj, category, percent = await _recompute_and_apply(session, sess)
+            await session.commit()
+            if link is not None:
+                await _notify_report_ready(link, person, test_obj, category, percent)
+
+    # Нарратив (для кандидатов) — идемпотентно, отдельной сессией.
+    from app.services.report_jobs import generate_and_store_narrative
+    await generate_and_store_narrative(session_id)

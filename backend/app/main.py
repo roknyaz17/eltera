@@ -2,12 +2,14 @@
 import logging
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import (
     adaptation,
     assessment,
+    assistant,
+    auth,
     candidates,
     competencies,
     employees,
@@ -21,6 +23,7 @@ from app.api.routes import (
     tests,
 )
 from app.core.config import get_settings
+from app.core.deps import get_current_user
 
 logger = logging.getLogger("eltera.adaptation")
 
@@ -40,19 +43,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(candidates.router, prefix=settings.api_prefix)
-app.include_router(employees.router, prefix=settings.api_prefix)
-app.include_router(structure.router, prefix=settings.api_prefix)
-app.include_router(tests.router, prefix=settings.api_prefix)
-app.include_router(competencies.router, prefix=settings.api_prefix)
-app.include_router(links.router, prefix=settings.api_prefix)
+# Публичные роутеры: аутентификация и прохождение теста по ссылке.
+app.include_router(auth.router, prefix=settings.api_prefix)
 app.include_router(assessment.router, prefix=settings.api_prefix)
-app.include_router(reports.router, prefix=settings.api_prefix)
-app.include_router(adaptation.router, prefix=settings.api_prefix)
-app.include_router(support.router, prefix=settings.api_prefix)
-app.include_router(overview.router, prefix=settings.api_prefix)
-app.include_router(notifications.router, prefix=settings.api_prefix)
-app.include_router(hh.router, prefix=settings.api_prefix)
+
+# Управленческие роутеры — только с валидным access-токеном.
+_auth = [Depends(get_current_user)]
+app.include_router(candidates.router, prefix=settings.api_prefix, dependencies=_auth)
+app.include_router(employees.router, prefix=settings.api_prefix, dependencies=_auth)
+app.include_router(structure.router, prefix=settings.api_prefix, dependencies=_auth)
+app.include_router(tests.router, prefix=settings.api_prefix, dependencies=_auth)
+app.include_router(competencies.router, prefix=settings.api_prefix, dependencies=_auth)
+app.include_router(links.router, prefix=settings.api_prefix, dependencies=_auth)
+app.include_router(reports.router, prefix=settings.api_prefix, dependencies=_auth)
+app.include_router(adaptation.router, prefix=settings.api_prefix, dependencies=_auth)
+app.include_router(support.router, prefix=settings.api_prefix, dependencies=_auth)
+app.include_router(overview.router, prefix=settings.api_prefix, dependencies=_auth)
+app.include_router(notifications.router, prefix=settings.api_prefix, dependencies=_auth)
+app.include_router(hh.router, prefix=settings.api_prefix, dependencies=_auth)
+app.include_router(assistant.router, prefix=settings.api_prefix, dependencies=_auth)
 
 
 # ─── Планировщик адаптации: ежедневный «тик» + догон при старте ───

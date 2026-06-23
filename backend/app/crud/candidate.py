@@ -5,6 +5,8 @@ from pydantic import ValidationError
 from sqlalchemy import and_, asc, case, delete, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.org_context import get_current_org
+
 from sqlalchemy.orm import selectinload
 
 from app.models.assessment import (
@@ -82,8 +84,11 @@ def _latest_session_subq():
             rn,
         )
         .where(AssessmentSession.respondent_type == RespondentType.candidate.value)
-        .subquery()
     )
+    _org = get_current_org()
+    if _org is not None:
+        inner = inner.where(AssessmentSession.organization_id == _org)
+    inner = inner.subquery()
     return select(inner).where(inner.c.rn == 1).subquery()
 
 
@@ -155,6 +160,9 @@ async def list_candidates(
     latest = _latest_session_subq()
 
     conditions = []
+    _org = get_current_org()
+    if _org is not None:
+        conditions.append(Person.organization_id == _org)
     if search:
         pattern = f"%{search.lower()}%"
         conditions.append(
@@ -226,7 +234,7 @@ async def list_candidates(
 
 async def get_candidate(session: AsyncSession, person_id: str) -> CandidateDetail | None:
     person = await session.get(Person, person_id)
-    if person is None or person.candidate_profile is None:
+    if person is None or person.candidate_profile is None or not _owns(person.organization_id):
         return None
     profile = person.candidate_profile
 
@@ -327,6 +335,16 @@ async def _default_org_id(session: AsyncSession) -> str:
     return org_id
 
 
+async def _org(session: AsyncSession) -> str:
+    return get_current_org() or await _default_org_id(session)
+
+
+def _owns(org_id) -> bool:
+    """True, если объект принадлежит текущей организации (или вне запроса)."""
+    cur = get_current_org()
+    return cur is None or org_id == cur
+
+
 async def _resolve_vacancy_id(
     session: AsyncSession, org_id: str, vacancy_id: str | None, vacancy_title: str | None
 ) -> str | None:
@@ -352,7 +370,7 @@ async def _resolve_vacancy_id(
 
 
 async def create_candidate(session: AsyncSession, data: CandidateCreate) -> str:
-    org_id = await _default_org_id(session)
+    org_id = await _org(session)
     vacancy_id = await _resolve_vacancy_id(session, org_id, data.vacancy_id, data.vacancy_title)
     person = Person(
         organization_id=org_id,
@@ -438,7 +456,7 @@ async def import_candidates(session: AsyncSession, rows: list[dict]):
 
 async def update_candidate(session: AsyncSession, person_id: str, data) -> bool:
     person = await session.get(Person, person_id)
-    if person is None or person.candidate_profile is None:
+    if person is None or person.candidate_profile is None or not _owns(person.organization_id):
         return False
     profile = person.candidate_profile
     changes = data.model_dump(exclude_unset=True)
@@ -586,7 +604,7 @@ async def _answers_from_session(session: AsyncSession, sess: AssessmentSession) 
 
 async def get_candidate_answers(session: AsyncSession, person_id: str) -> CandidateAnswers | None:
     person = await session.get(Person, person_id)
-    if person is None or person.candidate_profile is None:
+    if person is None or person.candidate_profile is None or not _owns(person.organization_id):
         return None
     sess = await latest_session(session, person_id)
     if sess is None:
@@ -621,7 +639,7 @@ async def get_candidate_answers(session: AsyncSession, person_id: str) -> Candid
 
 async def list_person_assessments(session: AsyncSession, person_id: str) -> PersonAssessments | None:
     person = await session.get(Person, person_id)
-    if person is None:
+    if person is None or not _owns(person.organization_id):
         return None
     sessions = (
         await session.execute(
@@ -665,15 +683,17 @@ async def list_person_assessments(session: AsyncSession, person_id: str) -> Pers
 
 async def list_reports(session: AsyncSession) -> ReportList:
     """Реестр отчётов — все завершённые сессии оценки (кандидаты + сотрудники)."""
-    sessions = (
-        await session.execute(
-            select(AssessmentSession)
-            .where(AssessmentSession.status.in_([
-                SessionStatus.scored.value, SessionStatus.reviewed.value, SessionStatus.submitted.value,
-            ]))
-            .order_by(AssessmentSession.submitted_at.desc().nullslast())
-        )
-    ).scalars().all()
+    _org = get_current_org()
+    _rep_stmt = (
+        select(AssessmentSession)
+        .where(AssessmentSession.status.in_([
+            SessionStatus.scored.value, SessionStatus.reviewed.value, SessionStatus.submitted.value,
+        ]))
+        .order_by(AssessmentSession.submitted_at.desc().nullslast())
+    )
+    if _org is not None:
+        _rep_stmt = _rep_stmt.where(AssessmentSession.organization_id == _org)
+    sessions = (await session.execute(_rep_stmt)).scalars().all()
     person_ids = {s.person_id for s in sessions if s.person_id}
     test_ids = {s.test_id for s in sessions}
     persons = {}
@@ -715,7 +735,7 @@ ROLE_WEIGHTS_360 = {"manager": 0.4, "peer": 0.35, "report": 0.25}
 async def get_360_report(session: AsyncSession, subject_id: str) -> Report360 | None:
     """Сводка 360 по оцениваемому: самооценка vs взвешенная внешняя по компетенциям."""
     person = await session.get(Person, subject_id)
-    if person is None:
+    if person is None or not _owns(person.organization_id):
         return None
     done = [SessionStatus.scored.value, SessionStatus.reviewed.value, SessionStatus.submitted.value]
     rows = (await session.execute(
@@ -790,7 +810,7 @@ async def get_360_report(session: AsyncSession, subject_id: str) -> Report360 | 
 
 async def get_session_answers(session: AsyncSession, session_id: str) -> CandidateAnswers | None:
     sess = await session.get(AssessmentSession, session_id)
-    if sess is None:
+    if sess is None or not _owns(sess.organization_id):
         return None
     test = await session.get(Test, sess.test_id)
     person = await session.get(Person, sess.person_id)
@@ -822,7 +842,7 @@ async def record_result(
     """Записывает результат прохождения теста: новая сессия + баллы по компетенциям,
     продвигает кандидата по воронке. Возвращает id созданной сессии или None."""
     person = await session.get(Person, person_id)
-    if person is None or person.candidate_profile is None:
+    if person is None or person.candidate_profile is None or not _owns(person.organization_id):
         return None
     resolved = await _default_candidate_test(session)
     if resolved is None:
@@ -911,21 +931,30 @@ async def record_result(
 async def get_stats(session: AsyncSession) -> CandidateStats:
     latest = _latest_session_subq()
 
+    _org = get_current_org()
+
     async def scalar(stmt) -> int:
         return (await session.execute(stmt)).scalar_one()
 
     def profiles_count():
-        return (
+        stmt = (
             select(func.count())
             .select_from(CandidateProfile)
             .join(Person, Person.id == CandidateProfile.person_id)
         )
+        if _org is not None:
+            stmt = stmt.where(Person.organization_id == _org)
+        return stmt
 
     total = await scalar(profiles_count())
     interview = await scalar(profiles_count().where(CandidateProfile.stage == "interview"))
     accepted = await scalar(profiles_count().where(CandidateProfile.stage == "accepted"))
-    # «Оценка отправлена» = число сгенерированных ссылок-приглашений.
-    assessment_sent = await scalar(select(func.count()).select_from(AssessmentLink))
+    # «Оценка отправлена» = число кандидатских ссылок-приглашений (без сотрудничьих
+    # 360/адаптации), чтобы значение совпадало со списком в дрилл-дауне.
+    _sent_stmt = select(func.count()).select_from(AssessmentLink).where(AssessmentLink.recipient_type != "employee")
+    if _org is not None:
+        _sent_stmt = _sent_stmt.where(AssessmentLink.organization_id == _org)
+    assessment_sent = await scalar(_sent_stmt)
 
     def latest_count(*conds):
         stmt = select(func.count()).select_from(latest)
@@ -951,24 +980,21 @@ async def get_stats(session: AsyncSession) -> CandidateStats:
         ).scalar_one()
     )
 
-    source_rows = (
-        await session.execute(
-            select(CandidateProfile.source, func.count())
-            .group_by(CandidateProfile.source)
-            .order_by(func.count().desc())
-        )
-    ).all()
+    _src_stmt = select(CandidateProfile.source, func.count())
+    _stg_stmt = select(CandidateProfile.stage, func.count())
+    if _org is not None:
+        _src_stmt = _src_stmt.join(Person, Person.id == CandidateProfile.person_id).where(Person.organization_id == _org)
+        _stg_stmt = _stg_stmt.join(Person, Person.id == CandidateProfile.person_id).where(Person.organization_id == _org)
+    source_rows = (await session.execute(
+        _src_stmt.group_by(CandidateProfile.source).order_by(func.count().desc())
+    )).all()
     by_source = [
         SourceBreakdown(source=src or "Без источника", count=cnt) for src, cnt in source_rows
     ]
 
-    stage_rows = (
-        await session.execute(
-            select(CandidateProfile.stage, func.count())
-            .group_by(CandidateProfile.stage)
-            .order_by(func.count().desc())
-        )
-    ).all()
+    stage_rows = (await session.execute(
+        _stg_stmt.group_by(CandidateProfile.stage).order_by(func.count().desc())
+    )).all()
     by_stage = [StageBreakdown(stage=stg or "—", count=cnt) for stg, cnt in stage_rows]
 
     by_vacancy = await _by_vacancy(session, latest)
@@ -1076,6 +1102,7 @@ async def get_heatmap(session: AsyncSession) -> CandidateHeatmap:
             .join(Person, Person.id == CandidateProfile.person_id)
             .outerjoin(Vacancy, Vacancy.id == CandidateProfile.vacancy_id)
             .outerjoin(latest, latest.c.person_id == Person.id)
+            .where(*([Person.organization_id == get_current_org()] if get_current_org() is not None else []))
             .group_by(vacancy_label, source_label)
         )
     ).all()

@@ -5,33 +5,103 @@ export const API_BASE =
   (typeof window !== "undefined" && window.ELTERA_API_BASE) ||
   "http://localhost:8000/api";
 
+// ── Токены (localStorage) ───────────────────────────────────────────────────
+const TOKENS_KEY = "eltera_tokens";
+export function getTokens() {
+  try { return JSON.parse(localStorage.getItem(TOKENS_KEY) || "null"); } catch { return null; }
+}
+export function setTokens(t) {
+  if (t && t.access_token) localStorage.setItem(TOKENS_KEY, JSON.stringify(t));
+  else localStorage.removeItem(TOKENS_KEY);
+}
+export function clearTokens() { localStorage.removeItem(TOKENS_KEY); }
+
+let _refreshing = null;
+function doRefresh() {
+  const t = getTokens();
+  if (!t || !t.refresh_token) return Promise.resolve(false);
+  if (!_refreshing) {
+    _refreshing = fetch(`${API_BASE}/auth/refresh`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: t.refresh_token }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) { setTokens({ access_token: d.access_token, refresh_token: d.refresh_token }); return true; } clearTokens(); return false; })
+      .catch(() => { clearTokens(); return false; })
+      .finally(() => { _refreshing = null; });
+  }
+  return _refreshing;
+}
+
+function onAuthFail() {
+  clearTokens();
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("eltera-logout"));
+}
+
+// Базовый запрос: подставляет Bearer, при 401 — один refresh и повтор.
+async function rawFetch(path, opts = {}, isRetry = false) {
+  const t = getTokens();
+  const headers = { ...(opts.headers || {}) };
+  if (t && t.access_token) headers.Authorization = `Bearer ${t.access_token}`;
+  const res = await fetch(`${API_BASE}${path}`, { ...opts, headers });
+  if (res.status === 401 && !isRetry && !path.startsWith("/auth/")) {
+    const ok = await doRefresh();
+    if (ok) return rawFetch(path, opts, true);
+    onAuthFail();
+  }
+  return res;
+}
+
 async function getJSON(path) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { Accept: "application/json" }
-  });
+  const res = await rawFetch(path, { headers: { Accept: "application/json" } });
   if (!res.ok) throw new Error(`API ${path} → ${res.status}`);
   return res.json();
 }
 
 async function postJSON(path, body) {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await rawFetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`API ${path} → ${res.status}`);
   return res.json();
 }
 
 async function patchJSON(path, body) {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await rawFetch(path, {
     method: "PATCH",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`API ${path} → ${res.status}`);
   return res.json();
 }
+
+// ── Аутентификация ──────────────────────────────────────────────────────────
+async function authRequest(path, body) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  let data = null;
+  try { data = await res.json(); } catch { /* 204 */ }
+  if (!res.ok) {
+    const msg = (data && data.detail) || `Ошибка ${res.status}`;
+    throw new Error(typeof msg === "string" ? msg : "Ошибка авторизации");
+  }
+  return data;
+}
+export function authLogin(email, password) { return authRequest("/auth/login", { email, password }); }
+export function authRegister(payload) { return authRequest("/auth/register", payload); }
+export async function authLogout() {
+  const t = getTokens();
+  if (t && t.refresh_token) {
+    try { await authRequest("/auth/logout", { refresh_token: t.refresh_token }); } catch { /* ignore */ }
+  }
+  clearTokens();
+}
+export function authMe() { return getJSON("/auth/me"); }
 
 // Частичное обновление кандидата (например, смена этапа воронки).
 export function updateCandidate(personId, payload) {
@@ -41,6 +111,11 @@ export function updateCandidate(personId, payload) {
 // Создать кандидата (Person + candidate_profile).
 export function createCandidate(payload) {
   return postJSON(`/candidates`, payload);
+}
+
+// Перевести кандидата в сотрудники (создаёт employee_profile, удаляет candidate_profile).
+export function convertCandidateToEmployee(personId, payload) {
+  return postJSON(`/candidates/${personId}/convert`, payload);
 }
 
 // Записать результат прохождения теста кандидатом.
@@ -82,7 +157,7 @@ export function candidateImportTemplateUrl() {
 export async function importCandidates(file) {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch(`${API_BASE}/candidates/import`, { method: "POST", body: form });
+  const res = await rawFetch(`/candidates/import`, { method: "POST", body: form });
   if (!res.ok) {
     let detail = `API /candidates/import → ${res.status}`;
     try { const j = await res.json(); if (j.detail) detail = j.detail; } catch { /* ignore */ }
@@ -143,7 +218,7 @@ export function employeeImportTemplateUrl() {
 export async function importEmployees(file) {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch(`${API_BASE}/employees/import`, { method: "POST", body: form });
+  const res = await rawFetch(`/employees/import`, { method: "POST", body: form });
   if (!res.ok) {
     let detail = `API /employees/import → ${res.status}`;
     try { const j = await res.json(); if (j.detail) detail = j.detail; } catch { /* ignore */ }
@@ -159,6 +234,17 @@ export function fetchEmployeeStats() {
 export function fetchEmployee(personId) {
   return getJSON(`/employees/${personId}`);
 }
+
+// Создать сотрудника (Person + employee_profile). Отдел/руководитель — по имени.
+export function createEmployee(payload) {
+  return postJSON(`/employees`, payload);
+}
+
+// ИИ-ассистент: отправить историю сообщений, получить {reply, action}.
+export function assistantChat(messages) {
+  return postJSON(`/assistant/chat`, { messages });
+}
+
 
 // Все оценки сотрудника по каждому тесту + средний балл.
 export function fetchEmployeeAssessments(personId) {
@@ -231,15 +317,23 @@ export function fetchOrgTree() {
   return getJSON(`/structure`);
 }
 
-// Список тестов/профилей (для мастера «Создать оценку» и конструктора).
-// params: { q?: строка поиска по названию, limit?: число, target_type?: строка }.
+// Список тестов/профилей (для мастера, конструктора и библиотеки).
+// params: { q?, limit?, target_type?, category?: string|string[], level?: string|string[] }.
 export function fetchTests(params = {}) {
   const qs = new URLSearchParams();
   if (params.q) qs.set("q", params.q);
   if (params.limit) qs.set("limit", String(params.limit));
   if (params.target_type) qs.set("target_type", params.target_type);
+  const arr = (v) => (Array.isArray(v) ? v : v ? [v] : []);
+  arr(params.category).forEach((c) => qs.append("category", c));
+  arr(params.level).forEach((l) => qs.append("level", l));
   const suffix = qs.toString();
   return getJSON(`/tests${suffix ? `?${suffix}` : ""}`);
+}
+
+// Таксономия библиотеки: { directions[], universal[], levels[] }.
+export function fetchTaxonomy() {
+  return getJSON(`/tests/taxonomy`);
 }
 
 // --- Конструктор тестов ---
@@ -259,7 +353,7 @@ export function libraryImportTemplateUrl() {
 export async function importLibrary(file) {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch(`${API_BASE}/tests/library/import`, { method: "POST", body: form });
+  const res = await rawFetch(`/tests/library/import`, { method: "POST", body: form });
   if (!res.ok) {
     let detail = `API /tests/library/import → ${res.status}`;
     try { const j = await res.json(); if (j.detail) detail = j.detail; } catch { /* ignore */ }
@@ -303,7 +397,7 @@ export function removeProfileCompetency(testId, competencyId) {
 }
 
 async function deleteJSON(path) {
-  const res = await fetch(`${API_BASE}${path}`, { method: "DELETE" });
+  const res = await rawFetch(path, { method: "DELETE" });
   if (!res.ok) throw new Error(`API ${path} → ${res.status}`);
   return res.status === 204 ? null : res.json();
 }

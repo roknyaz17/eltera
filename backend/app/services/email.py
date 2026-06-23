@@ -10,7 +10,9 @@ import asyncio
 import html
 import logging
 import smtplib
+from email.header import Header
 from email.message import EmailMessage
+from email.utils import formataddr, parseaddr
 
 from app.core.config import get_settings
 
@@ -27,12 +29,30 @@ def _assess_url(token: str) -> str:
     return f"{base}/#/assess/{token}"
 
 
+def _fmt_addr(value: str) -> tuple[str, str]:
+    """Возвращает (заголовок, чистый_адрес). Display-имя кодируем в RFC2047,
+    чтобы заголовок остался ASCII; чистый адрес передаём в конверт явно —
+    тогда smtplib не требует SMTPUTF8 (его нет у многих SMTP, напр. reg.ru)."""
+    name, addr = parseaddr(value or "")
+    if name:
+        try:
+            name.encode("ascii")
+            header = formataddr((name, addr))
+        except UnicodeEncodeError:
+            header = formataddr((str(Header(name, "utf-8")), addr))
+    else:
+        header = addr
+    return header, addr
+
+
 def _send_sync(to: str, subject: str, html_body: str, text_body: str) -> bool:
     s = get_settings()
+    from_header, from_addr = _fmt_addr(s.smtp_from)
+    to_header, to_addr = _fmt_addr(to)
     msg = EmailMessage()
     msg["Subject"] = subject
-    msg["From"] = s.smtp_from
-    msg["To"] = to
+    msg["From"] = from_header
+    msg["To"] = to_header
     msg.set_content(text_body)
     msg.add_alternative(html_body, subtype="html")
     try:
@@ -40,14 +60,14 @@ def _send_sync(to: str, subject: str, html_body: str, text_body: str) -> bool:
             with smtplib.SMTP_SSL(s.smtp_host, s.smtp_port, timeout=15) as srv:
                 if s.smtp_user:
                     srv.login(s.smtp_user, s.smtp_password or "")
-                srv.send_message(msg)
+                srv.send_message(msg, from_addr=from_addr, to_addrs=[to_addr])
         else:
             with smtplib.SMTP(s.smtp_host, s.smtp_port, timeout=15) as srv:
                 if s.smtp_tls:
                     srv.starttls()
                 if s.smtp_user:
                     srv.login(s.smtp_user, s.smtp_password or "")
-                srv.send_message(msg)
+                srv.send_message(msg, from_addr=from_addr, to_addrs=[to_addr])
         return True
     except Exception:  # noqa: BLE001 — письмо не должно ронять бизнес-логику
         logger.exception("Не удалось отправить письмо на %s", to)

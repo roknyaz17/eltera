@@ -40,6 +40,20 @@ class EmployeeCreate(EmployeeBase):
     manager_name: str | None = Field(None, max_length=300)
 
 
+class ConvertToEmployee(BaseModel):
+    """Перевод кандидата в сотрудники: данные о трудоустройстве (имя/контакты
+    берутся из существующего Person)."""
+    position: str | None = Field(None, max_length=160)
+    department_id: str | None = None
+    department_name: str | None = Field(None, max_length=160)
+    manager_id: str | None = None
+    manager_name: str | None = Field(None, max_length=300)
+    project: str | None = Field(None, max_length=160)
+    start_date: date | None = None
+    employment_type: str | None = Field(None, max_length=60)
+    carry_fit: bool = True  # перенести % последней оценки в «соответствие»
+
+
 class EmployeeUpdate(BaseModel):
     last_name: str | None = None
     first_name: str | None = None

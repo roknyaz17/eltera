@@ -5,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_session
 from app.schemas.assessment import AssessmentForm, AssessmentResult, SubmitPayload
 from app.services import assessment_flow as flow
-from app.services.report_jobs import generate_and_store_narrative
 
 router = APIRouter(prefix="/assess", tags=["assessment"])
 
@@ -29,6 +28,7 @@ async def submit(
         result = await flow.submit(session, token, payload)
     except flow.FlowError as exc:
         raise HTTPException(exc.status_code, exc.detail) from exc
-    # Нарратив отчёта генерим в фоне — кандидата не держим в ожидании AI.
-    background_tasks.add_task(generate_and_store_narrative, result.session_id)
+    # Фоновая финализация: AI-скоринг открытых вопросов + пересчёт + воронка/fit
+    # + письмо HR + нарратив. Пользователь не ждёт AI при «Завершить».
+    background_tasks.add_task(flow.finalize_session, result.session_id)
     return result

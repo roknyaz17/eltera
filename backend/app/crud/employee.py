@@ -5,6 +5,8 @@ from pydantic import ValidationError
 from sqlalchemy import and_, asc, case, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.org_context import get_current_org
+
 from app.models.assessment import AssessmentSession, SessionCompetencyScore
 from app.models.base import gen_uuid, utcnow
 from app.models.catalog import Competency, Department
@@ -15,7 +17,7 @@ from app.models.enums import (
     SessionStatus,
 )
 from app.models.organization import Organization
-from app.models.person import EmployeeProfile, Person
+from app.models.person import CandidateProfile, EmployeeProfile, Person
 from app.models.test import Test, TestVersion
 from app.schemas.employee import (
     DepartmentCreate,
@@ -51,6 +53,15 @@ async def _default_org_id(session: AsyncSession) -> str:
         await session.flush()
         org_id = org.id
     return org_id
+
+
+async def _org(session: AsyncSession) -> str:
+    return get_current_org() or await _default_org_id(session)
+
+
+def _owns(org_id) -> bool:
+    cur = get_current_org()
+    return cur is None or org_id == cur
 
 
 def _compose_name(data) -> str:
@@ -111,6 +122,9 @@ async def list_employees(
     project: str | None = None,
 ) -> tuple[Sequence[EmployeeRead], int]:
     conditions = []
+    _org = get_current_org()
+    if _org is not None:
+        conditions.append(Person.organization_id == _org)
     if search:
         pattern = f"%{search.lower()}%"
         conditions.append(
@@ -156,7 +170,7 @@ async def list_employees(
 
 async def get_employee(session: AsyncSession, person_id: str) -> EmployeeRead | None:
     person = await session.get(Person, person_id)
-    if person is None or person.employee_profile is None:
+    if person is None or person.employee_profile is None or not _owns(person.organization_id):
         return None
     ep = person.employee_profile
     dept_name = None
@@ -202,7 +216,7 @@ async def _resolve_manager(session, org_id, manager_id, manager_name) -> str | N
 
 
 async def create_employee(session: AsyncSession, data: EmployeeCreate) -> str:
-    org_id = await _default_org_id(session)
+    org_id = await _org(session)
     dept_id = await _resolve_department(session, org_id, data.department_id, data.department_name)
     manager_id = await _resolve_manager(session, org_id, data.manager_id, data.manager_name)
     person = Person(
@@ -221,6 +235,47 @@ async def create_employee(session: AsyncSession, data: EmployeeCreate) -> str:
     return person.id
 
 
+async def convert_candidate_to_employee(session: AsyncSession, person_id: str, data) -> str | None:
+    """Транзакция «кандидат → сотрудник»: тому же Person создаём employee_profile
+    и удаляем candidate_profile. Возвращает person_id, либо строку-причину отказа
+    ('not_candidate'/'already_employee'), либо None если человек не найден."""
+    person = await session.get(Person, person_id)
+    if person is None or not _owns(person.organization_id):
+        return None
+    cand = (await session.execute(
+        select(CandidateProfile).where(CandidateProfile.person_id == person_id)
+    )).scalar_one_or_none()
+    if cand is None:
+        return "not_candidate"
+    existing = (await session.execute(
+        select(EmployeeProfile).where(EmployeeProfile.person_id == person_id)
+    )).scalar_one_or_none()
+    if existing is not None:
+        return "already_employee"
+
+    org_id = person.organization_id or await _default_org_id(session)
+    dept_id = await _resolve_department(session, org_id, data.department_id, data.department_name)
+    manager_id = await _resolve_manager(session, org_id, data.manager_id, data.manager_name)
+
+    fit = None
+    if data.carry_fit:
+        fit = (await session.execute(
+            select(AssessmentSession.percent)
+            .where(AssessmentSession.person_id == person_id, AssessmentSession.percent.isnot(None))
+            .order_by(AssessmentSession.submitted_at.desc())
+            .limit(1)
+        )).scalar_one_or_none()
+
+    session.add(EmployeeProfile(
+        person_id=person_id, department_id=dept_id, position=data.position,
+        manager_id=manager_id, project=data.project, start_date=data.start_date,
+        employment_type=data.employment_type, fit=fit,
+    ))
+    await session.delete(cand)
+    await session.commit()
+    return person_id
+
+
 async def import_employees(session: AsyncSession, rows: list[dict]):
     """Создаёт сотрудников из распарсенных строк Excel.
 
@@ -230,7 +285,7 @@ async def import_employees(session: AsyncSession, rows: list[dict]):
     """
     from app.schemas.employee import ImportResult, ImportRowError
 
-    org_id = await _default_org_id(session)
+    org_id = await _org(session)
     existing = (await session.execute(
         select(Person.full_name, Person.email).where(Person.organization_id == org_id)
     )).all()
@@ -320,7 +375,7 @@ async def import_employees(session: AsyncSession, rows: list[dict]):
 
 async def update_employee(session: AsyncSession, person_id: str, data) -> bool:
     person = await session.get(Person, person_id)
-    if person is None or person.employee_profile is None:
+    if person is None or person.employee_profile is None or not _owns(person.organization_id):
         return False
     ep = person.employee_profile
     changes = data.model_dump(exclude_unset=True)
@@ -346,7 +401,7 @@ async def update_employee(session: AsyncSession, person_id: str, data) -> bool:
 
 async def delete_employee(session: AsyncSession, person_id: str) -> bool:
     person = await session.get(Person, person_id)
-    if person is None or person.employee_profile is None:
+    if person is None or person.employee_profile is None or not _owns(person.organization_id):
         return False
     await session.delete(person)
     await session.commit()
@@ -363,6 +418,8 @@ async def record_employee_result(
     """Записывает результат оценки сотрудника: сессия + баллы по компетенциям,
     обновляет fit/рекомендацию сотрудника. Возвращает id сессии или None."""
     person = await session.get(Person, person_id)
+    if person is not None and not _owns(person.organization_id):
+        return None
     if person is None or person.employee_profile is None:
         return None
 
@@ -429,15 +486,23 @@ async def record_employee_result(
 
 
 async def get_employee_stats(session: AsyncSession) -> EmployeeStats:
+    _org = get_current_org()
+    _ef = [EmployeeProfile.person_id == Person.id] + ([Person.organization_id == _org] if _org else [])
+
     async def scalar(stmt) -> int:
         return (await session.execute(stmt)).scalar_one()
 
     def base():
-        return (
-            select(func.count())
-            .select_from(EmployeeProfile)
-            .join(Person, Person.id == EmployeeProfile.person_id)
-        )
+        stmt = select(func.count()).select_from(EmployeeProfile).join(Person, Person.id == EmployeeProfile.person_id)
+        if _org is not None:
+            stmt = stmt.where(Person.organization_id == _org)
+        return stmt
+
+    def _avg(col):
+        stmt = select(func.coalesce(func.avg(col), 0.0)).select_from(EmployeeProfile)
+        if _org is not None:
+            stmt = stmt.join(Person, Person.id == EmployeeProfile.person_id).where(Person.organization_id == _org)
+        return stmt
 
     # fit может быть NULL («не оценён») — такие сотрудники не попадают ни в один
     # из порогов (NULL-сравнения → false), т.е. не считаются «низкими».
@@ -457,27 +522,30 @@ async def get_employee_stats(session: AsyncSession) -> EmployeeStats:
             func.lower(EmployeeProfile.burnout).notin_(["нет", "—", ""]),
         )
     )
-    avg_sat = float((await session.execute(
-        select(func.coalesce(func.avg(EmployeeProfile.satisfaction), 0.0))
-    )).scalar_one())
-    avg_fit = float((await session.execute(
-        select(func.coalesce(func.avg(EmployeeProfile.fit), 0.0))
-    )).scalar_one())
+    avg_sat = float((await session.execute(_avg(EmployeeProfile.satisfaction))).scalar_one())
+    avg_fit = float((await session.execute(_avg(EmployeeProfile.fit))).scalar_one())
 
-    dept_rows = (await session.execute(
+    dept_stmt = (
         select(func.coalesce(Department.name, "Без отдела"), func.count())
         .select_from(EmployeeProfile)
         .join(Person, Person.id == EmployeeProfile.person_id)
         .outerjoin(Department, Department.id == EmployeeProfile.department_id)
-        .group_by(func.coalesce(Department.name, "Без отдела"))
-        .order_by(func.count().desc())
+    )
+    risk_stmt = (
+        select(EmployeeProfile.turnover_risk, func.count())
+        .select_from(EmployeeProfile)
+        .join(Person, Person.id == EmployeeProfile.person_id)
+    )
+    if _org is not None:
+        dept_stmt = dept_stmt.where(Person.organization_id == _org)
+        risk_stmt = risk_stmt.where(Person.organization_id == _org)
+    dept_rows = (await session.execute(
+        dept_stmt.group_by(Department.name).order_by(func.count().desc())
     )).all()
     by_department = [DeptBreakdown(department=d, count=c) for d, c in dept_rows]
 
     risk_rows = (await session.execute(
-        select(EmployeeProfile.turnover_risk, func.count())
-        .group_by(EmployeeProfile.turnover_risk)
-        .order_by(func.count().desc())
+        risk_stmt.group_by(EmployeeProfile.turnover_risk).order_by(func.count().desc())
     )).all()
     by_risk = [RiskBreakdown(level=lvl, count=c) for lvl, c in risk_rows]
 
@@ -511,7 +579,7 @@ async def list_departments(session: AsyncSession) -> list[DepartmentRead]:
 
 
 async def create_department(session: AsyncSession, data: DepartmentCreate) -> str:
-    org_id = await _default_org_id(session)
+    org_id = await _org(session)
     dept = Department(
         organization_id=org_id, name=data.name,
         head_person_id=data.head_person_id, parent_department_id=data.parent_department_id,
@@ -525,12 +593,18 @@ async def create_department(session: AsyncSession, data: DepartmentCreate) -> st
 
 
 async def build_org_tree(session: AsyncSession) -> OrgTree:
-    rows = (await session.execute(
+    _org = get_current_org()
+    _tree_stmt = (
         select(Person, EmployeeProfile, Department.name.label("dept"))
         .join(EmployeeProfile, EmployeeProfile.person_id == Person.id)
         .outerjoin(Department, Department.id == EmployeeProfile.department_id)
-    )).all()
-    depts = (await session.execute(select(Department))).scalars().all()
+    )
+    _dept_stmt = select(Department)
+    if _org is not None:
+        _tree_stmt = _tree_stmt.where(Person.organization_id == _org)
+        _dept_stmt = _dept_stmt.where(Department.organization_id == _org)
+    rows = (await session.execute(_tree_stmt)).all()
+    depts = (await session.execute(_dept_stmt)).scalars().all()
     heads = {d.head_person_id for d in depts if d.head_person_id}
 
     node_map: dict[str, OrgNode] = {}
@@ -553,7 +627,7 @@ async def build_org_tree(session: AsyncSession) -> OrgTree:
 
 
 async def add_structure_member(session: AsyncSession, data: StructureMemberCreate) -> str:
-    org_id = await _default_org_id(session)
+    org_id = await _org(session)
     dept_id = await _resolve_department(session, org_id, data.department_id, data.department_name)
     person = Person(organization_id=org_id, full_name=data.full_name)
     person.employee_profile = EmployeeProfile(

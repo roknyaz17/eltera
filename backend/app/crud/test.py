@@ -1,9 +1,11 @@
 """Конструктор тестов: создание тестов и динамическое управление вопросами."""
 from collections import defaultdict
 
-from sqlalchemy import delete, func, insert, select
+from sqlalchemy import delete, func, insert, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+
+from app.core.org_context import get_current_org
 
 from app.models.base import gen_uuid, utcnow
 from app.models.catalog import Competency
@@ -49,6 +51,31 @@ async def _default_org_id(session: AsyncSession) -> str:
     return org_id
 
 
+async def _org(session: AsyncSession) -> str:
+    """Текущая организация из контекста (или дефолтная — для сидов/скриптов)."""
+    return get_current_org() or await _default_org_id(session)
+
+
+def _visible_org_clause(model):
+    """Видно: общий каталог (organization_id IS NULL) + свой (== текущая орг.)."""
+    org = get_current_org()
+    if org is None:
+        return None  # вне запроса — без доп. фильтра
+    return or_(model.organization_id.is_(None), model.organization_id == org)
+
+
+def _can_read(org_id) -> bool:
+    """Чтение: общий каталог (None) или свой."""
+    cur = get_current_org()
+    return cur is None or org_id is None or org_id == cur
+
+
+def _can_write(org_id) -> bool:
+    """Запись: только свой (общий каталог не редактируется компаниями)."""
+    cur = get_current_org()
+    return cur is None or org_id == cur
+
+
 def _slug(title: str) -> str:
     return title.strip().lower().replace(" ", "_")[:80] or "competency"
 
@@ -67,7 +94,7 @@ def _question_max(data: QuestionCreate) -> int:
 
 
 async def create_test(session: AsyncSession, data: TestCreate) -> str:
-    org_id = await _default_org_id(session)
+    org_id = await _org(session)
     test = Test(
         organization_id=org_id, title=data.title, category=data.category,
         summary=data.summary, target_type=data.target_type.value, is_system=False,
@@ -88,7 +115,7 @@ async def create_test(session: AsyncSession, data: TestCreate) -> str:
 
 async def update_test(session: AsyncSession, test_id: str, data: TestUpdate) -> bool:
     test = await session.get(Test, test_id)
-    if test is None:
+    if test is None or not _can_write(test.organization_id):
         return False
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(test, field, value)
@@ -98,7 +125,7 @@ async def update_test(session: AsyncSession, test_id: str, data: TestUpdate) -> 
 
 async def delete_test(session: AsyncSession, test_id: str) -> bool:
     test = await session.get(Test, test_id)
-    if test is None:
+    if test is None or not _can_write(test.organization_id):
         return False
     await session.delete(test)
     await session.commit()
@@ -134,7 +161,7 @@ async def _current_version_id(session: AsyncSession, test: Test) -> str | None:
 
 async def get_test_detail(session: AsyncSession, test_id: str) -> TestDetail | None:
     test = await session.get(Test, test_id)
-    if test is None:
+    if test is None or not _can_read(test.organization_id):
         return None
     version_id = await _current_version_id(session, test)
     questions: list[QuestionView] = []
@@ -211,7 +238,7 @@ async def _resolve_competency(session: AsyncSession, org_id: str, name: str | No
 
 async def add_question(session: AsyncSession, test_id: str, data: QuestionCreate) -> str | None:
     test = await session.get(Test, test_id)
-    if test is None:
+    if test is None or not _can_write(test.organization_id):
         return None
     version_id = await _current_version_id(session, test)
     if version_id is None:
@@ -287,10 +314,11 @@ async def _competency_q_counts(session: AsyncSession) -> dict:
 
 
 async def list_competencies(session: AsyncSession) -> list[CompetencyRead]:
-    org_id = await _default_org_id(session)
-    comps = (await session.execute(
-        select(Competency).where(Competency.organization_id == org_id).order_by(Competency.title)
-    )).scalars().all()
+    stmt = select(Competency).order_by(Competency.title)
+    clause = _visible_org_clause(Competency)
+    if clause is not None:
+        stmt = stmt.where(clause)
+    comps = (await session.execute(stmt)).scalars().all()
     counts = await _competency_q_counts(session)
     return [
         CompetencyRead(id=c.id, key=c.key, title=c.title, kind=c.kind,
@@ -301,7 +329,7 @@ async def list_competencies(session: AsyncSession) -> list[CompetencyRead]:
 
 async def get_competency_detail(session: AsyncSession, comp_id: str) -> CompetencyDetail | None:
     comp = await session.get(Competency, comp_id)
-    if comp is None:
+    if comp is None or not _can_read(comp.organization_id):
         return None
     qvs = await _published_qvs_for_competency(session, comp_id)
     views = [_qv_view(qv, comp.title, i) for i, qv in enumerate(qvs)]
@@ -316,7 +344,7 @@ def _norm_kind(kind: str | None) -> str:
 
 
 async def create_competency(session: AsyncSession, data: CompetencyCreate) -> str:
-    org_id = await _default_org_id(session)
+    org_id = await _org(session)
     comp = Competency(id=gen_uuid(), organization_id=org_id, key=_slug(data.title),
                       title=data.title, description=data.description, kind=_norm_kind(data.kind))
     session.add(comp)
@@ -326,7 +354,7 @@ async def create_competency(session: AsyncSession, data: CompetencyCreate) -> st
 
 async def update_competency(session: AsyncSession, comp_id: str, data: CompetencyUpdate) -> bool:
     comp = await session.get(Competency, comp_id)
-    if comp is None:
+    if comp is None or not _can_write(comp.organization_id):
         return False
     if data.title is not None:
         comp.title = data.title
@@ -340,7 +368,7 @@ async def update_competency(session: AsyncSession, comp_id: str, data: Competenc
 
 async def delete_competency(session: AsyncSession, comp_id: str) -> bool:
     comp = await session.get(Competency, comp_id)
-    if comp is None:
+    if comp is None or not _can_write(comp.organization_id):
         return False
     affected = await _profiles_using_competency(session, comp_id)
     await session.delete(comp)  # каскад: вопросы, версии, варианты, items, TVC
@@ -353,7 +381,7 @@ async def delete_competency(session: AsyncSession, comp_id: str) -> bool:
 
 async def add_question_to_competency(session: AsyncSession, comp_id: str, data: QuestionCreate) -> str | None:
     comp = await session.get(Competency, comp_id)
-    if comp is None:
+    if comp is None or not _can_write(comp.organization_id):
         return None
     q = Question(organization_id=comp.organization_id, competency_id=comp_id,
                  scope=(QuestionScope.common.value if comp.kind == "common" else QuestionScope.professional.value),
@@ -380,6 +408,9 @@ async def add_question_to_competency(session: AsyncSession, comp_id: str, data: 
 
 
 async def delete_competency_question(session: AsyncSession, comp_id: str, question_version_id: str) -> bool:
+    _comp = await session.get(Competency, comp_id)
+    if _comp is not None and not _can_write(_comp.organization_id):
+        return False
     qv = await session.get(QuestionVersion, question_version_id)
     if qv is None:
         return False
@@ -424,7 +455,7 @@ async def _rebuild_profile_items(session: AsyncSession, test: Test) -> None:
 
 async def add_competency_to_profile(session: AsyncSession, test_id: str, comp_id: str, weight: float = 1.0):
     test = await session.get(Test, test_id)
-    if test is None:
+    if test is None or not _can_write(test.organization_id):
         return None
     comp = await session.get(Competency, comp_id)
     if comp is None:
@@ -454,7 +485,7 @@ async def add_competency_to_profile(session: AsyncSession, test_id: str, comp_id
 
 async def remove_competency_from_profile(session: AsyncSession, test_id: str, comp_id: str):
     test = await session.get(Test, test_id)
-    if test is None:
+    if test is None or not _can_write(test.organization_id):
         return None
     vid = await _current_version_id(session, test)
     if vid:
@@ -482,7 +513,7 @@ async def import_library(session: AsyncSession, parsed: dict) -> dict:
     Оптимизировано под большие файлы: справочники предзагружаются пакетно
     (без N+1), позиции профилей вставляются bulk-INSERT'ом чанками.
     """
-    org_id = await _default_org_id(session)
+    org_id = await _org(session)
     result = {
         "competencies_created": 0, "competencies_updated": 0,
         "questions_created": 0, "questions_skipped": 0,
@@ -650,7 +681,7 @@ async def import_library(session: AsyncSession, parsed: dict) -> dict:
 
 async def delete_question(session: AsyncSession, test_id: str, question_version_id: str) -> bool:
     test = await session.get(Test, test_id)
-    if test is None:
+    if test is None or not _can_write(test.organization_id):
         return False
     version_id = await _current_version_id(session, test)
     item = (await session.execute(

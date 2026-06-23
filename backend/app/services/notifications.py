@@ -171,13 +171,16 @@ async def sync_notifications(session: AsyncSession) -> int:
 
 
 async def list_notifications(session: AsyncSession) -> NotificationList:
+    from app.core.org_context import get_current_org
     await sync_notifications(session)
-    rows = (await session.execute(
-        select(Notification).order_by(Notification.event_at.desc()).limit(LIST_LIMIT)
-    )).scalars().all()
-    unread = (await session.execute(
-        select(func.count()).select_from(Notification).where(Notification.read_at.is_(None))
-    )).scalar_one()
+    _org = get_current_org()
+    _list_stmt = select(Notification).order_by(Notification.event_at.desc()).limit(LIST_LIMIT)
+    _unread_stmt = select(func.count()).select_from(Notification).where(Notification.read_at.is_(None))
+    if _org is not None:
+        _list_stmt = _list_stmt.where(Notification.organization_id == _org)
+        _unread_stmt = _unread_stmt.where(Notification.organization_id == _org)
+    rows = (await session.execute(_list_stmt)).scalars().all()
+    unread = (await session.execute(_unread_stmt)).scalar_one()
     items = [
         NotificationRead(
             id=n.id, kind=n.kind, title=n.title, subtitle=n.subtitle,
@@ -190,8 +193,12 @@ async def list_notifications(session: AsyncSession) -> NotificationList:
 
 
 async def mark_read(session: AsyncSession, ids: list[str], mark_all: bool) -> int:
+    from app.core.org_context import get_current_org
     now = _now()
     stmt = select(Notification).where(Notification.read_at.is_(None))
+    _org = get_current_org()
+    if _org is not None:
+        stmt = stmt.where(Notification.organization_id == _org)
     if not mark_all:
         if not ids:
             return 0

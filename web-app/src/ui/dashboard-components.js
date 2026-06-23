@@ -321,6 +321,7 @@ export function DashboardPageLayout(config) {
         ${(config.kpiCards || []).map(PremiumKpiCard).join("")}
       </section>
       <section class="elt-analytics-grid">
+        ${config.matrixHtml || ""}
         ${(config.charts || []).map(PremiumChartCard).join("")}
         ${config.heatmap ? PremiumHeatmap(config.heatmap) : ""}
       </section>
