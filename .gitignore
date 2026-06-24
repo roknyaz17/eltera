@@ -8,3 +8,8 @@ outputs/xlsx/
 outputs/screenshots/
 outputs/manus-packages/
 *.DS_Store
+*.db
+*.sqlite
+*.sqlite3
+.claude/settings.local.json
+.impeccable/
