@@ -5,7 +5,8 @@
       "name": "web",
       "runtimeExecutable": "node",
       "runtimeArgs": ["web-app/server.js"],
-      "port": 4173
+      "port": 4173,
+      "autoPort": true
     }
   ]
 }

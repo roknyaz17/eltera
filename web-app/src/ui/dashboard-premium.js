@@ -484,7 +484,7 @@ export function renderPremiumDashboard(state, dashboardData, candidateHeatmapFn,
   // ── KPI cards ──
   const kpiCards = [
     {
-      label: "Баланс оценок",
+      label: "Баланс токенов",
       value: state.company.balance,
       caption: balanceLow ? "Рекомендуется пополнить" : "Доступно для отправки",
       status: balanceLow ? "medium" : "good",
@@ -683,7 +683,7 @@ export function renderPremiumDashboard(state, dashboardData, candidateHeatmapFn,
             <span class="elt-panel-caption">${state.departments.length} отделов</span>
           </div>
           <div class="elt-dept-list">
-            ${state.departments.map(deptRow).join("")}
+            ${state.departments.map(deptRow).join("") || `<div class="elt-table-empty">Нет данных</div>`}
           </div>
         </article>
 

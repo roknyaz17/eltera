@@ -201,6 +201,7 @@ class StructureMemberCreate(BaseModel):
     department_name: str | None = Field(None, max_length=160)
     manager_id: str | None = None
     project: str | None = None
+    send_adaptation: bool = False
 
 
 OrgNode.model_rebuild()

@@ -1,4 +1,5 @@
 import { pageFilterConfig } from "../config/dashboard-config.js";
+import { filterModel, applyFilters } from "../domain/filtering.js";
 import {
   ActionButtonGroup,
   CandidatePreview,
@@ -109,9 +110,10 @@ function renderAuthChallenge(challenge) {
   if (!challenge) return "";
   const isRegister = challenge.mode === "register";
   const title = isRegister ? "Подтвердите email" : "Введите код из письма";
+  const emailPill = `<span class="authChallengeEmail">${escapeHtml(challenge.email)}</span>`;
   const subtitle = isRegister
-    ? `Мы отправили 6-значный код на ${escapeHtml(challenge.email)}. Введите его, чтобы завершить регистрацию.`
-    : `Мы отправили 6-значный код на ${escapeHtml(challenge.email)}. Введите его, чтобы войти в кабинет.`;
+    ? `Мы отправили 6-значный код на ${emailPill} — введите его, чтобы завершить регистрацию.`
+    : `Мы отправили 6-значный код на ${emailPill} — введите его, чтобы войти в кабинет.`;
   const resendLabel = challenge.status === "resending" ? "Отправляем…" : "Отправить код ещё раз";
   const submitLabel = challenge.status === "verifying" ? "Проверяем…" : "Подтвердить";
   return `
@@ -144,7 +146,104 @@ function renderAuthChallenge(challenge) {
   `;
 }
 
+function renderPasswordReset(pr) {
+  if (!pr) return "";
+  const emailPill = pr.email ? `<span class="authChallengeEmail">${escapeHtml(pr.email)}</span>` : "вашу почту";
+  const errorBox = pr.error ? `<div class="authError">${escapeHtml(pr.error)}</div>` : "";
+
+  let title = "Сброс пароля";
+  let inner = "";
+
+  if (pr.step === "request") {
+    const submitLabel = pr.status === "sending" ? "Отправляем…" : "Получить код";
+    inner = `
+      <form class="modal authChallengeModal" data-reset-request-form>
+        <div class="modal-head">
+          <div class="modal-head-left">
+            <span class="modal-head-icon">🔑</span>
+            <h2 class="modal-head-title">${title}</h2>
+          </div>
+          <button type="button" class="modal-close-btn" data-reset-close title="Закрыть">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div class="modal-inner">
+          <p class="modal-subtitle">Укажите email аккаунта — мы отправим 6-значный код для смены пароля.</p>
+          <div class="authChallengeField">
+            <label class="authLabel">Email</label>
+            <input name="email" type="email" value="${escapeHtml(pr.email || "")}" placeholder="name@company.ru" autocomplete="email" class="authInput" required>
+          </div>
+          <div class="authChallengeActions">
+            <button class="authSubmitBtn" type="submit">${submitLabel}</button>
+          </div>
+          <button type="button" class="authLink authChallengeClose" data-reset-close>Вернуться ко входу</button>
+          ${errorBox}
+        </div>
+      </form>`;
+  } else if (pr.step === "code") {
+    const resendLabel = pr.status === "resending" ? "Отправляем…" : "Отправить код ещё раз";
+    const submitLabel = pr.status === "verifying" ? "Проверяем…" : "Подтвердить код";
+    inner = `
+      <form class="modal authChallengeModal" data-reset-code-form>
+        <div class="modal-head">
+          <div class="modal-head-left">
+            <span class="modal-head-icon">✉️</span>
+            <h2 class="modal-head-title">Введите код из письма</h2>
+          </div>
+          <button type="button" class="modal-close-btn" data-reset-close title="Закрыть">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div class="modal-inner">
+          <p class="modal-subtitle">Если аккаунт с адресом ${emailPill} существует, мы отправили на него 6-значный код.</p>
+          <div class="authChallengeField">
+            <label class="authLabel">Код из письма</label>
+            <input name="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" class="authInput authChallengeInput" placeholder="123456" required>
+          </div>
+          <div class="authChallengeActions">
+            <button type="button" class="button subtle" data-reset-resend>${resendLabel}</button>
+            <button class="authSubmitBtn" type="submit">${submitLabel}</button>
+          </div>
+          <button type="button" class="authLink authChallengeClose" data-reset-close>Вернуться ко входу</button>
+          ${errorBox}
+        </div>
+      </form>`;
+  } else {
+    const submitLabel = pr.status === "saving" ? "Сохраняем…" : "Сохранить пароль";
+    inner = `
+      <form class="modal authChallengeModal" data-reset-newpass-form>
+        <div class="modal-head">
+          <div class="modal-head-left">
+            <span class="modal-head-icon">🔒</span>
+            <h2 class="modal-head-title">Новый пароль</h2>
+          </div>
+          <button type="button" class="modal-close-btn" data-reset-close title="Закрыть">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div class="modal-inner">
+          <p class="modal-subtitle">Код подтверждён. Задайте новый пароль для ${emailPill}.</p>
+          <div class="authChallengeField">
+            <label class="authLabel">Новый пароль</label>
+            <input name="password" type="password" placeholder="Минимум 6 символов" autocomplete="new-password" class="authInput" required minlength="6">
+          </div>
+          <div class="authChallengeField">
+            <label class="authLabel">Повторите пароль</label>
+            <input name="password_confirm" type="password" placeholder="Ещё раз" autocomplete="new-password" class="authInput" required minlength="6">
+          </div>
+          <div class="authChallengeActions">
+            <button class="authSubmitBtn" type="submit">${submitLabel}</button>
+          </div>
+          ${errorBox}
+        </div>
+      </form>`;
+  }
+
+  return `<div class="modalBackdrop">${inner}</div>`;
+}
+
 export function renderLogin(state = {}) {
+  const invited = Boolean(state.refCode);
   return `
     <div class="authPage">
       <section class="authBrand">
@@ -153,19 +252,20 @@ export function renderLogin(state = {}) {
         <p>Разберётесь за 5 минут. Первая оценка — за 1 минуту. Без инструкций и долгого обучения.</p>
       </section>
       <div class="authCard glass">
+        ${invited ? `<div class="authRefBanner">🎁 Вы регистрируетесь по приглашению. Создайте аккаунт, чтобы начать.</div>` : ``}
         <div class="authPill">
           <div class="authPillInner">
-            <button class="authPillBtn active" data-auth-tab="login">Войти</button>
-            <button class="authPillBtn" data-auth-tab="register">Зарегистрироваться</button>
+            <button class="authPillBtn ${invited ? '' : 'active'}" data-auth-tab="login">Войти</button>
+            <button class="authPillBtn ${invited ? 'active' : ''}" data-auth-tab="register">Зарегистрироваться</button>
           </div>
         </div>
 
         <!-- Форма входа -->
-        <div class="authFormWrap open" data-auth-panel="login">
+        <div class="authFormWrap ${invited ? '' : 'open'}" data-auth-panel="login">
         <form data-login-form>
           <div class="authInputGroup">
-            <label class="authLabel">Email или телефон</label>
-            <input name="email" type="text" value="hr@eltera.ai" placeholder="name@company.ru или +7..." autocomplete="email" class="authInput">
+            <label class="authLabel">Email</label>
+            <input name="email" type="email" value="hr@eltera.ai" placeholder="name@company.ru" autocomplete="email" class="authInput">
           </div>
           <div class="authInputGroup">
             <label class="authLabel">Пароль</label>
@@ -178,7 +278,7 @@ export function renderLogin(state = {}) {
         </div>
 
         <!-- Форма регистрации -->
-        <div class="authFormWrap" data-auth-panel="register">
+        <div class="authFormWrap ${invited ? 'open' : ''}" data-auth-panel="register">
         <form data-register-form>
           <div class="authInputRow">
             <div class="authInputGroup">
@@ -190,17 +290,33 @@ export function renderLogin(state = {}) {
               <input name="lastName" type="text" placeholder="Петров" class="authInput" required>
             </div>
           </div>
-          <div class="authInputGroup">
-            <label class="authLabel">Название компании</label>
-            <input name="company" type="text" placeholder="ООО Ромашка" class="authInput" required>
-          </div>
-          <div class="authInputGroup authContactToggle">
-            <label class="authLabel">Контакт для входа</label>
-            <div class="authContactSwitch">
-              <button type="button" class="authContactBtn active" data-contact-type="email">Email</button>
-              <button type="button" class="authContactBtn" data-contact-type="phone">Телефон</button>
+          <div class="authInputRow">
+            <div class="authInputGroup">
+              <label class="authLabel">Название компании</label>
+              <input name="company" type="text" placeholder="ООО Ромашка" class="authInput" required>
             </div>
-            <input name="contact" type="text" placeholder="name@company.ru" class="authInput" required>
+            <div class="authInputGroup">
+              <label class="authLabel">Ваша роль</label>
+              <div class="authSelectWrap">
+                <select name="role" class="authInput authSelect" required>
+                  <option value="" disabled selected>Выберите роль</option>
+                  <option value="owner">Собственник</option>
+                  <option value="ceo">Генеральный директор</option>
+                  <option value="hrd">Директор по персоналу</option>
+                  <option value="hr_manager">HR-менеджер</option>
+                  <option value="recruiter">Рекрутер</option>
+                  <option value="team_lead">Руководитель отдела</option>
+                  <option value="coo">Операционный директор</option>
+                  <option value="business_partner">HR Business Partner</option>
+                  <option value="other">Другое</option>
+                </select>
+                <svg class="authSelectChevron" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+            </div>
+          </div>
+          <div class="authInputGroup">
+            <label class="authLabel">Email для входа</label>
+            <input name="contact" type="email" placeholder="name@company.ru" autocomplete="email" class="authInput" required>
           </div>
           <div class="authInputGroup">
             <label class="authLabel">Пароль</label>
@@ -216,6 +332,7 @@ export function renderLogin(state = {}) {
         </div>
       </div>
       ${renderAuthChallenge(state.authChallenge)}
+      ${renderPasswordReset(state.passwordReset)}
     </div>
   `;
 }
@@ -244,10 +361,16 @@ export function renderAppShell(state, content) {
             <span class="elt-tariff-nav-label">Тариф</span>
             <span class="elt-tariff-nav-name">${state.company.tariff}</span>
           </button>
-          <button class="elt-nav-item" data-action="logout" title="Выйти из аккаунта">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style="opacity:.6"><path d="M6 2H3v12h3M10 11l3-3-3-3M13 8H6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span>Выйти${state.user && state.user.email ? ` · ${escapeHtml(state.user.email)}` : ""}</span>
-          </button>
+          <div class="elt-account">
+            ${state.user && state.user.email ? `
+            <div class="elt-account-info" title="${escapeHtml(state.user.email)}">
+              <span class="elt-account-avatar">${escapeHtml(state.user.email.trim().charAt(0).toUpperCase())}</span>
+              <span class="elt-account-email">${escapeHtml(state.user.email)}</span>
+            </div>` : ""}
+            <button class="elt-account-logout" data-action="logout" title="Выйти из аккаунта" aria-label="Выйти из аккаунта">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M6 2H3v12h3M10 11l3-3-3-3M13 8H6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
         </div>
       </aside>
       <div class="appMain">
@@ -262,7 +385,7 @@ export function renderAppShell(state, content) {
           </div>
           <div class="elt-topbar-right">
             <div class="elt-balance-pill">
-              <span class="elt-balance-label">Баланс оценок</span>
+              <span class="elt-balance-label">Баланс токенов</span>
               <strong class="elt-balance-value">${state.company.balance}</strong>
             </div>
             <button class="elt-btn-topbar" data-action="top-up">Пополнить</button>
@@ -414,6 +537,18 @@ function renderNotifPanel(state) {
 
 function eltNavItem(item, activeView) {
   const isActive = activeView === item.id;
+  if (item.wip) {
+    return `<button
+      class="elt-nav-item elt-nav-wip"
+      disabled
+      aria-disabled="true"
+      title="${item.label} — в разработке"
+    >
+      <span class="elt-nav-icon">${item.icon}</span>
+      <span class="elt-nav-label">${item.label}</span>
+      <span class="elt-wip-badge">В разработке</span>
+    </button>`;
+  }
   return `<button
     class="elt-nav-item${isActive ? " active" : ""}${item.locked ? " locked" : ""}"
     data-view="${item.id}"
@@ -665,7 +800,7 @@ export function renderPeople(state) {
     <section class="dashboardGrid">
       <article class="panel chartPanel"><div class="panelHead"><h2>Кандидаты</h2><span>источники и вакансии</span></div>${renderPeopleTable(candidates)}</article>
       <article class="panel chartPanel"><div class="panelHead"><h2>Сотрудники</h2><span>риски и развитие</span></div>${renderEmployeeTable(employees)}</article>
-      <article class="panel chartPanel widePanel"><div class="panelHead"><h2>Структура компании</h2><span>отдел → руководитель → сотрудники</span></div><div class="orgTree">${state.departments.map((dept) => `<div class="orgNode"><b>${dept.name}</b><span>${dept.employees} сотрудников · руководитель: ${dept.head}</span><em>${dept.risk} в зоне риска</em><div><button class="button subtle">Открыть</button><button class="button subtle">Запустить оценку</button><button class="button subtle">360</button></div></div>`).join("")}</div></article>
+      <article class="panel chartPanel widePanel"><div class="panelHead"><h2>Структура компании</h2><span>отдел → руководитель → сотрудники</span></div><div class="orgTree">${state.departments.map((dept) => `<div class="orgNode"><b>${dept.name}</b><span>${dept.employees} сотрудников · руководитель: ${dept.head}</span><em>${dept.risk} в зоне риска</em><div><button class="button subtle">Открыть</button><button class="button subtle">Запустить оценку</button><button class="button subtle">360</button></div></div>`).join("") || `<div class="emptyState"><b>Нет данных</b><span>Отделы пока не добавлены.</span></div>`}</div></article>
     </section>
   `;
 }
@@ -768,7 +903,7 @@ export function renderCandidates(state) {
     ],
     heatmap: candidateHeatmap(state),
     attentionItems,
-    table: candidatesTableConfig(candidates)
+    table: candidatesTableConfig(applyFilters("candidates", candidates, state.activeFilters?.candidates))
   });
 }
 
@@ -820,7 +955,7 @@ export function renderEmployees(state) {
     attentionItems: risky.length
       ? [{ title: `${risky.length} сотрудников в зоне риска`, text: "Нужны разговоры с руководителями и ИПР.", status: "bad", target: "Сотрудники:В зоне риска" }]
       : [],
-    table: employeesTableConfig(employees)
+    table: employeesTableConfig(applyFilters("employees", employees, state.activeFilters?.employees))
   });
 }
 
@@ -1065,7 +1200,7 @@ export function renderStructure(state) {
                 <span class="oc2-li-status ${ceoStatus.cls}">${ceoStatus.label}</span>
               </div>
               <div class="oc2-conn-v"></div>
-              <div class="oc2-depts">${deptCols}</div>
+              <div class="oc2-depts">${deptCols || `<div class="oc2-empty">Нет данных</div>`}</div>
               ${hiddenDepts > 0
                 ? `<button class="oc2-more-depts" data-action="oc-show-all-depts">Показать ещё отделы (${hiddenDepts})</button>`
                 : showAll && deptEntries.length > VISIBLE_DEPTS
@@ -1238,92 +1373,172 @@ export function renderConstructor(state) {
   `;
 }
 
+// Период вкладки «Вакансии»: 7 / 14 / 30 дней (управляет всеми расчётами).
+const VACANCY_PERIODS = [["7d", "7 дней"], ["14d", "14 дней"], ["30d", "30 дней"]];
+
+function vacancyPeriodSwitcher(active) {
+  return `<section class="elt-filter-bar elt-filter-bar-v3"><div class="elt-fb-period">
+    ${VACANCY_PERIODS.map(([v, l]) => `<button class="elt-fb-period-btn ${active === v ? "active" : ""}" data-vacancy-period="${v}">${l}</button>`).join("")}
+  </div></section>`;
+}
+
+// Кликабельная KPI-карточка вакансий (drill-down по data-vac-card).
+function vacancyKpiCard({ card, label, value, caption, status }) {
+  return `<article class="elt-kpi status-${status || "neutral"} clickable" data-vac-card="${card}">
+    <div class="elt-kpi-top"><i class="elt-kpi-dot"></i></div>
+    <strong class="elt-kpi-value">${value}</strong>
+    <div class="elt-kpi-footer"><span class="elt-kpi-label">${label}</span></div>
+    <p class="elt-kpi-caption">${caption || ""}</p>
+  </article>`;
+}
+
+// Опции <select> тестов.
+function testOptionsHtml(tests, selectedId) {
+  return (tests || []).map((t) =>
+    `<option value="${t.id}" ${t.id === selectedId ? "selected" : ""}>${escapeHtml(t.title)}</option>`
+  ).join("");
+}
+
+// Таблица эффективности вакансий из реальных метрик за период.
+// Компактная воронка подбора внутри карточки вакансии. Данные приходят в составе
+// /vacancies/kpi (поле funnel) — отдельных запросов на карточку нет.
+function vacFunnelMini(steps) {
+  if (!steps || !steps.length) return `<div class="vac-funnel-empty">Нет данных воронки за период.</div>`;
+  const top = Number(steps[0].count) || 0;
+  return `<div class="vac-funnel">${steps.map((s, i) => {
+    const count = Number(s.count) || 0;
+    const fromTop = top > 0 ? Math.round((count / top) * 100) : 0;
+    const prev = i > 0 ? Number(steps[i - 1].count) || 0 : count;
+    const fromPrev = i === 0 ? null : (prev > 0 ? Math.round((count / prev) * 100) : 0);
+    const width = Math.max(3, Math.min(100, fromTop));
+    const st = i === 0 ? "neutral" : fromPrev >= 60 ? "good" : fromPrev < 25 ? "bad" : "medium";
+    return `<div class="vac-funnel-row">
+      <span class="vac-funnel-label">${escapeHtml(s.label)}</span>
+      <span class="vac-funnel-track"><span class="vac-funnel-fill status-${st}" style="width:${width}%"></span></span>
+      <span class="vac-funnel-count">${count}${fromPrev === null ? "" : `<em>${fromPrev}%</em>`}</span>
+    </div>`;
+  }).join("")}</div>`;
+}
+
+function vacancyCards(items, tests) {
+  const convClass = (c) => (c >= 30 ? "good" : c < 10 ? "bad" : "medium");
+  const statusBadge = (st) =>
+    st === "closed" ? `<span class="elt-status-badge status-neutral">закрыта</span>` : `<span class="elt-status-badge status-good">активна</span>`;
+  return `<div class="vac-grid">${items.map((v) => `
+    <article class="vac-card">
+      <header class="vac-card-head">
+        <div class="vac-card-titlewrap">
+          <h3 class="vac-card-title">${escapeHtml(v.title)}</h3>
+          <span class="vac-card-meta">${v.city ? escapeHtml(v.city) + " · " : ""}синхр. ${v.last_synced_on || "—"}</span>
+        </div>
+        ${statusBadge(v.status)}
+      </header>
+      <div class="vac-card-metrics">
+        <div class="vac-metric"><b>${v.responses_period}</b><span>откликов</span></div>
+        <div class="vac-metric"><b class="conv-${convClass(v.conversion)}">${v.conversion}%</b><span>конверсия</span></div>
+        <div class="vac-metric"><b>${v.assessments_sent}</b><span>оценок</span></div>
+        <div class="vac-metric"><b>${v.suitable}</b><span>подходящих</span></div>
+      </div>
+      <div class="vac-card-funnel">
+        <div class="vac-funnel-head">Воронка подбора<span>за период</span></div>
+        ${vacFunnelMini(v.funnel)}
+      </div>
+      <footer class="vac-card-foot">
+        <label class="vac-card-test" title="Этот тест автоматически подставляется при переводе отклика в кандидата">
+          <span class="vac-card-test-cap">Тест по умолчанию
+            <svg class="vac-card-test-info" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.3"/><path d="M8 7v4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="4.6" r=".9" fill="currentColor"/></svg>
+          </span>
+          <select class="elt-search vac-card-test-select" data-vac-default-test="${v.vacancy_id}"><option value="">— не выбран —</option>${testOptionsHtml(tests, v.default_test_id)}</select>
+        </label>
+        <div class="vac-card-actions">
+          <button class="elt-action-pill" data-vac-responses="${v.vacancy_id}">Отклики${v.responses_period ? " " + v.responses_period : ""}</button>
+          ${v.url ? `<a class="elt-action-pill" href="${v.url}" target="_blank" rel="noopener">hh.ru ↗</a>` : ""}
+        </div>
+      </footer>
+    </article>`).join("")}</div>`;
+}
+
 export function renderVacancies(state) {
   const hh = state.hhStatus || null;
   const connected = Boolean(hh && hh.connected);
-  const live = connected ? (state.hhVacancies || []) : null;
 
-  // Кнопки-действия зависят от состояния подключения HH.
-  const hhActions = connected
-    ? [
-        { label: "Обновить из hh.ru", attrs: 'data-action="hh-refresh"' },
-        { label: "Отключить hh.ru", attrs: 'data-action="hh-disconnect"' },
-      ]
-    : [{ label: "Подключить hh.ru", primary: true, attrs: 'data-action="hh-connect"' }];
-
-  // ── Режим: подключённый HH → живые данные ──
-  if (connected) {
-    const loading = state.hhVacanciesStatus === "loading" && !live;
-    const totalResp = (live || []).reduce((s, v) => s + (v.responses || 0), 0);
-    const newResp = (live || []).reduce((s, v) => s + (v.new_responses || 0), 0);
+  // ── Режим: HH не подключён → честное пустое состояние (без демо-данных) ──
+  if (!connected) {
+    const notConfigured = hh && !hh.configured;
+    const banner = notConfigured
+      ? { title: "hh.ru не подключён", text: "Нажмите, чтобы подключить кабинет hh.ru и продолжить.", status: "medium", target: "", action: "hh-connect" }
+      : { title: "Подключите hh.ru", text: "Нажмите, авторизуйте кабинет работодателя — и вакансии с откликами подтянутся автоматически.", status: "medium", target: "", action: "hh-connect" };
     return DashboardPageLayout({
       title: "Вакансии",
-      subtitle: `hh.ru подключён · ${hh.employer_name || "работодатель"}${hh.account_name ? " · " + hh.account_name : ""}`,
-      meta: ["HeadHunter API", "живые данные"],
-      period: state.period,
-      actions: hhActions,
-      kpiCards: [
-        { label: "Активные вакансии", value: (live || []).length, caption: loading ? "загрузка…" : "из hh.ru", status: "neutral", iconName: "vacancies" },
-        { label: "Всего откликов", value: totalResp, caption: "по активным", status: "neutral", iconName: "candidates" },
-        { label: "Новые отклики", value: newResp, caption: "не разобраны", status: newResp > 0 ? "medium" : "good", iconName: "link" },
-        { label: "Работодатель", value: (live || []).length ? "hh.ru" : "—", caption: hh.employer_name || "", status: "good", iconName: "fit" },
-      ],
-      charts: [
-        { title: "Отклики по вакансиям", caption: "входящий поток (hh.ru)", items: (live || []).slice(0, 12).map((v) => [v.title, v.responses]) },
-      ],
-      table: hhVacanciesTableConfig(live || [], loading),
+      subtitle: "Реальные данные из вашего кабинета HeadHunter. Подключите hh.ru, чтобы начать.",
+      meta: ["HeadHunter API"],
+      actions: [{ label: "Подключить hh.ru", primary: true, attrs: 'data-action="hh-connect"' }],
+      attentionItems: [banner],
+      table: { title: "Вакансии", caption: "нет данных", columns: ["Вакансия", "Отклики", "Конверсия", "Статус"], rows: [] },
     });
   }
 
-  // ── Режим: HH не подключён → демо-обзор + приглашение подключить ──
-  const low = state.vacancies.filter((vacancy) => getVacancyHealthStatus(vacancy) === "bad");
-  const banner = hh && !hh.configured
-    ? { title: "hh.ru не настроен на сервере", text: "Задайте HH_CLIENT_ID/HH_CLIENT_SECRET в .env, затем подключите кабинет.", status: "medium" }
-    : { title: "Подключите hh.ru", text: "Нажмите «Подключить hh.ru», авторизуйте кабинет работодателя — и вакансии с откликами подтянутся автоматически.", status: "medium", target: null };
-  return DashboardPageLayout({
-    title: "Вакансии",
-    subtitle: "Дашборд эффективности подбора. Подключите hh.ru для реальных данных.",
-    meta: ["HeadHunter", "ручные вакансии", "импорт"],
-    period: state.period,
-    actions: [...hhActions, { label: "Добавить вакансию" }],
-    filters: pageFilterConfig.vacancies,
-    activeFiltersMap: (state.activeFilters && state.activeFilters.vacancies) || {},
-    kpiCards: [
-      { label: "Активные вакансии", value: state.vacancies.filter((x) => x.status === "Активна").length, caption: "в работе", status: "neutral", target: "Вакансии:Активные", iconName: "vacancies" },
-      { label: "Без откликов", value: 1, caption: "больше 7 дней", status: "bad", target: "Вакансии:Без откликов", iconName: "risk" },
-      { label: "Низкая конверсия", value: low.length, caption: "нужна правка", status: "bad", target: "Вакансии:Низкая конверсия", iconName: "chart" },
-      { label: "Хорошая конверсия", value: 2, caption: "работают", status: "good", target: "Вакансии:Хорошая конверсия", iconName: "fit" },
-      { label: "Всего откликов", value: state.vacancies.reduce((sum, item) => sum + item.responses, 0), caption: "по вакансиям", status: "neutral", target: "Вакансии:Отклики", iconName: "candidates" },
-      { label: "Всего оценок", value: state.vacancies.reduce((sum, item) => sum + item.assessments, 0), caption: "отправлено", status: "neutral", target: "Вакансии:Оценки", iconName: "link" },
-      { label: "Подходят", value: state.vacancies.reduce((sum, item) => sum + item.fit, 0), caption: "под профиль", status: "good", target: "Кандидаты:Подходят", iconName: "fit" },
-      { label: "Закрытые", value: 4, caption: "за период", status: "neutral", target: "Вакансии:Закрытые", iconName: "completed" }
-    ],
-    charts: [
-      { title: "Отклики по вакансиям", caption: "входящий поток", items: state.vacancies.map((item) => [item.title, item.responses]) },
-      { title: "Подходящие кандидаты", caption: "качество", items: state.vacancies.map((item) => ({ label: item.title, value: item.fit, status: getFitStatus(item.fit * 8) })) }
-    ],
-    heatmap: vacancyHeatmap(state),
-    attentionItems: [banner],
-    table: vacanciesTableConfig(state.vacancies)
-  });
-}
+  // ── Режим: HH подключён → реальные KPI и метрики за период ──
+  const kpi = state.vacancyKpi;
+  const loading = state.vacancyKpiStatus === "loading" && !kpi;
+  const cards = (kpi && kpi.cards) || {};
+  const items = (kpi && kpi.items) || [];
+  const dash = (v) => (loading ? "…" : v ?? 0);
 
-// Таблица живых вакансий из hh.ru.
-function hhVacanciesTableConfig(items, loading) {
-  return {
-    title: "Вакансии hh.ru",
-    caption: "активные вакансии работодателя",
-    columns: ["Вакансия", "Регион", "Отклики", "Новые", "Действия"],
-    rows: items.length
-      ? items.map((v) => [
-          escapeHtml(v.title),
-          escapeHtml(v.area || "—"),
-          v.responses,
-          v.new_responses ? `<b style="color:#F59E0B">${v.new_responses}</b>` : "0",
-          v.url ? `<a class="elt-action-pill" href="${v.url}" target="_blank" rel="noopener">Открыть на hh.ru ↗</a>` : "—",
-        ])
-      : [[loading ? "Загрузка из hh.ru…" : "Активных вакансий не найдено", "", "", "", ""]],
-  };
+  const kpiHtml = [
+    { card: "active_no_responses", label: "Активные без откликов", value: dash(cards.active_no_responses), caption: "за период", status: cards.active_no_responses > 0 ? "bad" : "good" },
+    { card: "low_conversion", label: "Низкая конверсия", value: dash(cards.low_conversion), caption: `ниже ${kpi ? kpi.conversion_low : 10}%`, status: cards.low_conversion > 0 ? "bad" : "neutral" },
+    { card: "good_conversion", label: "Хорошая конверсия", value: dash(cards.good_conversion), caption: `от ${kpi ? kpi.conversion_good : 30}%`, status: "good" },
+    { card: "total_responses", label: "Всего откликов", value: dash(cards.total_responses), caption: "за период", status: "neutral" },
+    { card: "assessments_sent", label: "Оценок отправлено", value: dash(cards.total_assessments_sent), caption: "за период", status: "neutral" },
+    { card: "fit_profile", label: "Подходит под профиль", value: dash(cards.fit_profile), caption: "кандидатов из HH", status: "good" },
+    { card: "closed_in_period", label: "Закрыто за период", value: dash(cards.closed_in_period), caption: "вакансий", status: "neutral" },
+  ].map(vacancyKpiCard).join("");
+
+  const chartItems = items.slice(0, 12).map((v) => [v.title, v.responses_period]);
+  const listPanel = items.length
+    ? `<article class="elt-panel vac-list-panel">
+        <div class="elt-panel-head"><div class="elt-panel-head-left"><h2>Эффективность вакансий</h2></div><span class="elt-panel-caption">метрики и воронка подбора за период</span></div>
+        ${vacancyCards(items, state.assessmentTests)}
+      </article>`
+    : `<article class="elt-panel elt-table-panel">
+        <div class="elt-panel-head"><div class="elt-panel-head-left"><h2>Эффективность вакансий</h2></div><span class="elt-panel-caption">нет импортированных вакансий</span></div>
+        <p class="elt-kpi-caption" style="padding:16px">${loading ? "Загрузка…" : "Нет вакансий. Нажмите «Добавить из HeadHunter»."}</p>
+      </article>`;
+
+  return `
+    <section class="elt-dashboard">
+      <header class="elt-dash-header">
+        <div class="elt-dash-header-left">
+          <span class="elt-mini-label">HeadHunter API · живые данные</span>
+          <h1 class="elt-dash-title">Вакансии</h1>
+          <p class="elt-dash-subtitle">hh.ru подключён · ${escapeHtml(hh.employer_name || "работодатель")}${hh.account_name ? " · " + escapeHtml(hh.account_name) : ""}</p>
+        </div>
+        <div class="elt-dash-header-actions">
+          <button class="elt-btn-primary" data-action="hh-import-open">Добавить из HeadHunter</button>
+          <button class="elt-btn-ghost" data-action="hh-refresh"${state.hhSyncing ? " disabled" : ""}>${state.hhSyncing ? "Обновляем…" : "Обновить из hh.ru"}</button>
+          <button class="elt-btn-ghost" data-action="hh-disconnect">Отключить hh.ru</button>
+        </div>
+      </header>
+      ${vacancyPeriodSwitcher(state.vacancyPeriod || "7d")}
+      <section class="elt-kpi-grid">${kpiHtml}</section>
+      <section class="elt-analytics-grid">
+        <article class="elt-panel elt-chart-panel elt-wide">
+          <div class="elt-panel-head"><div class="elt-panel-head-left"><h2>Отклики по вакансиям</h2></div><span class="elt-panel-caption">за выбранный период</span></div>
+          <div class="elt-bar-chart">
+            ${chartItems.length
+              ? chartItems.map(([label, value]) => {
+                  const max = Math.max(...chartItems.map((c) => Number(c[1]) || 0), 1);
+                  const w = Math.max(6, Math.round((Number(value) / max) * 100));
+                  return `<div class="elt-bar-row status-neutral"><span class="elt-bar-label">${escapeHtml(label)}</span><div class="elt-bar-track"><div class="elt-bar-fill" style="width:${w}%"></div></div><strong class="elt-bar-value">${value}</strong></div>`;
+                }).join("")
+              : `<p class="elt-kpi-caption" style="padding:12px">${loading ? "Загрузка…" : "Откликов за период нет."}</p>`}
+          </div>
+        </article>
+      </section>
+      ${listPanel}
+    </section>
+  `;
 }
 
 const LIB_SECTIONS = [
@@ -1506,11 +1721,12 @@ export function renderAdaptation(state) {
     attentionItems,
     // В таблице — сотрудники с известным стажем (новички сверху). Если стаж
     // нигде не указан — показываем всех сотрудников.
-    table: employeesTableConfig(
+    table: employeesTableConfig(applyFilters("adaptation",
       withTenure.length
         ? withTenure.slice().sort((a, b) => a.days - b.days)
-        : employees
-    )
+        : employees,
+      state.activeFilters?.adaptation
+    ))
   });
 
   return content + renderAdaptationTimeline(state);
@@ -1731,7 +1947,7 @@ export function renderThreeSixty(state) {
     ],
     heatmap: employeeHeatmap(state),
     attentionItems,
-    table: employeesTableConfig(employees)
+    table: employeesTableConfig(applyFilters("360", employees, state.activeFilters?.["360"]))
   });
 
   // ── Сводный 360-отчёт по оцениваемому ──
@@ -1872,7 +2088,7 @@ export function renderPerformance(state) {
     ],
     heatmap: employeeHeatmap(state),
     attentionItems,
-    table: employeesTableConfig(employees)
+    table: employeesTableConfig(applyFilters("performance", employees, state.activeFilters?.performance))
   });
 }
 
@@ -1885,10 +2101,7 @@ export function renderLinks(state, professions) {
           <h1 class="elt-page-title">Оценки кандидатов и сотрудников</h1>
           <p class="elt-page-subtitle">Создайте оценку, отправьте ссылку участнику, отслеживайте статус и результат прохождения.</p>
         </div>
-        <div class="elt-page-actions">
-          <button class="elt-btn-ghost">Импорт Excel</button>
-          <button class="elt-btn-primary" data-action="create-link">+ Создать оценку</button>
-        </div>
+        <div class="elt-page-actions"></div>
       </div>
       <div class="elt-links-grid">
         <div class="elt-table-panel">
@@ -1976,14 +2189,15 @@ export function renderReports(state) {
       { title: "Динамика по датам", caption: "когда завершали оценку", items: byDateItems.length ? byDateItems : [["—", 0]] }
     ],
     attentionItems: [],
-    table: reportsTableConfig(reports)
+    table: reportsTableConfig(applyFilters("reports", reports, state.activeFilters?.reports))
   });
 }
 
 export function renderSupport(state = {}) {
   const company = state.company || {};
   const contactName = company.contactName || "";
-  const contactEmail = company.contactEmail || "";
+  // Отправитель — email из регистрации (аккаунт пользователя), с фолбэком на контакт компании.
+  const contactEmail = (state.user && state.user.email) || company.contactEmail || "";
   return `
     <div class="elt-page-wrap">
       <div class="elt-page-header">
@@ -2082,7 +2296,7 @@ export function renderGratitude() {
           <p class="elt-page-subtitle">Идеи клиентов, HR-экспертов и собственников, которые стали частью продукта или находятся в разработке.</p>
         </div>
         <div class="elt-page-actions">
-          <button class="elt-btn-primary">Предложить улучшение</button>
+          <button class="elt-btn-primary" data-view="support">Предложить улучшение</button>
         </div>
       </div>
       <div class="elt-card elt-gratitude-hero">
@@ -2161,6 +2375,15 @@ export function renderTariffs(state, tariffs) {
 
 export function renderReferrals(state) {
   const maxAssessments = Math.floor(state.referrals.available / state.company.assessmentPrice);
+  const fmt = (n) => Number(n || 0).toLocaleString('ru-RU');
+  const opDate = (iso) => (iso ? new Date(iso).toLocaleDateString('ru-RU') : '');
+  // Знак суммы операции: + начисление, − списание/вывод.
+  const opAmount = (amount) => `${amount > 0 ? '+' : amount < 0 ? '−' : ''}${fmt(Math.abs(amount))} ₽`;
+  const inviteStatus = (s) => (s === 'paying'
+    ? '<span class="elt-status-badge elt-status-completed">платит</span>'
+    : '<span class="elt-status-badge elt-status-pending">новая</span>');
+  const invites = state.referrals.invites || [];
+  const operations = state.referrals.operations || [];
   return `
     <div class="elt-page-wrap">
       <div class="elt-page-header">
@@ -2173,7 +2396,7 @@ export function renderReferrals(state) {
       <div class="elt-referral-top">
         <div class="elt-card elt-referral-link-card">
           <div class="elt-card-head"><h2>Моя реферальная ссылка</h2></div>
-          <code class="elt-code elt-code-block">${location.origin}${location.pathname}#/ref/roman123</code>
+          <code class="elt-code elt-code-block">${location.origin}${location.pathname}#/ref/${state.referrals.code || '…'}</code>
           <div class="elt-row-actions">
             <button class="elt-btn-secondary" data-action="copy-ref">Скопировать</button>
             <button class="elt-btn-ghost">Поделиться</button>
@@ -2193,15 +2416,15 @@ export function renderReferrals(state) {
       <div class="elt-referral-tables">
         <div class="elt-table-panel">
           <div class="elt-table-head"><h2>Приглашенные компании</h2><span class="elt-card-caption">начисление с каждой оплаты</span></div>
-          <div class="elt-table-wrap"><table class="elt-table"><thead><tr><th>Компания</th><th>Дата</th><th>Сумма оплат</th><th>Бонусы</th><th>Статус</th></tr></thead><tbody>${[['Север IT','02.06.2026','89 700 ₽','8 970 ₽','платит'],['ХР Project','30.05.2026','38 700 ₽','3 870 ₽','платит'],['Альфа Ритейл','28.05.2026','12 900 ₽','1 290 ₽','новая']].map((row) => `<tr>${row.map((cell, i) => `<td>${i === 4 ? `<span class="elt-status-badge elt-status-completed">${cell}</span>` : cell}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+          <div class="elt-table-wrap"><table class="elt-table"><thead><tr><th>Компания</th><th>Дата</th><th>Сумма оплат</th><th>Бонусы</th><th>Статус</th></tr></thead><tbody>${invites.map((i) => `<tr><td>${i.company_name}</td><td>${opDate(i.joined_on)}</td><td>${fmt(i.total_payments)} ₽</td><td>${fmt(i.accrued_bonus)} ₽</td><td>${inviteStatus(i.status)}</td></tr>`).join('') || `<tr><td colspan="5" style="color:#8899BB">Нет данных</td></tr>`}</tbody></table></div>
         </div>
         <div class="elt-table-panel">
           <div class="elt-table-head"><h2>История операций</h2><span class="elt-card-caption">бонусы</span></div>
-          <div class="elt-table-wrap"><table class="elt-table"><thead><tr><th>Дата</th><th>Операция</th><th>Основание</th><th>Сумма</th><th>Статус</th></tr></thead><tbody>${state.referrals.operations.map((row, index) => `<tr><td>${new Date(Date.now() - index * 86400000).toLocaleDateString('ru-RU')}</td>${row.map((cell) => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+          <div class="elt-table-wrap"><table class="elt-table"><thead><tr><th>Дата</th><th>Операция</th><th>Основание</th><th>Сумма</th><th>Статус</th></tr></thead><tbody>${operations.map((op) => `<tr><td>${opDate(op.created_at)}</td><td>${op.title}</td><td>${op.basis}</td><td>${opAmount(op.amount)}</td><td><span class="elt-status-badge ${op.kind === 'accrual' ? 'elt-status-completed' : 'elt-status-pending'}">${op.status}</span></td></tr>`).join('') || `<tr><td colspan="5" style="color:#8899BB">Нет данных</td></tr>`}</tbody></table></div>
         </div>
         <div class="elt-table-panel">
           <div class="elt-table-head"><h2>Заявки на вывод</h2><span class="elt-card-caption">резерв бонусов</span></div>
-          <div class="elt-table-wrap"><table class="elt-table"><thead><tr><th>Сумма</th><th>Карта</th><th>Получатель</th><th>Статус</th></tr></thead><tbody>${state.referrals.withdrawals.map((item) => `<tr><td>${item.amount.toLocaleString('ru-RU')} ₽</td><td>${item.card}</td><td>${item.name}</td><td><span class="elt-status-badge elt-status-pending">${item.status}</span></td></tr>`).join('') || `<tr><td colspan="4" style="color:#8899BB">Заявок пока нет.</td></tr>`}</tbody></table></div>
+          <div class="elt-table-wrap"><table class="elt-table"><thead><tr><th>Сумма</th><th>Карта</th><th>Получатель</th><th>Статус</th></tr></thead><tbody>${state.referrals.withdrawals.map((item) => `<tr><td>${item.amount.toLocaleString('ru-RU')} ₽</td><td>${item.card}</td><td>${item.name}</td><td><span class="elt-status-badge elt-status-pending">${item.status}</span></td></tr>`).join('') || `<tr><td colspan="4" style="color:#8899BB">Нет данных</td></tr>`}</tbody></table></div>
         </div>
       </div>
     </div>
@@ -2268,65 +2491,59 @@ export function renderApiKeys(state) {
 }
 
 export function renderSettings(state) {
-  const studioLocked = state.company.tariff !== 'TalentStudio';
-  const lockAttr = studioLocked ? `data-open-locked="Настройки интерфейса и уведомлений доступны на тарифе TalentStudio."` : '';
+  const c = state.company;
+  const v = (x) => escapeHtml(x == null ? "" : String(x));
+  const saveBtn = (card) => `<div><button class="elt-btn-primary" data-org-save="${card}">Сохранить</button></div>`;
+  const isLight = state.theme === "light";
   return `
     <div class="elt-page-wrap">
       <div class="elt-page-header">
         <div class="elt-page-header-left">
           <span class="elt-mini-label">Настройки</span>
           <h1 class="elt-page-title">Настройки компании</h1>
-          <p class="elt-page-subtitle">Юридические данные, контактное лицо, логотип, уведомления и часовой пояс. Подготовлено для backend-интеграции.</p>
+          <p class="elt-page-subtitle">Юридические данные, контактное лицо и оформление. Изменения сохраняются на сервере.</p>
         </div>
       </div>
       <div class="elt-settings-grid">
-        <div class="elt-card">
+        <div class="elt-card" data-org-card="company">
           <div class="elt-card-head"><h2>Компания</h2></div>
           <div class="elt-form-grid">
-            <label class="elt-label">Название<input class="elt-input" value="${state.company.name}"></label>
-            <label class="elt-label">ИНН<input class="elt-input" value="${state.company.inn}"></label>
-            <label class="elt-label">КПП<input class="elt-input" value="${state.company.kpp}"></label>
-            <label class="elt-label">Официальный сайт<input class="elt-input" value="${state.company.site}"></label>
-            <label class="elt-label">Email для отчетов<input class="elt-input" value="${state.company.reportEmail}"></label>
-            <label class="elt-label">Телефон<input class="elt-input" value="${state.company.phone}"></label>
-            <label class="elt-label elt-label-full">Юридический адрес<input class="elt-input" value="${state.company.legalAddress}"></label>
-            <label class="elt-label elt-label-full">Фактический адрес<input class="elt-input" value="${state.company.actualAddress}"></label>
-            <div><button class="elt-btn-primary">Сохранить</button></div>
+            <label class="elt-label">Название<input class="elt-input" data-org-field="name" value="${v(c.name)}"></label>
+            <label class="elt-label">ИНН<input class="elt-input" data-org-field="inn" value="${v(c.inn)}"></label>
+            <label class="elt-label">КПП<input class="elt-input" data-org-field="kpp" value="${v(c.kpp)}"></label>
+            <label class="elt-label">Официальный сайт<input class="elt-input" data-org-field="site" value="${v(c.site)}"></label>
+            <label class="elt-label">Email для отчетов<input class="elt-input" data-org-field="report_email" value="${v(c.reportEmail)}"></label>
+            <label class="elt-label">Телефон<input class="elt-input" data-org-field="phone" value="${v(c.phone)}"></label>
+            <label class="elt-label elt-label-full">Юридический адрес<input class="elt-input" data-org-field="legal_address" value="${v(c.legalAddress)}"></label>
+            <label class="elt-label elt-label-full">Фактический адрес<input class="elt-input" data-org-field="actual_address" value="${v(c.actualAddress)}"></label>
+            ${saveBtn("company")}
+          </div>
+        </div>
+        <div class="elt-card" data-org-card="contact">
+          <div class="elt-card-head"><h2>Контактное лицо</h2></div>
+          <div class="elt-form-grid">
+            <label class="elt-label">Фамилия<input class="elt-input" data-org-field="contact_last_name" value="${v(c.contactLastName)}"></label>
+            <label class="elt-label">Имя<input class="elt-input" data-org-field="contact_first_name" value="${v(c.contactFirstName)}"></label>
+            <label class="elt-label">Отчество<input class="elt-input" data-org-field="contact_patronymic" value="${v(c.contactPatronymic)}"></label>
+            <label class="elt-label">Телефон<input class="elt-input" data-org-field="contact_phone" value="${v(c.contactPhone)}"></label>
+            <label class="elt-label">Email<input class="elt-input" data-org-field="contact_email" value="${v(c.contactEmail)}"></label>
+            ${saveBtn("contact")}
           </div>
         </div>
         <div class="elt-card">
-          <div class="elt-card-head"><h2>Контактное лицо</h2></div>
+          <div class="elt-card-head"><h2>Оформление</h2></div>
           <div class="elt-form-grid">
-            <label class="elt-label">Фамилия<input class="elt-input" value="${state.company.contactLastName}"></label>
-            <label class="elt-label">Имя<input class="elt-input" value="${state.company.contactFirstName}"></label>
-            <label class="elt-label">Отчество<input class="elt-input" value="${state.company.contactPatronymic}"></label>
-            <label class="elt-label">Телефон<input class="elt-input" value="${state.company.contactPhone}"></label>
-            <label class="elt-label">Email<input class="elt-input" value="${state.company.contactEmail}"></label>
-            <div><button class="elt-btn-primary">Сохранить</button></div>
-          </div>
-        </div>
-        <div class="elt-card ${studioLocked ? 'elt-card-locked' : ''}" ${lockAttr}>
-          <div class="elt-card-head"><h2>Интерфейс</h2>${studioLocked ? '<span class="elt-lock-badge">TalentStudio</span>' : ''}</div>
-          <div class="elt-form-grid">
-            <label class="elt-label elt-label-full">Логотип компании
-              <label class="elt-file-upload-btn">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 4l3-3 3 3M2 11h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                <span id="elt-file-name">Выбрать файл</span>
-                <input type="file" accept="image/*" style="display:none" onchange="document.getElementById('elt-file-name').textContent=this.files[0]?.name||'Выбрать файл'">
-              </label>
-            </label>
-            <label class="elt-label">Часовой пояс<select class="elt-select"><option>Europe/Moscow</option><option>Europe/Kaliningrad</option><option>Asia/Yekaterinburg</option><option>Asia/Novosibirsk</option><option>Asia/Vladivostok</option></select></label>
-            <label class="elt-label">Язык интерфейса<select class="elt-select"><option>Русский</option><option>English</option></select></label>
-            <div><button class="elt-btn-primary">Сохранить</button></div>
-          </div>
-        </div>
-        <div class="elt-card ${studioLocked ? 'elt-card-locked' : ''}" ${lockAttr}>
-          <div class="elt-card-head"><h2>Уведомления</h2>${studioLocked ? '<span class="elt-lock-badge">TalentStudio</span>' : ''}</div>
-          <div class="elt-form-grid">
-            <label class="elt-label">Email-уведомления<select class="elt-select"><option>Включены</option></select></label>
-            <label class="elt-label">Telegram<select class="elt-select"><option>Отправлять отчет после заполнения</option></select></label>
-            <label class="elt-label">Webhook<select class="elt-select"><option>Позже</option></select></label>
-            <div><button class="elt-btn-primary">Сохранить</button></div>
+            <span class="elt-label-text">Тема интерфейса</span>
+            <div class="elt-theme-toggle">
+              <button type="button" class="elt-theme-opt${isLight ? " active" : ""}" data-set-theme="light">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+                Светлая
+              </button>
+              <button type="button" class="elt-theme-opt${isLight ? "" : " active"}" data-set-theme="dark">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+                Тёмная
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -2495,8 +2712,299 @@ function candProfilePicker(state) {
     </div>`;
 }
 
+// Пополнение баланса оценок через провайдера Монета. Мультишаговая модалка:
+// select → processing/redirecting → waiting → success | error | timeout.
+const TOPUP_FALLBACK_PACKS = [
+  { pack: 20, amount: 990, per_assessment: 49.5, best_value: false },
+  { pack: 100, amount: 3900, per_assessment: 39, best_value: false },
+  { pack: 500, amount: 14900, per_assessment: 29.8, best_value: true }
+];
+
+function renderTopupModal(state, mHead) {
+  const rub = (n) => Number(n).toLocaleString("ru-RU");
+  const m = state.modal;
+  const b = state.billing || {};
+  const packs = (b.packs && b.packs.length) ? b.packs : TOPUP_FALLBACK_PACKS;
+  const balance = (typeof b.balance === "number") ? b.balance : (state.company.balance || 0);
+  const configured = b.configured !== false;          // по умолчанию считаем настроенным
+  const step = m.step || "select";
+  const selected = packs.find((p) => p.pack === m.pack) || packs[0];
+  const discount = m.promoApplied ? 0.10 : 0;
+  const amount = selected ? Math.round(selected.amount * (1 - discount) * 100) / 100 : 0;
+
+  const head = mHead("Пополнение баланса", "💳");
+  const wrap = (inner, cls = "") => `<div class="modalBackdrop"><div class="modal topup-modal ${cls}">${head}<div class="modal-inner topup-inner">${inner}</div></div></div>`;
+
+  // ── Промежуточные/финальные состояния ──
+  const spinner = `<div class="topup-spinner" aria-hidden="true"></div>`;
+
+  if (step === "processing" || step === "redirecting") {
+    const text = step === "redirecting" ? "Открываем защищённую форму оплаты Монеты…" : "Создаём платёж…";
+    return wrap(`<div class="topup-state">${spinner}<div class="topup-state-title">${text}</div><div class="topup-state-sub">Это займёт пару секунд</div></div>`);
+  }
+
+  if (step === "waiting") {
+    const demo = m.demo ? `<div class="topup-state-sub">Демо-режим: имитируем подтверждение оплаты…</div>` : `<div class="topup-state-sub">Подтвердите оплату в открывшемся окне Монеты. Зачисление произойдёт автоматически.</div>`;
+    return wrap(`<div class="topup-state">${spinner}<div class="topup-state-title">Ожидаем подтверждение оплаты…</div>${demo}
+      <div class="topup-state-actions">
+        <button class="elt-btn-ghost" data-action="topup-check">Проверить статус</button>
+        <button class="elt-btn-ghost" data-action="topup-cancel">Отменить</button>
+      </div></div>`);
+  }
+
+  if (step === "success") {
+    const credited = m.creditedPack || selected?.pack || 0;
+    return wrap(`<div class="topup-state topup-state-success">
+      <div class="topup-badge-ok" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.2 4.2L19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="topup-state-title">Баланс пополнен</div>
+      <div class="topup-state-sub">Зачислено <strong>+${credited} оценок</strong>. Текущий баланс: <strong>${balance}</strong>.</div>
+      <div class="topup-state-actions"><button class="elt-btn-primary" data-action="topup-done">Готово</button></div>
+    </div>`, "topup-modal-narrow");
+  }
+
+  if (step === "error") {
+    return wrap(`<div class="topup-state topup-state-error">
+      <div class="topup-badge-err" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 7v6M12 16.5v.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/></svg></div>
+      <div class="topup-state-title">Оплата не прошла</div>
+      <div class="topup-state-sub">${escapeHtml(m.error || "Не удалось завершить платёж.")}</div>
+      <div class="topup-state-actions">
+        <button class="elt-btn-ghost" data-action="topup-done">Закрыть</button>
+        <button class="elt-btn-primary" data-action="topup-retry">Попробовать снова</button>
+      </div></div>`, "topup-modal-narrow");
+  }
+
+  if (step === "timeout") {
+    return wrap(`<div class="topup-state">
+      <div class="topup-state-title">Платёж ещё обрабатывается</div>
+      <div class="topup-state-sub">Если вы завершили оплату, баланс обновится в течение нескольких минут.</div>
+      <div class="topup-state-actions">
+        <button class="elt-btn-ghost" data-action="topup-done">Закрыть</button>
+        <button class="elt-btn-primary" data-action="topup-check">Проверить статус</button>
+      </div></div>`, "topup-modal-narrow");
+  }
+
+  // ── Шаг выбора пакета ──
+  const packCards = packs.map((p) => {
+    const sel = p.pack === selected?.pack;
+    const badge = p.best_value ? `<span class="topup-pack-badge">выгодно</span>` : "";
+    return `<button class="topup-pack${sel ? " topup-pack-selected" : ""}" data-action="topup-select-pack" data-pack="${p.pack}">
+      ${badge}
+      <span class="topup-pack-count">+${p.pack}</span>
+      <span class="topup-pack-unit">оценок</span>
+      <span class="topup-pack-price">${rub(p.amount)} ₽</span>
+      <span class="topup-pack-per">${rub(p.per_assessment)} ₽ / оценка</span>
+    </button>`;
+  }).join("");
+
+  const promoBlock = m.promoApplied
+    ? `<div class="topup-promo-applied"><span>✓ Промокод ${escapeHtml(m.promoCode || "")} — скидка 10%</span><button class="topup-promo-clear" data-action="topup-clear-promo">Убрать</button></div>`
+    : `<div class="topup-promo-row">
+         <input class="elt-input topup-promo-input" placeholder="Промокод" data-topup-promo-input value="${escapeHtml(m.promoCode || "")}">
+         <button class="elt-btn-ghost" data-action="topup-apply-promo">Применить</button>
+       </div>${m.error ? `<div class="topup-error-inline">${escapeHtml(m.error)}</div>` : ""}`;
+
+  const demoNote = !configured
+    ? `<div class="topup-demo-note">Демо-режим: провайдер Монета не настроен — оплата будет имитирована.</div>`
+    : "";
+
+  const inner = `
+    <div class="topup-balance-now">
+      <span class="topup-balance-label">Сейчас на балансе</span>
+      <span class="topup-balance-value">${balance} <em>оценок</em></span>
+    </div>
+    <div class="topup-section-label">Выберите пакет</div>
+    <div class="topup-packs">${packCards}</div>
+    <div class="topup-section-label">Промокод</div>
+    ${promoBlock}
+    <div class="topup-summary">
+      <div class="topup-summary-row"><span>Пакет</span><span>+${selected?.pack || 0} оценок</span></div>
+      ${discount ? `<div class="topup-summary-row topup-summary-muted"><span>Скидка по промокоду</span><span>−10%</span></div>` : ""}
+      <div class="topup-summary-row topup-summary-total"><span>К оплате</span><strong>${rub(amount)} ₽</strong></div>
+    </div>
+    ${demoNote}
+    <button class="elt-btn-primary topup-cta" data-action="topup-pay"${m.busy ? " disabled" : ""}>Оплатить ${rub(amount)} ₽</button>
+    <div class="topup-trust">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      Оплата через MONETA.RU · защищённое соединение · карты и СБП
+    </div>`;
+  return wrap(inner);
+}
+
 function renderModal(state) {
   const mHead = (title, icon = '') => `<div class="modal-head"><div class="modal-head-left">${icon ? `<span class="modal-head-icon">${icon}</span>` : ''}<h2 class="modal-head-title">${title}</h2></div><button class="modal-close-btn" data-action="close-modal" title="Закрыть"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>`;
+
+  // ── Drill-down по KPI-карточке вакансий ──
+  if (state.modal?.type === "vacancy-list") {
+    const titles = {
+      active_no_responses: "Активные вакансии без откликов",
+      low_conversion: "Низкая конверсия",
+      good_conversion: "Хорошая конверсия",
+      total_responses: "Отклики по вакансиям",
+      assessments_sent: "Отправленные оценки",
+      fit_profile: "Подходящие под профиль",
+      closed_in_period: "Закрытые за период",
+    };
+    const drill = state.vacancyDrill;
+    let body;
+    if (state.vacancyDrillStatus === "loading" || !drill) {
+      body = `<p class="modal-subtitle">Загрузка…</p>`;
+    } else if (!drill.items.length) {
+      body = `<p class="modal-subtitle">Нет вакансий по этому условию за выбранный период.</p>`;
+    } else {
+      body = `<div class="elt-table-wrap"><table class="elt-table">
+        <thead><tr><th>Вакансия</th><th>Отклики</th><th>Подходящие</th><th>Конверсия</th><th>Оценок</th><th>Статус</th><th></th></tr></thead>
+        <tbody>${drill.items.map((v) => `<tr>
+          <td>${escapeHtml(v.title)}${v.city ? `<small style="display:block;color:#6E7C97">${escapeHtml(v.city)}</small>` : ""}</td>
+          <td>${v.responses_period}</td><td>${v.suitable}</td><td>${v.conversion}%</td><td>${v.assessments_sent}</td>
+          <td>${v.status === "closed" ? "закрыта" : "активна"}</td>
+          <td><div class="row-actions-inline" style="display:flex;gap:6px;justify-content:flex-end">
+            <button class="elt-action-pill" data-vac-responses="${v.vacancy_id}">Отклики${v.responses_period ? " " + v.responses_period : ""}</button>
+            ${v.url ? `<a class="elt-action-pill" href="${v.url}" target="_blank" rel="noopener">hh.ru ↗</a>` : ""}
+          </div></td>
+        </tr>`).join("")}</tbody>
+      </table></div>`;
+    }
+    return `<div class="modalBackdrop"><div class="modal modalWide">${mHead(titles[state.modal.card] || "Вакансии", '📊')}<div class="modal-inner">${body}</div></div></div>`;
+  }
+
+  // ── Отклики по вакансии ──
+  if (state.modal?.type === "vacancy-responses") {
+    // Стадия воронки HH → подпись + цвет бейджа.
+    const stageMap = {
+      response: ["Отклик", "neutral"],
+      consider: ["Подумать", "neutral"],
+      phone_interview: ["Телефонное интервью", "medium"],
+      assessment: ["Тестирование", "medium"],
+      interview: ["Собеседование", "medium"],
+      offer: ["Оффер", "good"],
+      hired: ["Принят", "good"],
+      discard_by_employer: ["Отказ работодателя", "bad"],
+      discard_by_applicant: ["Отозван кандидатом", "bad"],
+      discard_no_interaction: ["Без ответа", "bad"],
+      discard_vacancy_closed: ["Вакансия закрыта", "bad"],
+      discard_to_other_vacancy: ["Переведён на другую", "neutral"],
+    };
+    const stageBadge = (st) => {
+      const [label, cls] = stageMap[st] || [st || "—", "neutral"];
+      return `<span class="elt-status-badge status-${cls}">${escapeHtml(label)}</span>`;
+    };
+    const r = state.vacancyResponses;
+    let body;
+    if (state.vacancyResponsesStatus === "loading" || !r) {
+      body = `<p class="modal-subtitle">Загрузка откликов…</p>`;
+    } else if (state.vacancyResponsesStatus === "error") {
+      body = `<p class="modal-subtitle">Не удалось загрузить отклики. Попробуйте «Обновить из hh.ru».</p>`;
+    } else if (!r.items.length) {
+      body = `<p class="modal-subtitle">За выбранный период (${r.period}) откликов нет. Переключите период на 30 дней или нажмите «Обновить из hh.ru».</p>`;
+    } else {
+      const tests = state.assessmentTests || [];
+      const testPicker = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <span class="modal-subtitle" style="margin:0">Тест для перевода в кандидаты:</span>
+        <select class="elt-search" data-convert-test style="max-width:280px">
+          ${tests.length ? "" : `<option value="">— нет тестов —</option>`}
+          ${testOptionsHtml(tests, state.modal.defaultTestId)}
+        </select>
+      </div>`;
+      body = `<p class="modal-subtitle">${r.total} откликов за период ${r.period}.</p>
+      ${testPicker}
+      <div class="elt-table-wrap"><table class="elt-table">
+        <thead><tr><th>Кандидат</th><th>Статус</th><th>Дата</th><th></th></tr></thead>
+        <tbody>${r.items.map((e) => `<tr>
+          <td>${escapeHtml(e.candidate_name || "—")}</td>
+          <td>${e.converted ? `<span class="elt-status-badge status-good">Переведён в кандидаты</span>` : stageBadge(e.state)}</td>
+          <td>${e.occurred_at ? new Date(e.occurred_at).toLocaleDateString("ru-RU") : "—"}</td>
+          <td><div class="row-actions-inline" style="display:flex;gap:6px;justify-content:flex-end">
+            ${e.converted
+              ? `<span class="elt-action-pill" style="opacity:.6">✓ В кандидатах</span>`
+              : `<button class="elt-action-pill" data-convert-response="${e.id}">В кандидаты</button>`}
+            ${e.candidate_url ? `<a class="elt-action-pill" href="${e.candidate_url}" target="_blank" rel="noopener">Резюме ↗</a>` : ""}
+          </div></td>
+        </tr>`).join("")}</tbody>
+      </table></div>`;
+    }
+    return `<div class="modalBackdrop"><div class="modal modalWide">${mHead("Отклики по вакансии", '📨')}<div class="modal-inner">${body}</div></div></div>`;
+  }
+
+  // ── Модалка подключения hh.ru ──
+  if (state.modal?.type === "hh-connect") {
+    const connecting = state.hhConnectStatus === "connecting";
+    return `<div class="modalBackdrop"><div class="modal hh-connect-modal">
+      ${mHead("Подключение hh.ru", '🔗')}
+      <div class="modal-inner">
+        <p class="modal-subtitle">Авторизуйте кабинет работодателя HeadHunter — вакансии и отклики подтянутся автоматически. Вы перейдёте на сайт hh.ru для входа.</p>
+        <ul class="hh-connect-steps">
+          <li>Войдите в свой аккаунт работодателя на hh.ru</li>
+          <li>Разрешите доступ к вакансиям и откликам</li>
+          <li>Вернётесь сюда — данные появятся автоматически</li>
+        </ul>
+        ${state.hhConnectStatus === "error" ? `<p class="hh-import-error">Не удалось начать подключение. Попробуйте ещё раз.</p>` : ""}
+        <div class="modal-actions" style="margin-top:4px;display:flex;gap:10px;justify-content:flex-end">
+          <button class="elt-btn-ghost" data-action="close-modal">Отмена</button>
+          <button class="elt-btn-primary" data-action="hh-connect-start" ${connecting ? "disabled" : ""}>${connecting ? "Подключение…" : "Перейти на hh.ru"}</button>
+        </div>
+      </div>
+    </div></div>`;
+  }
+
+  // ── Модалка «Добавить из HeadHunter» ──
+  if (state.modal?.type === "hh-import") {
+    const all = state.hhVacancies || [];
+    const q = (state.hhImportSearch || "").trim().toLowerCase();
+    const filtered = q ? all.filter((v) => (v.title || "").toLowerCase().includes(q)) : all;
+    const importing = state.hhImportStatus === "loading";
+    let listBody;
+    if (state.hhVacanciesStatus === "loading" && !state.hhVacancies) {
+      listBody = `<div class="hh-import-state"><span class="hh-import-spinner"></span>Загрузка вакансий из hh.ru…</div>`;
+    } else if (state.hhVacanciesStatus === "error") {
+      listBody = `<div class="hh-import-state hh-import-state--error">Не удалось загрузить вакансии из hh.ru. Попробуйте «Обновить из hh.ru».</div>`;
+    } else if (!all.length) {
+      listBody = `<div class="hh-import-state">В кабинете hh.ru нет активных вакансий.</div>`;
+    } else if (!filtered.length) {
+      listBody = `<div class="hh-import-state">Ничего не найдено по запросу «${escapeHtml(state.hhImportSearch || "")}».</div>`;
+    } else {
+      listBody = `<div class="hh-import-list">
+        ${filtered.map((v) => `<label class="hh-import-row${v.imported ? " is-imported" : ""}"${v.imported ? ' style="opacity:.55;cursor:default"' : ""}>
+          <input type="checkbox" class="hh-import-check" data-hh-pick="${escapeHtml(String(v.id))}"${v.imported ? " disabled" : ""}>
+          <span class="hh-import-box" aria-hidden="true"></span>
+          <span class="hh-import-info">
+            <span class="hh-import-name">${escapeHtml(v.title)}</span>
+            <span class="hh-import-meta">
+              <span class="hh-import-area">${escapeHtml(v.area || "—")}</span>
+              <span class="hh-import-resp">${v.responses || 0} откл.</span>
+              ${v.imported ? `<span class="hh-import-resp" style="background:rgba(110,124,151,.18);color:#6E7C97">уже добавлена</span>` : ""}
+            </span>
+          </span>
+        </label>`).join("")}
+      </div>`;
+    }
+    const totalCount = all.length;
+    const shownCount = filtered.length;
+    const pluralVac = (n) => {
+      const m10 = n % 10, m100 = n % 100;
+      if (m10 === 1 && m100 !== 11) return "вакансия";
+      if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return "вакансии";
+      return "вакансий";
+    };
+    return `<div class="modalBackdrop"><div class="modal modalWide hh-import-modal">
+      ${mHead("Добавить из HeadHunter", '➕')}
+      <div class="modal-inner">
+        <p class="modal-subtitle">Выберите вакансии из подключённого кабинета — они появятся на вкладке с реальными метриками. Повторный импорт не создаёт дублей.</p>
+        <div class="hh-import-toolbar">
+          <div class="elt-search-wrap hh-import-search">
+            <svg class="elt-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input class="elt-search" data-hh-search placeholder="Поиск по названию…" value="${escapeHtml(state.hhImportSearch || "")}">
+          </div>
+          ${totalCount ? `<span class="hh-import-count">${q ? `${shownCount} из ${totalCount}` : `${totalCount} ${pluralVac(totalCount)}`}</span>` : ""}
+        </div>
+        ${listBody}
+        ${state.hhImportStatus === "error" ? `<p class="hh-import-error">Импорт не удался. Проверьте подключение и повторите.</p>` : ""}
+        <div class="modal-actions" style="margin-top:4px;display:flex;gap:10px;justify-content:flex-end">
+          <button class="elt-btn-ghost" data-action="close-modal">Отмена</button>
+          <button class="elt-btn-primary" data-action="hh-import-confirm" ${importing ? "disabled" : ""}>${importing ? "Импорт…" : "Добавить выбранные"}</button>
+        </div>
+      </div>
+    </div></div>`;
+  }
 
   if (state.modal?.type === "list") {
     const [scope, metricName] = state.modal.target.split(":");
@@ -2553,6 +3061,14 @@ function renderModal(state) {
           <label class="elt-label">Руководитель<select class="elt-select" name="manager_id">${managerOptions}</select></label>
           <label class="elt-label">Проект<input class="elt-input" name="project" placeholder="Общий контур"></label>
         </div>
+        <label class="elt-checkbox-card">
+          <input type="checkbox" name="send_adaptation">
+          <span class="elt-checkbox-box" aria-hidden="true"></span>
+          <span class="elt-checkbox-text">
+            <b>Выслать адаптационный тест</b>
+            <small>Запустить цикл онбординга и сразу отправить сотруднику первый опрос.</small>
+          </span>
+        </label>
         <button class="blueButton" type="submit" style="margin-top:8px;width:100%">Добавить</button>
       </div>
     </form></div>`;
@@ -2624,10 +3140,10 @@ function renderModal(state) {
     } else {
       const importing = m.status === "importing";
       inner = `
-        <p class="modal-subtitle">Массовая загрузка базы оценки из одного Excel: 3 листа — Компетенции, Вопросы, Профили должностей. Повторная загрузка обновляет, а не дублирует.</p>
+        <p class="modal-subtitle">Массовая загрузка базы оценки из одного Excel: 5 листов — profiles, competencies, questions, profile_comp_questions, answer_options. Повторная загрузка обновляет, а не дублирует.</p>
         ${m.error ? `<div class="elt-import-error-box">${escapeHtml(m.error)}</div>` : ''}
         <div class="elt-import-flow">
-          <div class="elt-import-step"><span class="elt-import-num">1</span><div><b>Скачать шаблон (3 листа)</b><p>Заполните компетенции, вопросы с вариантами и профили. На листе «Инструкция» — как связывать по ID.</p><a class="elt-btn-ghost" href="${libraryImportTemplateUrl()}" download>Скачать шаблон</a></div></div>
+          <div class="elt-import-step"><span class="elt-import-num">1</span><div><b>Скачать шаблон (5 листов)</b><p>Профили, компетенции, вопросы, связки «профиль-компетенция-вопрос» и варианты ответов. На листе «instructions» — как связывать по profile_id / comp_code / quest_id.</p><a class="elt-btn-ghost" href="${libraryImportTemplateUrl()}" download>Скачать шаблон</a></div></div>
           <div class="elt-import-step"><span class="elt-import-num">2</span><div><b>Загрузить файл</b><p>Выберите заполненный .xlsx.</p><label class="elt-file-label">Excel-файл<input type="file" accept=".xlsx,.xlsm" data-import-file></label></div></div>
           <div class="elt-import-step"><span class="elt-import-num">3</span><div><b>Импортировать</b><p>Профили появятся в Конструкторе и в мастере «Создать оценку».</p><button class="elt-btn-primary" data-action="run-library-import" ${importing ? 'disabled' : ''}>${importing ? 'Импортируем…' : 'Импортировать'}</button></div></div>
         </div>`;
@@ -2723,9 +3239,13 @@ function renderModal(state) {
           <label class="elt-label">Проект<input class="elt-input" name="project" placeholder="Общий контур"></label>
           <label class="elt-label">Дата выхода<input class="elt-input" type="date" name="start_date"></label>
         </div>
-        <label class="elt-label-full elt-checkbox-line" style="display:flex;align-items:center;gap:8px;margin-top:4px">
+        <label class="elt-checkbox-card">
           <input type="checkbox" name="sendAdaptation" checked>
-          <span>Выслать адаптационный тест (запустить цикл онбординга и отправить первый опрос)</span>
+          <span class="elt-checkbox-box" aria-hidden="true"></span>
+          <span class="elt-checkbox-text">
+            <b>Выслать адаптационный тест</b>
+            <small>Запустить цикл онбординга и сразу отправить сотруднику первый опрос.</small>
+          </span>
         </label>
         <button class="blueButton" type="submit" style="margin-top:8px;width:100%">Добавить сотрудника</button>
       </div>
@@ -2737,26 +3257,53 @@ function renderModal(state) {
       ${mHead('Добавить кандидата', '👤')}
       <div class="modal-inner">
         <p class="modal-subtitle">При включённой отправке кандидату сразу уйдёт письмо со ссылкой на оценку (нужны профиль и email).</p>
-        <div class="elt-form-grid elt-form-grid-3">
-          <label class="elt-label elt-label-full">Профиль оценки${candProfilePicker(state)}</label>
-          <label class="elt-label">Фамилия<input class="elt-input" name="lastName" placeholder="Иванов"></label>
-          <label class="elt-label">Имя<input class="elt-input" name="firstName" placeholder="Иван"></label>
-          <label class="elt-label">Отчество<input class="elt-input" name="patronymic" placeholder="Иванович"></label>
-          <label class="elt-label">Телефон<input class="elt-input" name="phone" placeholder="+7..."></label>
-          <label class="elt-label">Email<input class="elt-input" name="email" placeholder="candidate@example.com"></label>
-          <label class="elt-label">Вакансия<input class="elt-input" name="vacancy" placeholder="Менеджер по продажам"></label>
+
+        <div class="cand-field-group">
+          <span class="cand-group-label">Профиль оценки</span>
+          ${candProfilePicker(state)}
         </div>
-        <label class="elt-label-full elt-checkbox-line" style="display:flex;align-items:center;gap:8px;margin-top:4px">
+
+        <div class="cand-field-group">
+          <span class="cand-group-label">ФИО кандидата</span>
+          <div class="elt-form-grid elt-form-grid-3">
+            <label class="elt-label">Фамилия<input class="elt-input" name="lastName" placeholder="Иванов"></label>
+            <label class="elt-label">Имя<input class="elt-input" name="firstName" placeholder="Иван"></label>
+            <label class="elt-label">Отчество<input class="elt-input" name="patronymic" placeholder="Иванович"></label>
+          </div>
+        </div>
+
+        <div class="cand-field-group">
+          <span class="cand-group-label">Контакты и вакансия</span>
+          <div class="elt-form-grid elt-form-grid-3">
+            <label class="elt-label">Телефон<input class="elt-input" name="phone" placeholder="+7..."></label>
+            <label class="elt-label">Email<input class="elt-input" name="email" placeholder="candidate@example.com"></label>
+            <label class="elt-label">Вакансия<input class="elt-input" name="vacancy" placeholder="Менеджер по продажам"></label>
+          </div>
+        </div>
+
+        <label class="elt-checkbox-card">
           <input type="checkbox" name="sendNow" checked>
-          <span>Сразу отправить оценку кандидату (письмо со ссылкой)</span>
+          <span class="elt-checkbox-box" aria-hidden="true"></span>
+          <span class="elt-checkbox-text">
+            <b>Сразу отправить оценку кандидату</b>
+            <small>Кандидат получит письмо со ссылкой на прохождение оценки.</small>
+          </span>
         </label>
-        <div class="elt-label-full"><button class="elt-btn-primary" type="submit" style="width:100%">Добавить кандидата</button></div>
+
+        <button class="elt-btn-primary" type="submit" style="width:100%">Добавить кандидата</button>
       </div>
     </form></div>`;
   }
 
   if (state.modal?.type === "convert-employee") {
     const fullName = state.modal.fullName || "Кандидат";
+    const mgrList = (state.employeesApi || []).filter((e) => e.fullName);
+    const managerOptions = mgrList.length
+      ? `<select class="elt-select" name="manager_name">
+          <option value="">— Без руководителя —</option>
+          ${mgrList.map((e) => `<option value="${escapeHtml(e.fullName)}">${escapeHtml(e.fullName)}${e.position && e.position !== "—" ? ` · ${escapeHtml(e.position)}` : ""}</option>`).join("")}
+        </select>`
+      : `<input class="elt-input" name="manager_name" placeholder="Иванов Иван">`;
     return `<div class="modalBackdrop"><form class="modal" data-convert-employee-form>
       ${mHead('Перевести в сотрудники', '🔁')}
       <div class="modal-inner">
@@ -2765,7 +3312,7 @@ function renderModal(state) {
           <label class="elt-label">Должность *<input class="elt-input" name="position" placeholder="Менеджер по продажам" required></label>
           <label class="elt-label">Дата выхода *<input class="elt-input" type="date" name="start_date" required></label>
           <label class="elt-label">Отдел<input class="elt-input" name="department_name" placeholder="Отдел продаж"></label>
-          <label class="elt-label">Руководитель<input class="elt-input" name="manager_name" placeholder="Иванов Иван"></label>
+          <label class="elt-label">Руководитель${managerOptions}</label>
           <label class="elt-label">Проект<input class="elt-input" name="project" placeholder="Общий контур"></label>
           <label class="elt-label">Тип занятости<select class="elt-select" name="employment_type"><option value="">—</option><option>Штат</option><option>ГПХ</option><option>Стажировка</option><option>Удалённо</option></select></label>
         </div>
@@ -2887,6 +3434,10 @@ function renderModal(state) {
     </form></div>`;
   }
 
+  if (state.modal?.type === "topup") {
+    return renderTopupModal(state, mHead);
+  }
+
   if (state.modal?.type === "sbp-payment") {
     const { tariffId, tariffName, price, assessments, promoApplied, mode, pack } = state.modal;
     const isTopup = mode === 'topup' || !!assessments;
@@ -2937,51 +3488,23 @@ function renderModal(state) {
   }
 
   if (state.modal?.type === "filters") {
-    const filters = state.modal.filters || [];
     const active = state.modal.active || {};
-    const filterOptions = {
-      "Вакансия": ["Менеджер по продажам", "HR-рекрутер", "Frontend-разработчик"],
-      "Источник": ["HeadHunter", "SuperJob", "Avito", "Telegram", "Ручная", "API", "Импорт"],
-      "Статус": ["Откликнулся", "Оценка отправлена", "Оценка пройдена", "Подходит", "Интервью", "Оффер", "Не подходит"],
-      "Результат оценки": ["Высокий (80%+)", "Средний (60-79%)", "Низкий (<60%)"],
-      "Тип подбора": ["Внешний", "Внутренний", "Проектный"],
-      "Ответственный": ["Иван Петров", "Анна Сергеева", "Ольга Смирнова"],
-      "Город": ["Москва", "Санкт-Петербург", "Екатеринбург", "Новосибирск"],
-      "Соответствие": ["Высокое (80%+)", "Среднее (60-79%)", "Низкое (<60%)"],
-      "Риск": ["Низкий", "Средний", "Высокий"],
-      "Отдел": ["Отдел продаж", "Операционный", "Контакт-центр", "Финансы"],
-      "Должность": ["Менеджер", "Специалист", "Руководитель"],
-      "Руководитель": ["Иван Петров", "Анна Сергеева", "Ольга Смирнова"],
-      "Проект": ["Проект A", "Проект B"],
-      "Тип сотрудника": ["Стафф", "Аутсорсинг", "Стажёр"],
-      "Адаптация": ["На адаптации", "Завершил", "Риск"],
-      "Performance Review": ["Пройден", "Не пройден"],
-      "360": ["Пройден", "Не пройден"],
-      "Сегмент 9-box": ["HiPo", "Звезда", "Лидер", "Стабильный", "Зона риска"],
-      "Потенциал": ["Высокий", "Средний", "Низкий"],
-      "Результативность": ["Высокая", "Средняя", "Низкая"],
-      "Этап адаптации": ["7 дней", "14 дней", "30 дней", "60 дней", "90 дней"],
-      "Причина риска": ["Нагрузка", "Конфликт", "Зарплата", "Неясность задач"],
-      "Конверсия": ["Высокая (>30%)", "Средняя (10-30%)", "Низкая (<10%)"],
-      "Подходящие": ["Есть", "Нет"],
-      "Расхождение": ["Высокое", "Среднее", "Низкое"],
-      "Компетенция": ["Ответственность", "Коммуникация", "Лидерство", "Аналитика"],
-      "Тип": ["Кандидат", "Сотрудник", "Групповая"],
-      "Вакансия / отдел": ["Менеджер по продажам", "HR-рекрутер", "Отдел продаж"],
-      "Все направления": ["Кандидаты", "Сотрудники", "Групповые"]
-    };
-    const rows = filters.map((f) => {
-      const opts = filterOptions[f] || [];
-      const cur = active[f] || "";
-      return '<div class="elt-fp-row">' +
-        '<span class="elt-fp-label">' + f + '</span>' +
-        '<div class="elt-fp-opts">' +
-          '<button class="elt-fp-opt ' + (!cur ? 'active' : '') + '" data-fp-key="' + f + '" data-fp-val="">Все</button>' +
-          opts.map((o) => '<button class="elt-fp-opt ' + (cur === o ? 'active' : '') + '" data-fp-key="' + f + '" data-fp-val="' + o + '">' + o + '</button>').join('') +
-        '</div>' +
-      '</div>';
-    }).join('');
-    const activeCount = Object.values(active).filter(Boolean).length;
+    // Варианты строятся по реальным данным текущей страницы (см. domain/filtering).
+    const { keys, options } = filterModel(state, state.view);
+    const rows = keys.length
+      ? keys.map((f) => {
+          const opts = options[f] || [];
+          const cur = active[f] || "";
+          return '<div class="elt-fp-row">' +
+            '<span class="elt-fp-label">' + escapeHtml(f) + '</span>' +
+            '<div class="elt-fp-opts">' +
+              '<button class="elt-fp-opt ' + (!cur ? 'active' : '') + '" data-fp-key="' + escapeHtml(f) + '" data-fp-val="">Все</button>' +
+              opts.map((o) => '<button class="elt-fp-opt ' + (cur === o ? 'active' : '') + '" data-fp-key="' + escapeHtml(f) + '" data-fp-val="' + escapeHtml(o) + '">' + escapeHtml(o) + '</button>').join('') +
+            '</div>' +
+          '</div>';
+        }).join('')
+      : '<p class="elt-fp-empty">Для этой страницы пока нет данных для фильтрации.</p>';
+    const activeCount = Object.keys(options).reduce((n, k) => n + (active[k] ? 1 : 0), 0);
     return '<div class="modalBackdrop"><div class="modal elt-filters-modal">' +
       mHead('Фильтры', '⧦') +
       '<div class="modal-inner elt-fp-inner">' + rows + '</div>' +
@@ -3077,7 +3600,7 @@ function renderLinksTable(links) {
 }
 
 function renderEmployeeTable(employees) {
-  return `<table><thead><tr><th>ФИО</th><th>Должность</th><th>Отдел</th><th>Риск</th><th>Удовлетворенность</th><th>Действия</th></tr></thead><tbody>${employees.map((item) => `<tr><td>${item.fullName}</td><td>${item.position}</td><td>${item.department}</td><td>${item.turnoverRisk}</td><td>${item.satisfaction}%</td><td><div class="rowActions"><button class="button subtle" data-open-card="${item.id}">Карточка</button><button class="button subtle" data-open-answers="${item.id}">Ответы</button></div></td></tr>`).join("")}</tbody></table>`;
+  return `<table><thead><tr><th>ФИО</th><th>Должность</th><th>Отдел</th><th>Риск</th><th>Удовлетворенность</th><th>Действия</th></tr></thead><tbody>${employees.map((item) => `<tr><td>${item.fullName}</td><td>${item.position}</td><td>${item.department}</td><td>${item.turnoverRisk}</td><td>${item.satisfaction}%</td><td><div class="rowActions"><button class="button subtle" data-open-card="${item.id}">Карточка</button><button class="button subtle" data-open-answers="${item.id}">Ответы</button></div></td></tr>`).join("") || `<tr><td colspan="6" style="text-align:center;padding:24px;color:rgba(230,242,255,.35)">Нет данных</td></tr>`}</tbody></table>`;
 }
 
 function renderReportTable(state) {
@@ -3201,23 +3724,70 @@ function candidateHeatmap(state) {
 
 function employeeHeatmap(state) {
   const columns = ["Удовлетворенность", "Выгорание", "Риск увольнения", "Соответствие", "Адаптация", "Performance"];
-  return {
-    title: "Состояние отделов",
-    columns,
-    rows: state.departments.map((dept, rowIndex) => ({
-      label: dept.name,
-      cells: columns.map((column, index) => {
-        const riskMetric = /Выгорание|Риск/.test(column);
-        const value = riskMetric ? Math.max(18, dept.risk * 12 + index * 3) : Math.max(52, 88 - dept.risk * 7 - rowIndex * 3 + index);
-        return {
-          value: `${value}%`,
-          caption: riskMetric ? "риск" : "уровень",
-          status: riskMetric ? getRiskStatus(value) : getFitStatus(value),
-          target: `Сотрудники:${dept.name} ${column}`
-        };
-      })
-    }))
+  const employees = state.employeesApi || [];
+
+  // Группируем реальных сотрудников по отделам (раньше тут был seedDepartments()
+  // с выдуманными значениями — теперь всё считается из state.employeesApi).
+  const byDept = new Map();
+  employees.forEach((e) => {
+    const name = e.department && e.department !== "—" ? e.department : "Без отдела";
+    if (!byDept.has(name)) byDept.set(name, []);
+    byDept.get(name).push(e);
+  });
+
+  // Данные ещё не загрузились / отделов нет — рисуем пустую карту, без моков.
+  if (!byDept.size) return { title: "Состояние отделов", columns, rows: [] };
+
+  const daysSince = (d) => {
+    if (!d) return null;
+    const t = Date.parse(d);
+    return Number.isNaN(t) ? null : Math.floor((Date.now() - t) / 86400000);
   };
+  // «Признаки выгорания» — тот же критерий, что и на бэке (crud/employee.py).
+  const hasBurnout = (e) => e.burnout && !["нет", "—", ""].includes(String(e.burnout).toLowerCase());
+  const elevatedRisk = (e) => ["средний", "повышенный", "высокий"].includes(String(e.turnoverRisk || "").toLowerCase());
+  const avg = (arr) => (arr.length ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length) : null);
+  const share = (arr, n) => (n ? Math.round((arr.length / n) * 100) : null);
+
+  // Реальные метрики по одному отделу. value=null → «нет данных».
+  const metricsFor = (emps) => {
+    const fits = emps.map((e) => e.fit).filter((v) => v != null);
+    const tenured = emps.filter((e) => { const d = daysSince(e.startDate); return d != null && d > 90; });
+    return {
+      "Удовлетворенность": { value: avg(emps.map((e) => e.satisfaction).filter((v) => v > 0)), kind: "level" },
+      "Выгорание": { value: share(emps.filter(hasBurnout), emps.length), kind: "risk" },
+      "Риск увольнения": { value: share(emps.filter(elevatedRisk), emps.length), kind: "risk" },
+      "Соответствие": { value: avg(fits), kind: "level" },
+      // Адаптация: доля «осевших» (90+ дней) сотрудников, успешно прошедших онбординг (fit≥70).
+      "Адаптация": { value: share(tenured.filter((e) => e.fit != null && e.fit >= 70), tenured.length), kind: "level" },
+      // Performance: доля высокой результативности (fit≥80) среди оценённых.
+      "Performance": { value: share(fits.filter((v) => v >= 80), fits.length), kind: "level" }
+    };
+  };
+
+  // Отделы — по убыванию численности.
+  const rows = [...byDept.entries()]
+    .sort((a, b) => b[1].length - a[1].length)
+    .map(([name, emps]) => {
+      const m = metricsFor(emps);
+      return {
+        label: `${name} · ${emps.length} чел.`,
+        cells: columns.map((column) => {
+          const { value, kind } = m[column];
+          const target = `Сотрудники:${name} ${column}`;
+          if (value == null) return { value: "—", caption: "нет данных", status: "neutral", target };
+          const isRisk = kind === "risk";
+          return {
+            value: `${value}%`,
+            caption: isRisk ? "риск" : "уровень",
+            status: isRisk ? getRiskStatus(value) : getFitStatus(value),
+            target
+          };
+        })
+      };
+    });
+
+  return { title: "Состояние отделов", columns, rows };
 }
 
 function vacancyHeatmap(state) {

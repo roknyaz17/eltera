@@ -1,0 +1,14 @@
+# Скрейп Tier A метрик бэкенда Eltera.
+# Бэкенд (uvicorn) поднимается на хосте, поэтому цель — host.docker.internal.
+# Если бэкенд тоже в compose — замените target на имя его сервиса, напр. backend:8000.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: eltera-backend
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:8000"]
+        labels:
+          service: eltera-backend

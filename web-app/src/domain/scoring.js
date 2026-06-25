@@ -31,7 +31,17 @@ export function calculateResult(assessmentQuestions, answersByQuestionId, compet
     if (selectedAnswer.redFlag) redFlags += 1;
   });
 
-  const percent = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
+  // Итоговый percent — среднее процентов по компетенциям (равный вес), как на
+  // бэке (scoring.aggregate). score/maxScore остаются «сырыми» для отображения.
+  let fracSum = 0;
+  let compCount = 0;
+  Object.values(competencyScores).forEach((c) => {
+    const frac = c.maxScore > 0 ? c.score / c.maxScore : 0;
+    c.percent = Math.round(frac * 100);
+    fracSum += frac;
+    compCount += 1;
+  });
+  const percent = compCount > 0 ? Math.round((fracSum / compCount) * 100) : 0;
   const recommendation = getRecommendation(percent, redFlags);
 
   return {

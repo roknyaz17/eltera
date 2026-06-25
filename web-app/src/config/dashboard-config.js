@@ -36,7 +36,7 @@ export const navConfig = [
   { id: "performance", label: "Performance Review", icon: svg.performance, countKey: "", alertKey: "", group: "analytics" },
   { id: "tariffs", label: "Тарифы", icon: svg.tariffs, countKey: "", alertKey: "", group: "account" },
   { id: "referrals", label: "Реферальная", icon: svg.referrals, countKey: "", alertKey: "", group: "account" },
-  { id: "api", label: "API-ключи", icon: svg.api, countKey: "", alertKey: "", group: "account" },
+  { id: "api", label: "API-ключи", icon: svg.api, countKey: "", alertKey: "", group: "account", wip: true },
   { id: "support", label: "Поддержка", icon: svg.support, countKey: "", alertKey: "", group: "account" },
   { id: "gratitude", label: "Благодарности", icon: svg.gratitude, countKey: "", alertKey: "", group: "account" },
   { id: "settings", label: "Настройки", icon: svg.settings, countKey: "", alertKey: "", group: "account" }

@@ -255,6 +255,7 @@ class StageBreakdown(BaseModel):
 class VacancyBreakdown(BaseModel):
     vacancy: str
     total: int
+    completed: int = 0
     fit: int
 
 

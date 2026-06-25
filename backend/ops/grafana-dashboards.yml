@@ -1,0 +1,14 @@
+# Автопровижининг дашбордов из папки.
+apiVersion: 1
+
+providers:
+  - name: eltera
+    orgId: 1
+    folder: Eltera
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/dashboards
+      foldersFromFilesStructure: false

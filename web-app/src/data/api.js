@@ -98,6 +98,9 @@ export function authVerifyLogin(payload) { return authRequest("/auth/login/verif
 export function authVerifyRegister(payload) { return authRequest("/auth/register/verify", payload); }
 export function authResendLogin(payload) { return authRequest("/auth/login/resend", payload); }
 export function authResendRegister(payload) { return authRequest("/auth/register/resend", payload); }
+export function authForgotPassword(email) { return authRequest("/auth/password/forgot", { email }); }
+export function authVerifyReset(payload) { return authRequest("/auth/password/verify", payload); }
+export function authResetPassword(payload) { return authRequest("/auth/password/reset", payload); }
 export async function authLogout() {
   const t = getTokens();
   if (t && t.refresh_token) {
@@ -106,6 +109,10 @@ export async function authLogout() {
   clearTokens();
 }
 export function authMe() { return getJSON("/auth/me"); }
+
+// ── Профиль организации (вкладка «Настройки») ────────────────────────────────
+export function fetchOrganization() { return getJSON("/organization"); }
+export function updateOrganization(payload) { return patchJSON("/organization", payload); }
 
 // Частичное обновление кандидата (например, смена этапа воронки).
 export function updateCandidate(personId, payload) {
@@ -191,9 +198,17 @@ export function fetchCandidateHeatmap() {
   return getJSON(`/candidates/heatmap`);
 }
 
-// URL PDF-отчёта по кандидату (открывается в новой вкладке).
-export function candidatePdfUrl(personId) {
-  return `${API_BASE}/candidates/${personId}/report`;
+// PDF-отчёт по кандидату: тянем blob с Bearer-токеном и открываем во вкладке.
+// Нельзя просто window.open(url) — новая вкладка не отправит Authorization → 401.
+export async function openCandidatePdf(personId) {
+  const res = await rawFetch(`/candidates/${personId}/report`, {
+    headers: { Accept: "application/pdf" },
+  });
+  if (!res.ok) throw new Error(`API /candidates/${personId}/report → ${res.status}`);
+  const url = URL.createObjectURL(await res.blob());
+  window.open(url, "_blank");
+  // Отдаём память чуть позже, чтобы вкладка успела загрузить blob.
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 // Ответы кандидата (вопросы + выбранные варианты + баллы).
@@ -293,14 +308,50 @@ export function fetchOverview() {
 export function fetchHhStatus() {
   return getJSON(`/hh/status`);
 }
-export function hhConnectUrl() {
-  return `${API_BASE}/hh/connect`;
+// Старт OAuth: авторизованный запрос (Bearer уходит в заголовке через getJSON),
+// возвращает authorize URL hh.ru — браузер редиректим на него уже из JS.
+export function startHhConnect() {
+  return getJSON(`/hh/connect`);
 }
 export function fetchHhVacancies() {
   return getJSON(`/hh/vacancies`);
 }
 export function hhDisconnect() {
   return postJSON(`/hh/disconnect`, {});
+}
+
+// Вкладка «Вакансии»: реальные метрики/KPI из локальной БД (наполняется HH),
+// импорт и синхронизация. period — '7d' | '14d' | '30d'.
+export function fetchVacancyKpi(period = "7d") {
+  return getJSON(`/vacancies/kpi?period=${encodeURIComponent(period)}`);
+}
+export function fetchVacancyDrill(card, period = "7d") {
+  return getJSON(`/vacancies/kpi/${encodeURIComponent(card)}?period=${encodeURIComponent(period)}`);
+}
+export function importHhVacancies(externalIds) {
+  return postJSON(`/vacancies/import/hh`, { external_ids: externalIds });
+}
+export function syncHhVacancies() {
+  return postJSON(`/vacancies/sync/hh`, {});
+}
+export function fetchVacancyResponses(vacancyId, period = "7d") {
+  return getJSON(`/vacancies/${vacancyId}/responses?period=${encodeURIComponent(period)}`);
+}
+export function fetchVacancyCandidates(vacancyId, fitOnly = false) {
+  return getJSON(`/vacancies/${vacancyId}/candidates?fit=${fitOnly ? "true" : "false"}`);
+}
+export function fetchVacancyFunnel(vacancyId, period = "7d") {
+  return getJSON(`/vacancies/${vacancyId}/funnel?period=${encodeURIComponent(period)}`);
+}
+// Тесты для назначения, дефолтный тест вакансии и конвертация отклика в кандидата.
+export function fetchAssessmentTests() {
+  return getJSON(`/vacancies/tests`);
+}
+export function setVacancyDefaultTest(vacancyId, testId) {
+  return patchJSON(`/vacancies/${vacancyId}/default-test`, { test_id: testId || null });
+}
+export function convertResponse(vacancyId, eventId, testId) {
+  return postJSON(`/vacancies/${vacancyId}/responses/${eventId}/convert`, { test_id: testId || null });
 }
 
 // Центр уведомлений: список + счётчик непрочитанных.
@@ -310,6 +361,52 @@ export function fetchNotifications() {
 // Отметить уведомления прочитанными (все или по списку id).
 export function markNotificationsRead({ ids = [], all = false } = {}) {
   return postJSON(`/notifications/read`, { ids, all });
+}
+
+// ── Реферальная программа ─────────────────────────────────────────────────────
+// Сводка: код ссылки, баланс бонусов, приглашённые компании, операции, заявки.
+export function fetchReferrals() {
+  return getJSON(`/referrals`);
+}
+// Потратить бонусы на докупку `count` оценок.
+export function spendReferralBonuses(count) {
+  return postJSON(`/referrals/spend`, { count });
+}
+// Создать заявку на вывод бонусов на карту.
+export function createReferralWithdrawal(payload) {
+  return postJSON(`/referrals/withdraw`, payload);
+}
+// Уведомить о собственной оплате — начисляет бонус пригласившему реферу.
+export function recordReferralPayment(amount) {
+  return postJSON(`/referrals/payment`, { amount });
+}
+
+// ── Биллинг: пополнение баланса оценок через провайдера Монета ────────────────
+// Сводка: текущий баланс, каталог пакетов, флаги конфигурации, история платежей.
+export function fetchBilling() {
+  return getJSON(`/billing`);
+}
+// Создать платёж на пополнение выбранным пакетом (+ опциональный промокод).
+// Возвращает { payment_id, redirect_url, configured, ... }.
+export function createTopup(pack, promoCode) {
+  return postJSON(`/billing/topup`, { pack, promo_code: promoCode || null });
+}
+// Статус платежа (для поллинга после возврата с формы Монеты).
+export function fetchPaymentStatus(paymentId) {
+  return getJSON(`/billing/payments/${paymentId}`);
+}
+// Отменить ожидающий платёж (пользователь закрыл окно оплаты).
+export function cancelPayment(paymentId) {
+  return postJSON(`/billing/payments/${paymentId}/cancel`, {});
+}
+// Демо/тест: подтвердить оплату без реального провайдера (доступно только когда
+// провайдер не настроен или включён тестовый режим — гард на сервере).
+export function simulatePayment(paymentId) {
+  return postJSON(`/billing/payments/${paymentId}/simulate`, {});
+}
+// Списать оценки с баланса при отправке приглашения (бэкенд — источник истины).
+export function debitBalance(count = 1, reason = "Отправка оценки") {
+  return postJSON(`/billing/debit`, { count, reason });
 }
 
 // Записать результат оценки сотрудника (обновляет fit).

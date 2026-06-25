@@ -22,6 +22,8 @@ import {
   fetchTaxonomy,
   getTokens,
   authLogout,
+  fetchOrganization,
+  updateOrganization,
   recordCandidateResult,
   createLink,
   fetchLinks,
@@ -29,7 +31,7 @@ import {
   fetchAssessmentForm,
   submitAssessment,
   updateCandidate,
-  candidatePdfUrl,
+  openCandidatePdf,
   fetchCandidateAnswers,
   fetchCandidate,
   fetchEmployees,
@@ -47,11 +49,30 @@ import {
   fetchOverview,
   fetchNotifications,
   markNotificationsRead,
+  fetchReferrals,
+  spendReferralBonuses,
+  createReferralWithdrawal,
+  recordReferralPayment,
+  fetchBilling,
+  createTopup,
+  fetchPaymentStatus,
+  cancelPayment,
+  simulatePayment,
+  debitBalance,
   importLibrary,
   fetchHhStatus,
   fetchHhVacancies,
   hhDisconnect,
-  hhConnectUrl,
+  startHhConnect,
+  fetchVacancyKpi,
+  fetchVacancyDrill,
+  fetchVacancyResponses,
+  fetchVacancyFunnel,
+  fetchAssessmentTests,
+  setVacancyDefaultTest,
+  convertResponse,
+  importHhVacancies,
+  syncHhVacancies,
   recordEmployeeResult,
   fetchOrgTree,
   addStructureMember,
@@ -147,6 +168,8 @@ const competencyTitleById = {
 let state = loadState();
 // Аутентификация — источник истины это наличие токенов в localStorage.
 state.authenticated = !!getTokens();
+// Код реферального приглашения переживает перезагрузку (ведём на регистрацию).
+try { state.refCode = state.refCode || localStorage.getItem("eltera_ref") || null; } catch { /* ignore */ }
 // Данные кандидатов всегда загружаем заново с бэкенда (не из localStorage).
 state.candidatesStatus = "idle";
 state.candidatesApi = null;
@@ -186,6 +209,9 @@ if (!state.period) {
   state.period = "30 дней";
   saveState();
 }
+if (!state.vacancyPeriod) {
+  state.vacancyPeriod = "7d";  // предсказуемый дефолт периода вкладки «Вакансии»
+}
 
 function defaultState() {
   const firstLink = createLinkObject({ professionId: "recruiter", recipientType: "Кандидат", email: "demo@eltera.ai", forcedToken: "demo-link" });
@@ -221,26 +247,27 @@ function defaultState() {
       legalAddress: "Москва, ул. Примерная, 1",
       actualAddress: "Москва, офис 12"
     },
+    // Стартовые значения до загрузки с бэкенда — пустой счёт без моков.
+    // Реальные данные приходят из applyReferralSummary (GET /referrals).
     referrals: {
-      invited: 8,
-      paid: 5,
-      totalPayments: 238400,
-      accrued: 23840,
-      available: 4950,
-      spent: 6000,
-      withdrawn: 8400,
-      operations: [
-        ["Север IT", "29 900 ₽", "+2 990 ₽", "начислен"],
-        ["HR Project", "12 900 ₽", "+1 290 ₽", "начислен"],
-        ["Оценки за бонусы", "100 оценок", "-4 950 ₽", "списано"]
-      ],
+      code: "",
+      invited: 0,
+      paid: 0,
+      totalPayments: 0,
+      accrued: 0,
+      available: 0,
+      spent: 0,
+      withdrawn: 0,
+      reserved: 0,
+      invites: [],
+      operations: [],
       withdrawals: []
     },
     links: [firstLink],
     sessions: seedSessions(),
     vacancies: seedVacancies(),
     employees: seedEmployees(),
-    departments: seedDepartments(),
+    departments: [], // наполняется реальными отделами из API (deriveDepartments)
     candidate: {
       token: "",
       answers: {}
@@ -385,13 +412,26 @@ function seedEmployees() {
   }));
 }
 
-function seedDepartments() {
-  return [
-    { name: "Отдел продаж", head: "Иван Петров", employees: 18, risk: 3 },
-    { name: "Операционный отдел", head: "Анна Сергеева", employees: 12, risk: 2 },
-    { name: "Контакт-центр", head: "Ольга Смирнова", employees: 34, risk: 7 },
-    { name: "Финансы", head: "Наталья Орлова", employees: 6, risk: 1 }
-  ];
+// Реальные отделы из загруженных сотрудников (раньше — хардкод seedDepartments
+// с выдуманными name/head/employees/risk). Форма {name, head, employees, risk}
+// сохранена — её ждут премиум-дашборд (deptRow), оргструктура и модалка добавления.
+function deriveDepartments(employees) {
+  const byName = new Map();
+  (employees || []).forEach((e) => {
+    const name = e.department && e.department !== "—" ? e.department : "Без отдела";
+    if (!byName.has(name)) byName.set(name, []);
+    byName.get(name).push(e);
+  });
+  const elevated = (e) => ["средний", "повышенный", "высокий"].includes(String(e.turnoverRisk || "").toLowerCase());
+  return [...byName.entries()]
+    .map(([name, emps]) => {
+      // «Руководитель отдела» — самый частый менеджер среди сотрудников отдела.
+      const mgrCount = {};
+      emps.forEach((e) => { if (e.manager && e.manager !== "—") mgrCount[e.manager] = (mgrCount[e.manager] || 0) + 1; });
+      const head = Object.entries(mgrCount).sort((a, b) => b[1] - a[1])[0]?.[0] || "—";
+      return { name, head, employees: emps.length, risk: emps.filter(elevated).length };
+    })
+    .sort((a, b) => b.employees - a.employees);
 }
 
 function createLinkObject({ professionId, recipientType, email = "", forcedToken, firstName = "", lastName = "", patronymic = "", phone = "", position = "", company = "", department = "", vacancy = "", project = "" }) {
@@ -435,7 +475,11 @@ function mergeState(base, saved) {
     ...base,
     ...saved,
     company: { ...base.company, ...saved.company },
-    referrals: { ...base.referrals, ...saved.referrals },
+    // referrals не берём из localStorage: единственный источник — бэкенд
+    // (GET /referrals). Иначе устаревший кэш мог бы показать старые мок-данные.
+    referrals: { ...base.referrals },
+    // Сбрасываем статус загрузки, чтобы при входе на вкладку всегда был свежий GET.
+    referralsStatus: null,
     employeePhotos: { ...(base.employeePhotos || {}), ...(saved.employeePhotos || {}) }
   };
 }
@@ -455,6 +499,7 @@ function currentRoute() {
     return { route: "app", view: rest || "dashboard", query };
   }
   if (hash.startsWith("#/assess/")) return { route: "assess", token: hash.replace("#/assess/", "") };
+  if (hash.startsWith("#/ref/")) return { route: "ref", refCode: hash.replace("#/ref/", "").split(/[?&/]/)[0] };
   if (hash === "#/login") return { route: "login" };
   if (hash === "#/thanks") return { route: "thanks" };
   if (hash === "#/dev") return { route: "dev" };
@@ -572,6 +617,7 @@ async function loadEmployeesFromApi() {
   try {
     const [list, stats] = await Promise.all([fetchEmployees(), fetchEmployeeStats()]);
     state.employeesApi = (list.items || []).map(mapApiEmployee);
+    state.departments = deriveDepartments(state.employeesApi);
     state.employeeStats = stats;
     state.employeesStatus = "ready";
   } catch (error) {
@@ -595,6 +641,40 @@ async function loadNotifications() {
   } catch (error) {
     console.warn("Не удалось загрузить уведомления:", error);
     state.notifStatus = "error";
+  }
+  render();
+}
+
+// Переносит серверную сводку реферальной программы в state.referrals.
+function applyReferralSummary(summary) {
+  state.referrals = {
+    code: summary.code,
+    invited: summary.invited,
+    paid: summary.paid,
+    totalPayments: summary.total_payments,
+    accrued: summary.accrued,
+    available: summary.available,
+    spent: summary.spent,
+    withdrawn: summary.withdrawn,
+    reserved: summary.reserved,
+    invites: summary.invites || [],
+    operations: summary.operations || [],
+    withdrawals: summary.withdrawals || []
+  };
+  if (typeof summary.assessment_price === "number") {
+    state.company.assessmentPrice = summary.assessment_price;
+  }
+}
+
+async function loadReferrals() {
+  if (state.referralsStatus === "loading") return;
+  state.referralsStatus = "loading";
+  try {
+    applyReferralSummary(await fetchReferrals());
+    state.referralsStatus = "ready";
+  } catch (error) {
+    console.warn("Не удалось загрузить реферальную программу:", error);
+    state.referralsStatus = "error";
   }
   render();
 }
@@ -627,6 +707,333 @@ async function loadHhVacancies() {
     state.hhVacanciesStatus = "error";
   }
   render();
+}
+
+function vacancyPeriod() {
+  return state.vacancyPeriod || "7d";
+}
+
+// KPI и метрики вакансий за выбранный период (реальные данные из БД).
+async function loadVacancyKpi() {
+  state.vacancyKpiStatus = "loading";
+  try {
+    state.vacancyKpi = await fetchVacancyKpi(vacancyPeriod());
+    state.vacancyKpiStatus = "ready";
+  } catch (error) {
+    console.warn("Не удалось загрузить метрики вакансий:", error);
+    state.vacancyKpi = null;
+    state.vacancyKpiStatus = "error";
+  }
+  render();
+}
+
+// Drill-down по KPI-карточке: список вакансий, отфильтрованный бэкендом.
+async function loadVacancyDrill(card) {
+  state.vacancyDrillStatus = "loading";
+  state.vacancyDrill = null;
+  render();
+  try {
+    state.vacancyDrill = await fetchVacancyDrill(card, vacancyPeriod());
+    state.vacancyDrillStatus = "ready";
+  } catch (error) {
+    console.warn("Не удалось загрузить drill-down вакансий:", error);
+    state.vacancyDrill = null;
+    state.vacancyDrillStatus = "error";
+  }
+  render();
+}
+
+// Отклики по вакансии за выбранный период.
+async function loadVacancyResponses(vacancyId) {
+  state.vacancyResponsesStatus = "loading";
+  state.vacancyResponses = null;
+  render();
+  try {
+    state.vacancyResponses = await fetchVacancyResponses(vacancyId, vacancyPeriod());
+    state.vacancyResponsesStatus = "ready";
+  } catch (error) {
+    console.warn("Не удалось загрузить отклики:", error);
+    state.vacancyResponses = null;
+    state.vacancyResponsesStatus = "error";
+  }
+  render();
+}
+
+// Список тестов для назначения (грузим один раз).
+async function loadAssessmentTests() {
+  if (state.assessmentTests || state.assessmentTestsLoading) return;
+  state.assessmentTestsLoading = true;
+  try {
+    state.assessmentTests = await fetchAssessmentTests();
+  } catch (error) {
+    console.warn("Не удалось загрузить тесты:", error);
+    state.assessmentTests = [];
+  }
+  state.assessmentTestsLoading = false;
+  render();
+}
+
+// Перевод отклика в кандидата: создаёт кандидата, назначает тест, шлёт ссылку в чат HH.
+async function runConvertResponse(vacancyId, eventId, testId) {
+  try {
+    const r = await convertResponse(vacancyId, eventId, testId);
+    showToast(r && r.chat_sent ? "Кандидат создан, ссылка отправлена в чат HH" : "Кандидат создан (ссылка в чат HH не ушла)", r && r.chat_sent ? "success" : "error");
+    state.vacancyKpi = null;
+    loadVacancyResponses(vacancyId);   // обновим список (статусы/повторная конвертация)
+    loadVacancyKpi();
+  } catch (error) {
+    console.warn("Конвертация отклика не удалась:", error);
+    showToast((error && error.message) || "Не удалось перевести отклик в кандидата", "error");
+  }
+}
+
+// Импорт выбранных вакансий из HH, затем обновление метрик.
+async function runHhImport(externalIds) {
+  if (!externalIds.length) return;
+  state.hhImportStatus = "loading";
+  render();
+  try {
+    await importHhVacancies(externalIds);
+    state.hhImportStatus = "ready";
+    state.modal = null;
+    state.vacancyKpi = null;
+    loadVacancyKpi();
+  } catch (error) {
+    console.warn("Импорт вакансий не удался:", error);
+    state.hhImportStatus = "error";
+    render();
+  }
+}
+
+// Окно лимитинга синхронизации hh.ru: не более 3 запусков в минуту.
+const HH_SYNC_LIMIT = 3;
+const HH_SYNC_WINDOW_MS = 60_000;
+const hhSyncTimestamps = [];
+
+// true, если в текущем окне ещё остался лимит на синхронизацию.
+function hhSyncAllowed() {
+  const now = Date.now();
+  while (hhSyncTimestamps.length && now - hhSyncTimestamps[0] > HH_SYNC_WINDOW_MS) {
+    hhSyncTimestamps.shift();
+  }
+  return hhSyncTimestamps.length < HH_SYNC_LIMIT;
+}
+
+// «Обновить из hh.ru»: синхронизация истории + перезагрузка метрик.
+// Кнопка недоступна, пока идёт запрос (state.hhSyncing) или исчерпан лимит.
+async function runHhSync({ silent = false } = {}) {
+  if (state.hhSyncing) return;
+  if (!hhSyncAllowed()) {
+    if (!silent) showToast("Слишком часто. Обновить можно не более 3 раз в минуту.", "error");
+    return;
+  }
+  hhSyncTimestamps.push(Date.now());
+  state.hhSyncing = true;
+  state.vacancyKpiStatus = "loading";
+  render();
+  try {
+    await syncHhVacancies();
+  } catch (error) {
+    console.warn("Синхронизация hh.ru не удалась:", error);
+  } finally {
+    state.hhSyncing = false;
+  }
+  state.hhVacancies = null;
+  state.vacancyKpi = null;
+  loadHhVacancies();
+  loadVacancyKpi();
+}
+
+// ── Профиль организации (вкладка «Настройки») ──
+// Соответствие snake_case (бэкенд) ↔ camelCase (state.company).
+const ORG_FIELD_MAP = {
+  name: "name",
+  inn: "inn",
+  kpp: "kpp",
+  site: "site",
+  report_email: "reportEmail",
+  phone: "phone",
+  legal_address: "legalAddress",
+  actual_address: "actualAddress",
+  contact_last_name: "contactLastName",
+  contact_first_name: "contactFirstName",
+  contact_patronymic: "contactPatronymic",
+  contact_phone: "contactPhone",
+  contact_email: "contactEmail"
+};
+
+function applyOrgToCompany(org) {
+  Object.entries(ORG_FIELD_MAP).forEach(([apiKey, stateKey]) => {
+    if (org[apiKey] != null) state.company[stateKey] = org[apiKey];
+  });
+  if (org.tariff) state.company.tariff = org.tariff;
+}
+
+async function loadOrganization() {
+  state.orgStatus = "loading";
+  try {
+    applyOrgToCompany(await fetchOrganization());
+    state.orgStatus = "ready";
+    saveState();
+  } catch (error) {
+    console.warn("Не удалось загрузить реквизиты компании:", error);
+    state.orgStatus = "error";
+  }
+  render();
+}
+
+// Сохранение реквизитов: собираем поля карточки в payload и шлём PATCH.
+async function saveOrganization(card) {
+  const root = document.querySelector(`[data-org-card="${card}"]`);
+  if (!root) return;
+  const payload = {};
+  root.querySelectorAll("[data-org-field]").forEach((el) => {
+    payload[el.dataset.orgField] = el.value.trim();
+  });
+  const btn = root.querySelector("[data-org-save]");
+  if (btn) { btn.disabled = true; btn.textContent = "Сохранение…"; }
+  try {
+    applyOrgToCompany(await updateOrganization(payload));
+    saveState();
+    showToast("Реквизиты сохранены", "success");
+  } catch (error) {
+    console.warn("Не удалось сохранить реквизиты:", error);
+    showToast((error && error.message) || "Не удалось сохранить", "error");
+  }
+  render();
+}
+
+// ─── Биллинг: баланс оценок и пополнение через провайдера Монета ──────────────
+// Бэкенд — источник истины по балансу: localStorage используем лишь как кэш для
+// мгновенной отрисовки. После загрузки/оплаты синхронизируем state.company.balance.
+
+async function loadBilling({ silent = false } = {}) {
+  if (!silent) state.billingStatus = "loading";
+  try {
+    const data = await fetchBilling();
+    state.billing = data;
+    state.company.balance = data.balance;
+    state.billingStatus = "ready";
+    saveState();
+  } catch (error) {
+    console.warn("Не удалось загрузить баланс:", error);
+    state.billingStatus = "error";
+  }
+  if (!silent) render();
+}
+
+// Списание оценки на бэкенде при отправке приглашения. Оптимистично уменьшаем
+// локальный баланс для мгновенной реакции, затем выравниваем по ответу сервера.
+function debitBalanceOnSend(count = 1) {
+  debitBalance(count, "Отправка оценки")
+    .then((data) => { if (data && typeof data.balance === "number") { state.company.balance = data.balance; state.billing = data; saveState(); } })
+    .catch((error) => console.warn("Не удалось списать оценку с баланса:", error));
+}
+
+function openTopup() {
+  state.modal = { type: "topup", step: "select", pack: 20, promoApplied: false, promoCode: "", error: null };
+  if (!state.billing) loadBilling({ silent: true }).then(render);
+  render();
+}
+
+// Создание платежа и переход к оплате. Если провайдер настроен — ведём на форму
+// Монеты и опрашиваем статус; иначе (демо-режим) подтверждаем оплату имитацией.
+async function startTopupPayment() {
+  const m = state.modal;
+  if (!m || m.type !== "topup" || m.busy) return;
+  m.busy = true; m.error = null; m.step = "processing"; render();
+  try {
+    const res = await createTopup(m.pack, m.promoApplied ? (m.promoCode || "") : "");
+    m.paymentId = res.payment_id;
+    m.amount = res.amount;
+    if (res.redirect_url) {
+      // Реальный провайдер: уходим на защищённую форму Монеты. Вернёмся по
+      // success/fail/return URL на #/app/settings?pay=...&order=..., где
+      // handlePaymentReturn() покажет результат, а зачисление сделает webhook.
+      m.step = "redirecting";
+      render();
+      window.location.href = res.redirect_url;
+    } else {
+      // Демо-режим: провайдер не настроен — имитируем успешную оплату на бэкенде.
+      m.step = "waiting";
+      m.demo = true;
+      m.busy = false;
+      render();
+      await new Promise((r) => setTimeout(r, 900));
+      try {
+        const st = await simulatePayment(res.payment_id);
+        finishTopup(st);
+      } catch (e) {
+        m.step = "error"; m.error = (e && e.message) || "Не удалось подтвердить демо-оплату";
+        render();
+      }
+    }
+  } catch (error) {
+    m.busy = false; m.step = "error";
+    m.error = (error && error.message) || "Не удалось создать платёж";
+    render();
+  }
+}
+
+// Поллинг статуса платежа (после возврата с формы Монеты). До ~5 минут, затем
+// предлагаем проверить вручную. Останавливается при закрытии/смене модалки.
+function pollPaymentStatus(paymentId, attempt = 0) {
+  const MAX_ATTEMPTS = 100;  // ~5 мин при шаге 3с
+  const m = state.modal;
+  if (!m || m.type !== "topup" || m.paymentId !== paymentId) return;  // модалку закрыли
+  fetchPaymentStatus(paymentId)
+    .then((st) => {
+      if (!state.modal || state.modal.type !== "topup" || state.modal.paymentId !== paymentId) return;
+      if (st.status === "paid") { finishTopup(st); return; }
+      if (st.status === "failed" || st.status === "canceled") {
+        state.modal.step = "error";
+        state.modal.error = st.status === "canceled" ? "Платёж отменён" : "Платёж отклонён банком";
+        render();
+        return;
+      }
+      if (attempt >= MAX_ATTEMPTS) { state.modal.step = "timeout"; render(); return; }
+      setTimeout(() => pollPaymentStatus(paymentId, attempt + 1), 3000);
+    })
+    .catch(() => {
+      if (attempt >= MAX_ATTEMPTS) { if (state.modal?.type === "topup") { state.modal.step = "timeout"; render(); } return; }
+      setTimeout(() => pollPaymentStatus(paymentId, attempt + 1), 3000);
+    });
+}
+
+// Платёж подтверждён: обновляем баланс, показываем успех, начисляем бонус рефереру.
+function finishTopup(status) {
+  const m = state.modal;
+  if (status && typeof status.balance === "number") { state.company.balance = status.balance; }
+  if (m && m.type === "topup") { m.step = "success"; m.creditedPack = status?.pack || m.pack; }
+  saveState();
+  render();
+  // Реферальный бонус пригласившему начисляется на бэкенде (в process_pay).
+  // Перечитываем баланс/историю платежей, чтобы UI был консистентен.
+  loadBilling({ silent: true });
+}
+
+// Возврат с платёжной формы Монеты: #/app/settings?pay=success|fail|cancel&order=ID.
+// Зачисление делает webhook, поэтому при success опрашиваем статус до paid.
+function handlePaymentReturn() {
+  const route = currentRoute();
+  if (route.route !== "app" || !route.query) return false;
+  const params = new URLSearchParams(route.query);
+  const pay = params.get("pay");
+  const order = params.get("order");
+  if (!pay) return false;
+  // Убираем query из хеша, чтобы возврат не срабатывал повторно при перерисовках.
+  try { history.replaceState(null, "", "#/app/" + (route.view || "settings")); } catch { /* ignore */ }
+  if (pay === "success" || pay === "progress") {
+    state.modal = { type: "topup", step: "waiting", pack: 0, paymentId: order || null };
+    if (order) pollPaymentStatus(order);
+    else loadBilling({ silent: true });
+  } else if (pay === "cancel") {
+    showToast("Платёж отменён", "error");
+    loadBilling({ silent: true });
+  } else if (pay === "fail") {
+    state.modal = { type: "topup", step: "error", error: "Платёж отклонён. Попробуйте ещё раз.", paymentId: order || null };
+  }
+  return true;
 }
 
 async function loadOverview() {
@@ -1052,6 +1459,17 @@ function render() {
     return;
   }
 
+  // Реферальная ссылка: запоминаем код приглашения и ведём на регистрацию.
+  if (route.route === "ref") {
+    if (route.refCode) {
+      state.refCode = route.refCode;
+      try { localStorage.setItem("eltera_ref", route.refCode); } catch { /* ignore */ }
+      saveState();
+    }
+    setHash("#/login");
+    return;
+  }
+
   if (route.route === "login") {
     document.body.className = "landingBody";
     app.innerHTML = renderLogin(state);
@@ -1118,7 +1536,7 @@ function render() {
   // Возврат из OAuth hh.ru: показываем тост и обновляем статус (одноразово).
   if (route.query && (route.query.includes("hh=connected") || route.query.includes("hh=error"))) {
     const ok = route.query.includes("hh=connected");
-    state.hhStatus = null; state.hhVacancies = null; state.hhVacanciesStatus = null;
+    state.hhStatus = null; state.hhVacancies = null; state.hhVacanciesStatus = null; state.vacancyKpi = null;
     const t = document.createElement("div");
     t.className = `elt-toast elt-toast-${ok ? "success" : "error"}`;
     t.textContent = ok ? "hh.ru подключён ✓" : "Не удалось подключить hh.ru";
@@ -1180,6 +1598,15 @@ function render() {
   if (state.view === "people") content = renderPeople(state);
   if (state.view === "vacancies") {
     if (!state.hhStatus && !state.hhStatusLoading) loadHhStatus();
+    // Подключён HH → автоматически синхронизируемся с hh.ru один раз при заходе
+    // на вкладку (без нажатия кнопки), затем подтягиваем метрики за период.
+    if (state.hhStatus && state.hhStatus.connected && !state.hhAutoSynced) {
+      state.hhAutoSynced = true;
+      runHhSync({ silent: true });
+    } else if (state.hhStatus && state.hhStatus.connected && !state.vacancyKpi && state.vacancyKpiStatus !== "loading") {
+      loadVacancyKpi();
+    }
+    if (state.hhStatus && state.hhStatus.connected) loadAssessmentTests();
     content = renderVacancies(state);
   }
   if (state.view === "assessments") {
@@ -1230,11 +1657,20 @@ function render() {
   }
   if (state.view === "report") content = renderReport(state, state.sessions.find((item) => item.id === state.reportId));
   if (state.view === "tariffs") content = renderTariffs(state, tariffs);
-  if (state.view === "referrals") content = renderReferrals(state);
+  if (state.view === "referrals") {
+    if (!state.referralsStatus) loadReferrals();
+    content = renderReferrals(state);
+  }
   if (state.view === "api") content = renderApiKeys(state);
   if (state.view === "support") content = renderSupport(state);
   if (state.view === "gratitude") content = renderGratitude(state);
-  if (state.view === "settings") content = renderSettings(state);
+  if (state.view === "settings") {
+    if (!state.orgStatus || state.orgStatus === "idle") {
+      state.orgStatus = "idle";
+      loadOrganization();
+    }
+    content = renderSettings(state);
+  }
 
   const newHTML = renderAppShell(state, content || renderDashboard(state, dashboardFilters));
 
@@ -1330,6 +1766,7 @@ function createLinkFromForm(form) {
     });
   }
   if (state.company.balance > 0) state.company.balance -= 1;
+  debitBalanceOnSend(1);  // списываем оценку на бэкенде (источник истины по балансу)
   saveState();
   if (location.hash === "#/app/links") render();
   else setHash("#/app/links");
@@ -1858,6 +2295,7 @@ function quickCreateLink(professionId = "recruiter") {
   const link = createLinkObject({ professionId, recipientType: "Кандидат", email: "" });
   state.links.unshift(link);
   if (state.company.balance > 0) state.company.balance -= 1;
+  debitBalanceOnSend(1);  // списываем оценку на бэкенде (источник истины по балансу)
   saveState();
   if (location.hash === "#/app/links") render();
   else setHash("#/app/links");
@@ -1911,6 +2349,12 @@ function finishAssessment() {
 async function submitBackendAssessment(link) {
   const form = state.candidate.form;
   if (!form) return;
+  // Защита от повторной отправки: двойной клик «Завершить» и срабатывание
+  // таймера не должны слать ответы дважды (сервер тоже идемпотентен, но не
+  // будем дёргать его зря и плодить ошибки).
+  if (state.candidate.submitting) return;
+  state.candidate.submitting = true;
+  stopAssessTimer();
   const stored = state.candidate.answers || {};
   const answers = form.questions.map((q) => {
     const qid = q.question_version_id;
@@ -1927,7 +2371,7 @@ async function submitBackendAssessment(link) {
     return { question_version_id: qid, answer_text: (typeof v === "string" && v.trim()) ? v : null };
   });
   const apiToken = state.candidate.apiToken || (link && link.apiToken);
-  if (!apiToken) return;
+  if (!apiToken) { state.candidate.submitting = false; return; }
   try {
     await submitAssessment(apiToken, { answers });
     if (link) {
@@ -1939,11 +2383,23 @@ async function submitBackendAssessment(link) {
     state.employeesStatus = "idle";
     state.linksStatus = "idle";
   } catch (error) {
-    console.warn("Не удалось отправить ответы на бэкенд:", error);
-    alert("Не удалось отправить ответы. Попробуйте снова.");
-    return;
+    const msg = String((error && error.message) || "");
+    if (msg.includes("410")) {
+      // Серверный таймер: время вышло — ответы не приняты. Повтор бессмыслен.
+      if (link) link.status = "expired";
+      alert("Время на прохождение теста истекло — ответы не приняты.");
+    } else if (msg.includes("409")) {
+      // Идемпотентность: тест уже отправлен (другая вкладка / повторный клик).
+      if (link) link.status = "completed";
+      alert("Этот тест уже был отправлен.");
+    } else {
+      console.warn("Не удалось отправить ответы на бэкенд:", error);
+      state.candidate.submitting = false;
+      alert("Не удалось отправить ответы. Попробуйте снова.");
+      return;
+    }
   }
-  state.candidate = { token: "", answers: {}, form: null, formToken: null, formError: null, apiToken: null, stage: "intro", qIndex: 0, deadlineTs: 0 };
+  state.candidate = { token: "", answers: {}, form: null, formToken: null, formError: null, apiToken: null, stage: "intro", qIndex: 0, deadlineTs: 0, submitting: false };
   saveState();
   setHash("#/thanks");
 }
@@ -2032,34 +2488,37 @@ function buyAssessments(count) {
   render();
 }
 
-function spendBonuses(count) {
+async function spendBonuses(count) {
   const amount = Math.round(count * state.company.assessmentPrice);
   if (amount > state.referrals.available) return;
-  state.referrals.available -= amount;
-  state.referrals.spent += amount;
-  state.company.balance += count;
-  state.referrals.operations.unshift(["Докупить оценки", `${count} оценок`, `-${amount.toLocaleString("ru-RU")} ₽`, "списано"]);
   state.modal = null;
+  try {
+    applyReferralSummary(await spendReferralBonuses(count));
+    state.company.balance += count;  // оценки зачисляются на баланс компании
+  } catch (error) {
+    console.warn("Не удалось потратить бонусы:", error);
+  }
   saveState();
   render();
 }
 
-function createWithdrawal(form) {
+async function createWithdrawal(form) {
   const data = new FormData(form);
   const amount = Number(data.get("amount") || 0);
   if (!amount || amount > state.referrals.available) return;
-  state.referrals.available -= amount;
-  state.referrals.withdrawals.unshift({
-    amount,
-    card: String(data.get("card") || ""),
-    name: String(data.get("name") || ""),
-    bank: String(data.get("bank") || ""),
-    phone: String(data.get("phone") || ""),
-    comment: String(data.get("comment") || ""),
-    status: "на проверке"
-  });
-  state.referrals.operations.unshift(["Заявка на вывод", "карта", `-${amount.toLocaleString("ru-RU")} ₽`, "на проверке"]);
   state.modal = null;
+  try {
+    applyReferralSummary(await createReferralWithdrawal({
+      amount,
+      card: String(data.get("card") || ""),
+      name: String(data.get("name") || ""),
+      bank: String(data.get("bank") || ""),
+      phone: String(data.get("phone") || ""),
+      comment: String(data.get("comment") || "")
+    }));
+  } catch (error) {
+    console.warn("Не удалось создать заявку на вывод:", error);
+  }
   saveState();
   render();
 }
@@ -2114,6 +2573,17 @@ document.addEventListener("click", (event) => {
   if (view) {
     window.scrollTo(0, 0);
     setHash(`#/app/${view}`);
+  }
+
+  const orgSave = event.target.closest("[data-org-save]");
+  if (orgSave) { saveOrganization(orgSave.dataset.orgSave); return; }
+
+  const setTheme = event.target.closest("[data-set-theme]")?.dataset.setTheme;
+  if (setTheme && setTheme !== state.theme) {
+    state.theme = setTheme;
+    saveState();
+    render();
+    return;
   }
 
   const action = event.target.closest("[data-action]")?.dataset.action;
@@ -2241,8 +2711,42 @@ document.addEventListener("click", (event) => {
   const rmProfComp = event.target.closest("[data-remove-profile-comp]")?.dataset.removeProfileComp;
   if (rmProfComp) { const tid = event.target.closest("[data-remove-profile-comp]").dataset.testId; removeProfileCompetencyFlow(tid, rmProfComp); return; }
   if (action === "top-up") {
-    state.modal = { type: "sbp-payment", mode: "topup", pack: 20 };
-    render();
+    openTopup();
+    return;
+  }
+  // ── Пополнение баланса через Монету ──
+  if (action === "topup-select-pack") {
+    const pack = parseInt(event.target.closest("[data-pack]")?.dataset.pack || "20", 10);
+    if (state.modal?.type === "topup") { state.modal.pack = pack; render(); }
+    return;
+  }
+  if (action === "topup-apply-promo") {
+    const input = document.querySelector("[data-topup-promo-input]");
+    const code = (input?.value || "").trim().toUpperCase();
+    if (state.modal?.type === "topup") {
+      // Серверная проверка — единственный гард; здесь лишь мгновенная подсказка.
+      if (code === "ELTERA10" || code === "DEMO") { state.modal.promoApplied = true; state.modal.promoCode = code; state.modal.error = null; }
+      else { state.modal.promoApplied = false; state.modal.error = "Неверный промокод"; }
+      render();
+    }
+    return;
+  }
+  if (action === "topup-clear-promo") {
+    if (state.modal?.type === "topup") { state.modal.promoApplied = false; state.modal.promoCode = ""; state.modal.error = null; render(); }
+    return;
+  }
+  if (action === "topup-pay") { startTopupPayment(); return; }
+  if (action === "topup-retry") {
+    if (state.modal?.type === "topup") { state.modal.step = "select"; state.modal.error = null; state.modal.paymentId = null; state.modal.busy = false; render(); }
+    return;
+  }
+  if (action === "topup-check") { if (state.modal?.paymentId) pollPaymentStatus(state.modal.paymentId); return; }
+  if (action === "topup-done") { state.modal = null; render(); return; }
+  if (action === "topup-cancel") {
+    const pid = state.modal?.paymentId;
+    if (pid) cancelPayment(pid).catch(() => {});
+    state.modal = null; render();
+    return;
   }
   if (action === "print-report") window.print();
   if (action === "add-structure-member") {
@@ -2270,18 +2774,51 @@ document.addEventListener("click", (event) => {
 
   // ── HeadHunter ──
   if (action === "hh-connect") {
-    // Переходим на backend, он редиректит на hh.ru OAuth.
-    window.location.href = hhConnectUrl();
+    // Открываем модалку подключения вместо мгновенного редиректа.
+    state.modal = { type: "hh-connect" };
+    state.hhConnectStatus = null;
+    render();
+    return;
+  }
+  if (action === "hh-connect-start") {
+    // Запрашиваем authorize URL с токеном, затем редиректим браузер на hh.ru.
+    state.hhConnectStatus = "connecting";
+    render();
+    startHhConnect()
+      .then((r) => {
+        if (r && r.url) { window.location.href = r.url; return; }
+        state.hhConnectStatus = "error";
+        render();
+        showToast("Не удалось начать подключение hh.ru.", "error");
+      })
+      .catch((e) => {
+        console.warn("hh connect failed", e);
+        state.hhConnectStatus = "error";
+        render();
+        showToast("Не удалось начать подключение hh.ru. Проверьте настройку HH на сервере.", "error");
+      });
     return;
   }
   if (action === "hh-refresh") {
-    state.hhVacancies = null;
-    loadHhVacancies();
+    runHhSync();
+    return;
+  }
+  if (action === "hh-import-open") {
+    state.modal = { type: "hh-import" };
+    state.hhImportSearch = "";
+    state.hhImportStatus = null;
+    if (!state.hhVacancies && state.hhVacanciesStatus !== "loading") loadHhVacancies();
+    render();
+    return;
+  }
+  if (action === "hh-import-confirm") {
+    const ids = Array.from(document.querySelectorAll('[data-hh-pick]:checked')).map((el) => el.dataset.hhPick);
+    runHhImport(ids);
     return;
   }
   if (action === "hh-disconnect") {
     hhDisconnect()
-      .then(() => { state.hhStatus = null; state.hhVacancies = null; state.hhVacanciesStatus = null; loadHhStatus(); })
+      .then(() => { state.hhStatus = null; state.hhVacancies = null; state.hhVacanciesStatus = null; state.hhAutoSynced = false; loadHhStatus(); })
       .catch((e) => console.warn("hh disconnect failed", e));
     return;
   }
@@ -2352,7 +2889,7 @@ document.addEventListener("click", (event) => {
 
   if (action === "support-send") { sendSupport(); return; }
 
-  if (action === "copy-ref") navigator.clipboard?.writeText(`${location.origin}${location.pathname}#/ref/roman123`);
+  if (action === "copy-ref") navigator.clipboard?.writeText(`${location.origin}${location.pathname}#/ref/${state.referrals.code || ""}`);
   if (action === "open-bonus-modal") {
     state.modal = "spendBonuses";
     render();
@@ -2402,6 +2939,10 @@ document.addEventListener("click", (event) => {
     const cand = (state.candidatesApi || []).find((c) => c.id === id);
     state.kebabMenu = null;
     state.modal = { type: "convert-employee", personId: id, fullName: cand ? (cand.person?.fullName || cand.full_name) : "" };
+    // Подгружаем список сотрудников, чтобы выбрать руководителя из выпадающего списка.
+    if (!state.employeesApi && state.employeesStatus !== "loading") {
+      loadEmployeesFromApi().then(render);
+    }
     render();
     return;
   }
@@ -2447,7 +2988,7 @@ document.addEventListener("click", (event) => {
   // PDF-отчёт по кандидату — открываем в новой вкладке (генерит бэкенд).
   const pdfBtn = event.target.closest("[data-pdf-id]");
   if (pdfBtn) {
-    window.open(candidatePdfUrl(pdfBtn.dataset.pdfId), "_blank");
+    openCandidatePdf(pdfBtn.dataset.pdfId).catch((e) => console.error("PDF report:", e));
     return;
   }
 
@@ -2563,9 +3104,14 @@ document.addEventListener("click", (event) => {
     const btn = event.target.closest("[data-action='sbp-confirm']");
     const tariffId = btn?.dataset.tariffId;
     const assessments = parseInt(btn?.dataset.assessments || 0);
+    const paidAmount = Number(state.modal?.price || 0);
     const statusEl = document.querySelector("[data-sbp-status]");
     if (statusEl) statusEl.textContent = "⏳ Обработка платежа...";
     setTimeout(() => {
+      // Реальная оплата → начисляем 10% пригласившему рефереру (если есть).
+      if (paidAmount > 0) {
+        recordReferralPayment(paidAmount).catch((e) => console.warn("Начисление реферу не выполнено:", e));
+      }
       if (tariffId) {
         state.company.tariff = tariffId;
         const TARIFF_LIMITS = { TalentCheck: 100, TalentPro: 500, TalentStudio: 2000 };
@@ -2630,6 +3176,43 @@ document.addEventListener("click", (event) => {
     render();
   }
 
+  // Переключатель периода вкладки «Вакансии» (7 / 14 / 30 дней).
+  const vacPeriod = event.target.closest("[data-vacancy-period]")?.dataset.vacancyPeriod;
+  if (vacPeriod) {
+    state.vacancyPeriod = vacPeriod;
+    state.vacancyKpi = null;
+    loadVacancyKpi();
+    return;
+  }
+
+  // Клик по KPI-карточке вакансий → drill-down список.
+  const vacCard = event.target.closest("[data-vac-card]")?.dataset.vacCard;
+  if (vacCard) {
+    state.modal = { type: "vacancy-list", card: vacCard };
+    loadVacancyDrill(vacCard);
+    return;
+  }
+
+  // Кнопка «Отклики» по вакансии → модалка со списком откликов.
+  const vacResp = event.target.closest("[data-vac-responses]")?.dataset.vacResponses;
+  if (vacResp) {
+    const m = (state.vacancyKpi?.items || []).find((x) => x.vacancy_id === vacResp);
+    state.modal = { type: "vacancy-responses", id: vacResp, defaultTestId: m ? m.default_test_id : null };
+    loadAssessmentTests();
+    loadVacancyResponses(vacResp);
+    return;
+  }
+
+  // «В кандидаты»: конвертация отклика с выбранным в модалке тестом.
+  const convBtn = event.target.closest("[data-convert-response]");
+  if (convBtn) {
+    const eventId = convBtn.dataset.convertResponse;
+    const vacancyId = state.modal && state.modal.id;
+    const sel = document.querySelector("[data-convert-test]");
+    runConvertResponse(vacancyId, eventId, sel ? sel.value : "");
+    return;
+  }
+
   const stage = event.target.closest("[data-stage]")?.dataset.stage;
   if (stage) {
     state.drilldownStage = stage;
@@ -2651,8 +3234,19 @@ document.addEventListener("click", (event) => {
     state.candidate.email = emailEl ? emailEl.value.trim() : "";
     state.candidate.stage = "questions";
     state.candidate.qIndex = 0;
-    const mins = (state.candidate.form && state.candidate.form.duration_min) || 25;
-    state.candidate.deadlineTs = Date.now() + mins * 60 * 1000;
+    const form = state.candidate.form;
+    if (form && form.deadline_at) {
+      // Серверный таймер: дедлайн считает бэк (с момента открытия ссылки).
+      // Корректируем расхождение часов клиента через server_now.
+      const serverNow = Date.parse(form.server_now || "") || Date.now();
+      const skew = Date.now() - serverNow; // локальные часы − серверные
+      state.candidate.deadlineTs = Date.parse(form.deadline_at) + skew;
+    } else if (form && form.time_limit_minutes) {
+      state.candidate.deadlineTs = Date.now() + form.time_limit_minutes * 60 * 1000;
+    } else {
+      const mins = (form && form.duration_min) || 25;
+      state.candidate.deadlineTs = Date.now() + mins * 60 * 1000;
+    }
     saveState();
     render();
     return;
@@ -2837,7 +3431,8 @@ document.addEventListener("submit", (event) => {
       role: String(fd.get("role") || "employee"),
       department_name: String(fd.get("department_name") || "").trim() || null,
       manager_id: String(fd.get("manager_id") || "") || null,
-      project: String(fd.get("project") || "").trim() || null
+      project: String(fd.get("project") || "").trim() || null,
+      send_adaptation: fd.get("send_adaptation") != null
     };
     state.modal = null;
     render();
@@ -2846,9 +3441,17 @@ document.addEventListener("submit", (event) => {
         await addStructureMember(payload);
         state.structureStatus = "idle";  // перезагрузить дерево
         state.employeesStatus = "idle";  // и список сотрудников
+        if (payload.send_adaptation) {
+          state.adaptationStatus = "idle";  // появился новый цикл адаптации
+          state.linksApi = null;            // и новая ссылка-опрос
+        }
         render();
+        showToast(payload.send_adaptation
+          ? "Добавлен в структуру, адаптация запущена"
+          : "Добавлен в структуру");
       } catch (error) {
         console.warn("Не удалось добавить в структуру:", error);
+        showToast("Не удалось добавить в структуру", "info");
       }
     })();
   }
@@ -2912,6 +3515,15 @@ let _ctrProfileSearchTimer = null;
 let _candProfTimer = null;
 let _libSearchTimer = null;
 document.addEventListener("input", (event) => {
+  // Поиск в модалке «Добавить из HeadHunter» — клиентская фильтрация по названию.
+  const hhSearch = event.target.closest("[data-hh-search]");
+  if (hhSearch) {
+    state.hhImportSearch = hhSearch.value;
+    render();
+    const again = document.querySelector("[data-hh-search]");
+    if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
+    return;
+  }
   // Поиск по библиотеке тестов (серверный, debounce).
   const libInput = event.target.closest("[data-library-search]");
   if (libInput) {
@@ -2954,6 +3566,14 @@ document.addEventListener("input", (event) => {
 document.addEventListener("change", (event) => {
   if (event.target.matches("[data-avatar-upload]")) {
     handleAvatarUpload(event);
+    return;
+  }
+  // Смена теста по умолчанию у HH-вакансии.
+  const defTest = event.target.closest("[data-vac-default-test]");
+  if (defTest) {
+    setVacancyDefaultTest(defTest.dataset.vacDefaultTest, defTest.value)
+      .then(() => { showToast("Тест по умолчанию сохранён"); state.vacancyKpi = null; loadVacancyKpi(); })
+      .catch((e) => { console.warn("default test save failed", e); showToast("Не удалось сохранить тест", "error"); });
     return;
   }
   // Конструктор: переключение типа вопроса показывает нужную секцию полей
@@ -3031,6 +3651,12 @@ window.addEventListener("eltera-logout", () => {
   setHash("#/login");
   render();
 });
+
+// Баланс — с бэкенда (источник истины); затем разбираем возможный возврат с
+// формы оплаты Монеты. Делаем до первого render(), чтобы сразу показать модалку.
+if (state.authenticated) {
+  loadBilling({ silent: true }).then(() => { handlePaymentReturn(); render(); });
+}
 
 render();
 

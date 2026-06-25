@@ -2,7 +2,7 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
@@ -12,11 +12,13 @@ from app.core.security import (
     hash_password,
     hash_refresh,
     normalize_email,
+    new_challenge_token,
     new_refresh_token,
     verify_password,
 )
 from app.models.auth import EmailChallenge, RefreshToken
 from app.models.base import gen_uuid
+from app.observability import metrics
 from app.models.enums import UserRole
 from app.models.organization import Organization, User
 from app.schemas.auth import (
@@ -24,19 +26,28 @@ from app.schemas.auth import (
     ChallengeResendIn,
     ChallengeVerifyIn,
     LoginIn,
+    PasswordForgotIn,
+    PasswordResetIn,
+    PasswordResetTokenOut,
     RefreshIn,
     RegisterIn,
     TokenOut,
     UserOut,
 )
+from app.services import referrals as referrals_svc
 from app.services.auth_challenges import (
+    CHALLENGE_TTL,
     PURPOSE_LOGIN,
+    PURPOSE_PASSWORD_RESET,
     PURPOSE_REGISTRATION,
     challenge_response,
+    consume_verified_code,
     create_email_challenge,
     get_challenge_by_token,
     parse_payload,
+    remaining_seconds,
     validate_challenge_state,
+    validate_reset_token,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -105,6 +116,7 @@ async def register(data: RegisterIn, session: AsyncSession = Depends(get_session
             "company": data.company.strip(),
             "full_name": data.full_name.strip(),
             "password_hash": hash_password(data.password),
+            "ref_code": (data.ref_code or "").strip() or None,
         },
     )
     return ChallengeOut(**challenge_response(email=challenge.email, raw_token=raw_token, purpose=challenge.purpose))
@@ -157,6 +169,8 @@ async def verify_registration(data: ChallengeVerifyIn, session: AsyncSession = D
     session.add(user)
     challenge.used_at = datetime.now(timezone.utc)
     await session.flush()
+    # Привязка к рефереру по коду из реферальной ссылки (если есть).
+    await referrals_svc.attach_referral(session, ref_code=payload.get("ref_code"), new_org=org)
     return await _issue_tokens(session, user)
 
 
@@ -214,6 +228,75 @@ async def verify_login(data: ChallengeVerifyIn, session: AsyncSession = Depends(
     if not user.is_active:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Пользователь отключён.")
     challenge.used_at = datetime.now(timezone.utc)
+    metrics.record_login()
+    return await _issue_tokens(session, user)
+
+
+@router.post(
+    "/password/forgot",
+    response_model=ChallengeOut,
+    summary="Start password reset by sending an email code",
+)
+async def password_forgot(data: PasswordForgotIn, session: AsyncSession = Depends(get_session)):
+    email = normalize_email(data.email)
+    user = await _get_user_by_email(session, email)
+    if user is not None and user.is_active:
+        challenge, raw_token = await create_email_challenge(
+            session,
+            email=email,
+            purpose=PURPOSE_PASSWORD_RESET,
+            payload={"user_id": user.id, "email": email},
+        )
+        return ChallengeOut(
+            **challenge_response(email=challenge.email, raw_token=raw_token, purpose=challenge.purpose)
+        )
+    # Не раскрываем, существует ли пользователь: возвращаем такой же ответ с «пустым»
+    # токеном, который никуда не ведёт. На шаге verify код просто не подойдёт.
+    raw_token, _ = new_challenge_token()
+    return ChallengeOut(
+        challenge_token=raw_token,
+        email=email,
+        purpose=PURPOSE_PASSWORD_RESET,
+        expires_in=int(CHALLENGE_TTL.total_seconds()),
+    )
+
+
+@router.post(
+    "/password/verify",
+    response_model=PasswordResetTokenOut,
+    summary="Verify reset code and issue a one-time reset token",
+)
+async def password_verify(data: ChallengeVerifyIn, session: AsyncSession = Depends(get_session)):
+    challenge = await get_challenge_by_token(session, data.challenge_token)
+    reset_token = consume_verified_code(challenge, email=data.email, code=data.code)
+    await session.commit()
+    return PasswordResetTokenOut(
+        reset_token=reset_token,
+        email=challenge.email,
+        expires_in=remaining_seconds(challenge),
+    )
+
+
+@router.post(
+    "/password/reset",
+    response_model=TokenOut,
+    summary="Set a new password using a reset token",
+)
+async def password_reset(data: PasswordResetIn, session: AsyncSession = Depends(get_session)):
+    challenge = await get_challenge_by_token(session, data.reset_token)
+    payload = validate_reset_token(challenge, email=data.email)
+    user = await session.get(User, payload.get("user_id"))
+    if user is None or not user.is_active:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Пользователь не найден.")
+    user.password_hash = hash_password(data.password)
+    challenge.used_at = datetime.now(timezone.utc)
+    # Сброс пароля завершает все активные сессии пользователя.
+    await session.execute(
+        update(RefreshToken)
+        .where(RefreshToken.user_id == user.id, RefreshToken.revoked.is_(False))
+        .values(revoked=True)
+    )
+    await session.flush()
     return await _issue_tokens(session, user)
 
 

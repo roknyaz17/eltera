@@ -32,7 +32,7 @@ SERVICE_CATEGORIES = {"360", "Адаптация", "Performance"}
 @router.get("/library/template", summary="Скачать Excel-шаблон базы компетенций/профилей")
 async def download_library_template():
     return Response(
-        content=library_import.build_template_bytes(),
+        content=library_import.build_candidates_developer_template_bytes(),
         media_type=_XLSX_MIME,
         headers={"Content-Disposition": 'attachment; filename="eltera-library-template.xlsx"'},
     )
@@ -46,7 +46,7 @@ async def import_library(file: UploadFile = File(...), session: AsyncSession = D
     parsed, parse_errors = library_import.parse_workbook(await file.read())
     if not parsed:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "; ".join(parse_errors) or "Пустой или некорректный файл.")
-    result = await crud.import_library(session, parsed)
+    result = await crud.import_library_developer(session, parsed)
     result["errors"] = parse_errors + result.get("errors", [])
     return result
 

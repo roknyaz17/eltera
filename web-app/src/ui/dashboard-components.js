@@ -274,7 +274,7 @@ function PremiumAttentionPanel(items) {
       </div>
       <div class="elt-attention-list">
         ${items.map((item) => `
-          <button class="elt-attention-item ${pStatusClass(item.status)}" data-open-list="${item.target}">
+          <button class="elt-attention-item ${pStatusClass(item.status)}" ${item.action ? `data-action="${item.action}"` : `data-open-list="${item.target}"`}>
             <div class="elt-attention-icon">
               ${item.status === "bad" ? `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.3"/><line x1="7" y1="4.5" x2="7" y2="7.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="7" cy="9.5" r=".7" fill="currentColor"/></svg>` : `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5L13 12H1L7 1.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><line x1="7" y1="5.5" x2="7" y2="8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>`}
             </div>

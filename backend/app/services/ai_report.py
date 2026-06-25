@@ -59,6 +59,8 @@ async def generate_report_narrative(candidate) -> dict | None:
                 {"role": "user", "content": user},
             ],
         )
+        from app.observability import metrics
+        metrics.record_ai_usage("report", settings.ai_model, getattr(resp, "usage", None))
         raw = resp.choices[0].message.content or "{}"
         match = re.search(r"\{.*\}", raw, re.DOTALL)
         return json.loads(match.group(0) if match else raw)

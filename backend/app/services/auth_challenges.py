@@ -24,6 +24,7 @@ CHALLENGE_LIMIT = 3
 CHALLENGE_WINDOW = timedelta(minutes=10)
 PURPOSE_REGISTRATION = "registration"
 PURPOSE_LOGIN = "login"
+PURPOSE_PASSWORD_RESET = "password_reset"
 
 
 def utcnow() -> datetime:
@@ -167,3 +168,61 @@ def challenge_response(*, email: str, raw_token: str, purpose: str) -> dict:
         "purpose": purpose,
         "expires_in": int(CHALLENGE_TTL.total_seconds()),
     }
+
+
+def remaining_seconds(challenge: EmailChallenge) -> int:
+    expires_at = challenge.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    return max(int((expires_at - utcnow()).total_seconds()), 0)
+
+
+def consume_verified_code(
+    challenge: EmailChallenge | None,
+    *,
+    email: str,
+    code: str,
+) -> str:
+    """Validate the emailed code, then rotate the challenge into a one-time reset token.
+
+    After rotation the original challenge_token (and therefore the used code) no longer
+    resolves to this row — only the returned reset token does.
+    """
+    validate_challenge_state(
+        challenge,
+        email=email,
+        purpose=PURPOSE_PASSWORD_RESET,
+        code=code,
+    )
+    assert challenge is not None  # validate_challenge_state raises otherwise
+    payload = parse_payload(challenge)
+    payload["code_verified"] = True
+    challenge.payload_json = json.dumps(payload, ensure_ascii=False)
+    raw_token, challenge_hash = new_challenge_token()
+    challenge.challenge_hash = challenge_hash
+    return raw_token
+
+
+def validate_reset_token(challenge: EmailChallenge | None, *, email: str) -> dict:
+    """Validate a rotated reset token before allowing a password change."""
+    normalized_email = normalize_email(email)
+    now = utcnow()
+    if challenge is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Недействительный токен сброса.")
+    if challenge.email != normalized_email:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Токен не подходит для этого email.")
+    if challenge.purpose != PURPOSE_PASSWORD_RESET:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Неверный токен сброса.")
+    if challenge.used_at is not None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Этот запрос на сброс уже использован.")
+    if challenge.invalidated_at is not None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Срок действия запроса истёк.")
+    expires_at = challenge.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at <= now:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Срок действия запроса истёк.")
+    payload = parse_payload(challenge)
+    if not payload.get("code_verified"):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Сначала подтвердите код из письма.")
+    return payload

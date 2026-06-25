@@ -218,3 +218,83 @@ async def send_welcome(*, to: str, full_name: str | None) -> bool:
              f"Это занимает пару минут и помогает команде вовремя вас поддержать.")
     body = _wrap("Добро пожаловать в Eltera", intro, "Открыть Eltera", _app_url(), "Если это письмо пришло по ошибке — просто проигнорируйте его.")
     return await send_email(to, f"{_BRAND}: добро пожаловать", body)
+
+
+def _first_name(full_name: str | None) -> str:
+    """Имя для приветствия: второе слово ФИО (имя) или всё, что есть."""
+    parts = (full_name or "").split(" ")
+    return html.escape(parts[1] if len(parts) > 1 else (full_name or ""))
+
+
+def _greeting(full_name: str | None) -> str:
+    name = _first_name(full_name)
+    return f"Здравствуйте, {name}!" if name else "Здравствуйте!"
+
+
+def _money(amount, currency: str = "RUB") -> str:
+    """«3 900 ₽» из Decimal/float. Целые суммы — без копеек."""
+    sign = {"RUB": "₽", "USD": "$", "EUR": "€"}.get(currency, currency)
+    try:
+        val = float(amount)
+    except (TypeError, ValueError):
+        return f"{amount} {sign}"
+    body = f"{val:,.0f}" if val == int(val) else f"{val:,.2f}"
+    return f"{body.replace(',', ' ')} {sign}"
+
+
+# ─────────────────────────── Биллинг ───────────────────────────
+
+
+async def send_payment_receipt(*, to: str, full_name: str | None, pack: int,
+                               amount, currency: str, balance: int) -> bool:
+    """Квитанция: платёж прошёл, баланс пополнен."""
+    if not to:
+        return False
+    intro = (f"{_greeting(full_name)} Оплата прошла успешно. На баланс зачислено "
+             f"<b>{pack}</b> оценок на сумму <b>{_money(amount, currency)}</b>. "
+             f"Текущий баланс: <b>{balance}</b> оценок.")
+    body = _wrap("Платёж получен", intro, "Открыть Eltera", _app_url("#/app/settings"),
+                 "Квитанция об оплате. Спасибо, что пользуетесь Eltera.")
+    return await send_email(to, f"{_BRAND}: баланс пополнен на {pack} оценок", body)
+
+
+async def send_payment_failed(*, to: str, full_name: str | None, pack: int,
+                              amount, currency: str, reason: str | None = None) -> bool:
+    """Уведомление: платёж не прошёл, баланс не изменился."""
+    if not to:
+        return False
+    intro = (f"{_greeting(full_name)} К сожалению, оплата пакета на <b>{pack}</b> оценок "
+             f"({_money(amount, currency)}) не была завершена. Баланс не изменился — "
+             f"вы можете попробовать оплатить ещё раз.")
+    body = _wrap("Платёж не прошёл", intro, "Повторить оплату", _app_url("#/app/settings"),
+                 "Если средства всё же были списаны — напишите в поддержку, мы разберёмся.")
+    return await send_email(to, f"{_BRAND}: платёж не прошёл", body)
+
+
+# ─────────────────────────── Напоминания ───────────────────────────
+
+_REMINDER_PREFIX = {1: "Напоминаем", 2: "Напоминаем ещё раз", 3: "Последнее напоминание"}
+
+
+async def send_assessment_reminder(*, to: str, full_name: str | None, test_title: str,
+                                   category: str | None, recipient_type: str,
+                                   token: str, attempt: int) -> bool:
+    """Напоминание о незавершённой оценке (до 3 раз, пока тест не пройден)."""
+    if not to:
+        return False
+    url = _assess_url(token)
+    prefix = _REMINDER_PREFIX.get(attempt, "Напоминаем")
+    title_esc = html.escape(test_title)
+    last = " Это последнее напоминание." if attempt >= 3 else ""
+    if recipient_type == "employee":
+        subject = f"{_BRAND}: {prefix.lower()} — оценка «{test_title}» ещё не пройдена"
+        intro = (f"{_greeting(full_name)} {prefix}: вам назначена оценка «{title_esc}», "
+                 f"и она пока не пройдена. Это займёт пару минут — результат увидит только "
+                 f"HR и ваш руководитель.{last}")
+    else:
+        subject = f"{_BRAND}: {prefix.lower()} — пройдите оценку «{test_title}»"
+        intro = (f"{_greeting(full_name)} {prefix}: оценка «{title_esc}» по вакансии "
+                 f"ещё ждёт вас. Пройдите её, чтобы мы могли продолжить рассмотрение.{last}")
+    body = _wrap("Оценка ещё не пройдена", intro, "Пройти оценку", url,
+                 "Если вы уже проходите оценку — просто закончите её, и напоминания прекратятся.")
+    return await send_email(to, subject, body)

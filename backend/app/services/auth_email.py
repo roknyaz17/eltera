@@ -32,10 +32,21 @@ def _wrap(title: str, intro: str, button_label: str, url: str, footer: str) -> s
 </div>"""
 
 
+_ACTIONS = {
+    "registration": "подтверждения регистрации",
+    "login": "подтверждения входа",
+    "password_reset": "сброса пароля",
+}
+_TITLES = {
+    "password_reset": "Сброс пароля",
+}
+
+
 async def send_auth_code(*, to: str, code: str, purpose: str, ttl_minutes: int) -> bool:
     if not to:
         return False
-    action = "подтверждения регистрации" if purpose == "registration" else "подтверждения входа"
+    action = _ACTIONS.get(purpose, "подтверждения")
+    title = _TITLES.get(purpose, "Подтвердите email")
     subject = f"{_BRAND}: код {action}"
     intro = (
         f"Ваш одноразовый код для {action}: "
@@ -43,7 +54,7 @@ async def send_auth_code(*, to: str, code: str, purpose: str, ttl_minutes: int) 
         f"Код действует {ttl_minutes} минут. Если вы не запрашивали его, просто проигнорируйте это письмо."
     )
     body = _wrap(
-        "Подтвердите email",
+        title,
         intro,
         "Открыть Eltera",
         _app_url("#/login"),

@@ -1,11 +1,11 @@
 """Люди: единая личность + профили кандидата и сотрудника (1:1)."""
-from datetime import date
+from datetime import date, datetime
 
-from sqlalchemy import Date, ForeignKey, Integer, String, Text
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
-from app.models.base import TimestampMixin, gen_uuid
+from app.models.base import TimestampMixin, gen_uuid, utcnow
 from app.models.enums import CandidateStage, RiskLevel
 
 
@@ -64,6 +64,36 @@ class CandidateProfile(Base):
     notes: Mapped[str | None] = mapped_column(Text, default=None)
 
     person: Mapped["Person"] = relationship(back_populates="candidate_profile")
+
+
+class CandidateStageEvent(Base):
+    """История переходов кандидата по стадиям воронки.
+
+    `CandidateProfile` хранит только ТЕКУЩУЮ стадию, без отметки времени перехода.
+    Для честной воронки «за период» (7/14/30 дней) на вкладке «Вакансии» нужен
+    timestamp каждого перехода — его и фиксирует эта таблица. Запись идёт через
+    `crud.candidate._record_stage_change` при любой смене стадии.
+    """
+
+    __tablename__ = "candidate_stage_events"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=gen_uuid)
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True
+    )
+    person_id: Mapped[str] = mapped_column(
+        ForeignKey("people.id", ondelete="CASCADE"), index=True
+    )
+    # Вакансия на момент перехода (может смениться позже у профиля) — фиксируем здесь,
+    # чтобы воронка вакансии не «переписывалась задним числом».
+    vacancy_id: Mapped[str | None] = mapped_column(
+        ForeignKey("vacancies.id", ondelete="SET NULL"), index=True, default=None
+    )
+    from_stage: Mapped[str | None] = mapped_column(String(40), default=None)
+    to_stage: Mapped[str] = mapped_column(String(40), index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, index=True
+    )
 
 
 class EmployeeProfile(Base):

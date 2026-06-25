@@ -43,6 +43,13 @@ class Settings(BaseSettings):
     # Пусто/None — используется стандартный api.openai.com.
     openai_base_url: str | None = None
 
+    # Цены модели для расчёта себестоимости вызовов ИИ (USD за 1M токенов) и курс
+    # ₽/$. Используются только для метрики eltera_ai_cost_rub_total. Дефолты — под
+    # gpt-4o-mini; при смене модели/провайдера переопределите через .env.
+    ai_price_input_usd_per_1m: float = 0.15
+    ai_price_output_usd_per_1m: float = 0.60
+    usd_rub_rate: float = 90.0
+
     # Telegram-бот для уведомлений из раздела «Поддержка».
     # TELEGRAM_BOT_TOKEN — токен бота от @BotFather.
     # TELEGRAM_CHAT_ID — id чата/канала/группы, куда падают обращения
@@ -78,6 +85,25 @@ class Settings(BaseSettings):
     hh_redirect_uri: str = "http://localhost:8000/api/hh/callback"
     # HH требует осмысленный User-Agent: "AppName/version (contact-email)".
     hh_user_agent: str = "Eltera/1.0 (eltera_assestment@eltera-company.ru)"
+
+    # ── Платёжный провайдер MONETA.RU / PayAnyWay (пополнение баланса оценок) ──
+    # MONETA_ACCOUNT_ID — номер расширенного счёта магазина (MNT_ID).
+    # MONETA_INTEGRITY_CODE — «код проверки целостности данных» из настроек
+    # магазина: секрет, которым подписываются запрос и уведомления (НИКОГДА не
+    # отдаём на фронт). Без account_id+integrity_code оплата работает в
+    # демо-режиме (имитация без реального провайдера).
+    moneta_account_id: str | None = None
+    moneta_integrity_code: str | None = None
+    # Тестовый режим: списания/зачисления не происходят на стороне Монеты
+    # (MNT_TEST_MODE=1). По умолчанию True — переключить в проде на False.
+    moneta_test_mode: bool = True
+    # URL платёжной формы MONETA.Assistant. Боевой: payanyway.ru, демо: demo.moneta.ru.
+    moneta_assistant_url: str = "https://www.payanyway.ru/assistant.htm"
+    moneta_currency: str = "RUB"
+    # Публичный базовый URL бэкенда — из него Монета строит адрес webhook
+    # (Pay URL / Check URL прописываются в кабинете магазина):
+    #   {moneta_public_url}/api/billing/moneta/callback
+    moneta_public_url: str = "http://localhost:8000"
 
 
 @lru_cache

@@ -102,6 +102,11 @@ class AssessmentForm(BaseModel):
     # 360: кого оценивает респондент и в какой роли.
     subject_name: str | None = None
     rater_role: str | None = None
+    # Серверный таймер: лимит в минутах (NULL — без лимита), абсолютный дедлайн и
+    # текущее серверное время — чтобы клиент скорректировал расхождение часов.
+    time_limit_minutes: int | None = None
+    deadline_at: datetime | None = None
+    server_now: datetime | None = None
     questions: list[FormQuestion]
 
 

@@ -13,60 +13,93 @@ from app.schemas.support import SupportResult, SupportTicket
 
 logger = logging.getLogger("eltera.support")
 
-# Метаданные по типу обращения: эмодзи, заголовок, приоритет, SLA.
-TYPE_META: dict[str, dict[str, str]] = {
-    "urgent": {
-        "emoji": "🚨",
-        "title": "СРОЧНАЯ ЗАЯВКА",
-        "priority": "Высокий",
-        "sla": "в течение суток",
-        "footer": "❗️ Требует немедленного внимания дежурной команды.",
-    },
-    "normal": {
-        "emoji": "📩",
-        "title": "Вопрос по сервису",
-        "priority": "Обычный",
-        "sla": "в рабочем порядке",
-        "footer": "Заявка попадёт в очередь поддержки.",
-    },
-    "idea": {
-        "emoji": "💡",
-        "title": "Предложение по улучшению",
-        "priority": "Низкий",
-        "sla": "1–30 рабочих дней",
-        "footer": "Идея уйдёт в продуктовый backlog.",
-    },
-}
-
-
-def build_message(ticket: SupportTicket) -> str:
-    """Собирает HTML-сообщение для Telegram в зависимости от типа обращения."""
-    meta = TYPE_META.get(ticket.type, TYPE_META["normal"])
+def _sender_line(ticket: SupportTicket) -> str | None:
+    """Строка «От:» из имени и email отправителя (email — из регистрации)."""
     esc = html.escape
-    subject = esc(ticket.subject.strip()) or "—"
-    description = esc(ticket.description.strip()) or "—"
+    bits = []
+    if ticket.from_name:
+        bits.append(esc(ticket.from_name.strip()))
+    if ticket.from_email:
+        bits.append(esc(ticket.from_email.strip()))
+    return f"<b>От:</b> {' · '.join(bits)}" if bits else None
 
+
+def _build_urgent(subject: str, description: str, sender: str | None) -> str:
+    """Срочная заявка: «алертовый» формат — кричащий заголовок, акцент на немедленном действии."""
     lines = [
-        f"{meta['emoji']} <b>{meta['title']}</b>",
+        "🚨🚨 <b>СРОЧНАЯ ЗАЯВКА</b> 🚨🚨",
+        "━━━━━━━━━━━━━━━━━━",
+        f"⚠️ <b>Проблема:</b> {subject}",
+        "🔴 <b>Приоритет:</b> ВЫСОКИЙ",
+        "⏱ <b>SLA:</b> реакция в течение суток",
+    ]
+    if sender:
+        lines.append(f"👤 {sender}")
+    lines += [
+        "",
+        f"<b>Что произошло:</b>\n{description}",
+        "",
+        "❗️ <b>Требуется немедленное внимание дежурной команды.</b>",
+    ]
+    return "\n".join(lines)
+
+
+def _build_normal(subject: str, description: str, sender: str | None) -> str:
+    """Обычная заявка: спокойный деловой формат — вопрос в очередь поддержки."""
+    lines = [
+        "📩 <b>Вопрос по сервису</b>",
         "",
         f"<b>Тема:</b> {subject}",
-        f"<b>Приоритет:</b> {meta['priority']}",
-        f"<b>SLA:</b> {meta['sla']}",
+        "<b>Приоритет:</b> обычный",
+        "<b>SLA:</b> в рабочем порядке",
     ]
-    sender_bits = []
-    if ticket.from_name:
-        sender_bits.append(esc(ticket.from_name.strip()))
-    if ticket.from_email:
-        sender_bits.append(esc(ticket.from_email.strip()))
-    if sender_bits:
-        lines.append(f"<b>От:</b> {' · '.join(sender_bits)}")
+    if sender:
+        lines.append(sender)
     lines += [
         "",
         f"<b>Описание:</b>\n{description}",
         "",
-        f"<i>{meta['footer']}</i>",
+        "<i>Заявка добавлена в очередь поддержки.</i>",
     ]
     return "\n".join(lines)
+
+
+def _build_idea(subject: str, description: str, sender: str | None) -> str:
+    """Предложение: продуктовый формат — идея в backlog, дружелюбный тон."""
+    lines = [
+        "💡 <b>Предложение по улучшению</b>",
+        "",
+        f"✨ <b>Суть идеи:</b> {subject}",
+        "🟢 <b>Приоритет:</b> низкий",
+        "📅 <b>Срок рассмотрения:</b> 1–30 рабочих дней",
+    ]
+    if sender:
+        lines.append(f"🙋 {sender}")
+    lines += [
+        "",
+        f"<b>Подробности:</b>\n{description}",
+        "",
+        "<i>Идея отправлена в продуктовый backlog. Спасибо за обратную связь! 🙌</i>",
+    ]
+    return "\n".join(lines)
+
+
+# Каждому типу — свой билдер сообщения (своя структура и подача).
+TYPE_BUILDERS = {
+    "urgent": _build_urgent,
+    "normal": _build_normal,
+    "idea": _build_idea,
+}
+
+
+def build_message(ticket: SupportTicket) -> str:
+    """Собирает HTML-сообщение для Telegram по своему шаблону под каждый тип обращения."""
+    esc = html.escape
+    subject = esc(ticket.subject.strip()) or "—"
+    description = esc(ticket.description.strip()) or "—"
+    sender = _sender_line(ticket)
+    builder = TYPE_BUILDERS.get(ticket.type, _build_normal)
+    return builder(subject, description, sender)
 
 
 async def send_ticket(ticket: SupportTicket) -> SupportResult:

@@ -1,0 +1,240 @@
+{
+  "uid": "eltera-tier-a",
+  "title": "Eltera — Tier A",
+  "tags": ["eltera", "tier-a"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": { "list": [] },
+  "annotations": { "list": [] },
+  "panels": [
+    { "id": 1, "type": "row", "title": "Воронка оценок", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 } },
+
+    {
+      "id": 2, "type": "stat", "title": "Конверсия приглашение → прохождение",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 6, "x": 0, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "percent", "decimals": 1, "min": 0, "max": 100,
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "red", "value": null }, { "color": "orange", "value": 40 }, { "color": "green", "value": 65 } ] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area", "textMode": "auto" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "100 * sum(eltera_assessment_events_total{event=\"completed\"}) / clamp_min(sum(eltera_assessment_events_total{event=\"created\"}), 1)" } ]
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "События воронки, /мин",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 6, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "fillOpacity": 10, "stacking": { "mode": "none" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["sum"] }, "tooltip": { "mode": "multi" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sum by (event) (rate(eltera_assessment_events_total[$__rate_interval])) * 60", "legendFormat": "{{event}}" } ]
+    },
+    {
+      "id": 4, "type": "bargauge", "title": "Событий за период",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 6, "x": 18, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] } }, "overrides": [] },
+      "options": { "orientation": "horizontal", "displayMode": "gradient", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sum by (event) (increase(eltera_assessment_events_total[$__range]))", "legendFormat": "{{event}}", "instant": true } ]
+    },
+
+    { "id": 10, "type": "row", "title": "Отклик и длительность", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 8 } },
+
+    {
+      "id": 11, "type": "timeseries", "title": "Отклик: приглашение → открытие формы",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 9 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 8 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "legendFormat": "p50",
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(eltera_invite_to_open_seconds_bucket[$__rate_interval])))" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "prometheus" }, "legendFormat": "p90",
+          "expr": "histogram_quantile(0.9, sum by (le) (rate(eltera_invite_to_open_seconds_bucket[$__rate_interval])))" }
+      ]
+    },
+    {
+      "id": 12, "type": "timeseries", "title": "Длительность прохождения теста",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 9 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 8 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "legendFormat": "p50",
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(eltera_test_duration_seconds_bucket[$__rate_interval])))" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "prometheus" }, "legendFormat": "p90",
+          "expr": "histogram_quantile(0.9, sum by (le) (rate(eltera_test_duration_seconds_bucket[$__rate_interval])))" }
+      ]
+    },
+
+    { "id": 20, "type": "row", "title": "AI-скоринг", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 } },
+
+    {
+      "id": 21, "type": "timeseries", "title": "AI-задачи, /мин по статусу",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 17 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "bars", "fillOpacity": 60, "stacking": { "mode": "normal" } } },
+        "overrides": [ { "matcher": { "id": "byName", "options": "error" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } } ] },
+                       { "matcher": { "id": "byName", "options": "done" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } } ] } ] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sum by (status) (rate(eltera_ai_scoring_jobs_total[$__rate_interval])) * 60", "legendFormat": "{{status}}" } ]
+    },
+    {
+      "id": 22, "type": "stat", "title": "Доля ошибок AI (период)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 4, "x": 8, "y": 17 },
+      "fieldConfig": { "defaults": { "unit": "percent", "decimals": 1, "min": 0, "max": 100,
+        "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 2 }, { "color": "red", "value": 5 } ] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true,
+        "expr": "100 * sum(increase(eltera_ai_scoring_jobs_total{status=\"error\"}[$__range])) / clamp_min(sum(increase(eltera_ai_scoring_jobs_total[$__range])), 1)" } ]
+    },
+    {
+      "id": 23, "type": "timeseries", "title": "Длительность AI-задачи",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 17 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 8 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "legendFormat": "p50",
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(eltera_ai_scoring_duration_seconds_bucket[$__rate_interval])))" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "prometheus" }, "legendFormat": "p90",
+          "expr": "histogram_quantile(0.9, sum by (le) (rate(eltera_ai_scoring_duration_seconds_bucket[$__rate_interval])))" }
+      ]
+    },
+
+    { "id": 30, "type": "row", "title": "Рефералы / токены", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 24 } },
+
+    {
+      "id": 31, "type": "timeseries", "title": "Операции леджера, /мин",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 25 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sum by (kind) (rate(eltera_referral_operations_total[$__rate_interval])) * 60", "legendFormat": "{{kind}}" } ]
+    },
+    {
+      "id": 32, "type": "bargauge", "title": "Оборот за период, ₽ по типу",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 25 },
+      "fieldConfig": { "defaults": { "unit": "currencyRUB", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "purple", "value": null } ] } }, "overrides": [] },
+      "options": { "orientation": "horizontal", "displayMode": "gradient", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true,
+        "expr": "sum by (kind) (increase(eltera_referral_amount_rub_total[$__range]))", "legendFormat": "{{kind}}" } ]
+    },
+
+    { "id": 40, "type": "row", "title": "Операционка (RED)", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 } },
+
+    {
+      "id": 41, "type": "timeseries", "title": "Запросы, RPS по классу статуса",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 33 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "fillOpacity": 15, "stacking": { "mode": "normal" } } },
+        "overrides": [ { "matcher": { "id": "byName", "options": "5xx" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } } ] } ] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sum by (status) (rate(http_requests_total[$__rate_interval]))", "legendFormat": "{{status}}" } ]
+    },
+    {
+      "id": 42, "type": "stat", "title": "Доля ошибок 5xx (период)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 4, "x": 8, "y": 33 },
+      "fieldConfig": { "defaults": { "unit": "percent", "decimals": 2, "min": 0, "max": 100,
+        "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 1 }, { "color": "red", "value": 5 } ] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true,
+        "expr": "100 * sum(increase(http_requests_total{status=\"5xx\"}[$__range])) / clamp_min(sum(increase(http_requests_total[$__range])), 1)" } ]
+    },
+    {
+      "id": 43, "type": "timeseries", "title": "Латентность запросов",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 33 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 8 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "legendFormat": "p50",
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(http_request_duration_highr_seconds_bucket[$__rate_interval])))" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "prometheus" }, "legendFormat": "p90",
+          "expr": "histogram_quantile(0.9, sum by (le) (rate(http_request_duration_highr_seconds_bucket[$__rate_interval])))" },
+        { "refId": "C", "datasource": { "type": "prometheus", "uid": "prometheus" }, "legendFormat": "p99",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_highr_seconds_bucket[$__rate_interval])))" }
+      ]
+    },
+
+    { "id": 50, "type": "row", "title": "Активность пользователей", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 40 } },
+
+    {
+      "id": 51, "type": "timeseries", "title": "Логины, /мин",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 41 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "fillOpacity": 12 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sum(rate(eltera_logins_total[$__rate_interval])) * 60", "legendFormat": "логины/мин" } ]
+    },
+    {
+      "id": 52, "type": "stat", "title": "Логинов за период",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 41 },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true,
+        "expr": "sum(increase(eltera_logins_total[$__range]))" } ]
+    },
+
+    { "id": 60, "type": "row", "title": "AI: токены и себестоимость", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 48 } },
+
+    {
+      "id": 61, "type": "timeseries", "title": "Токены ИИ, /мин (prompt vs completion)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 49 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "fillOpacity": 12, "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["sum"] }, "tooltip": { "mode": "multi" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sum by (kind) (rate(eltera_ai_tokens_total[$__rate_interval])) * 60", "legendFormat": "{{kind}}" } ]
+    },
+    {
+      "id": 62, "type": "timeseries", "title": "Токены ИИ по операции, /мин",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 49 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "fillOpacity": 12, "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["sum"] }, "tooltip": { "mode": "multi" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sum by (operation) (rate(eltera_ai_tokens_total[$__rate_interval])) * 60", "legendFormat": "{{operation}}" } ]
+    },
+    {
+      "id": 63, "type": "stat", "title": "Себестоимость ИИ за период, ₽",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 56 },
+      "fieldConfig": { "defaults": { "unit": "currencyRUB", "decimals": 2, "thresholds": { "mode": "absolute", "steps": [ { "color": "purple", "value": null } ] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true,
+        "expr": "sum(increase(eltera_ai_cost_rub_total[$__range]))" } ]
+    },
+    {
+      "id": 64, "type": "stat", "title": "₽ на вызов ИИ",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 56 },
+      "fieldConfig": { "defaults": { "unit": "currencyRUB", "decimals": 3, "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true,
+        "expr": "sum(increase(eltera_ai_cost_rub_total[$__range])) / clamp_min(sum(increase(eltera_ai_requests_total[$__range])), 1)" } ]
+    },
+    {
+      "id": 65, "type": "stat", "title": "₽ на завершённый тест (себестоимость отчёта)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 56 },
+      "fieldConfig": { "defaults": { "unit": "currencyRUB", "decimals": 2,
+        "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 1 }, { "color": "red", "value": 5 } ] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true,
+        "expr": "sum(increase(eltera_ai_cost_rub_total[$__range])) / clamp_min(sum(increase(eltera_assessment_events_total{event=\"completed\"}[$__range])), 1)" } ]
+    }
+  ]
+}

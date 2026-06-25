@@ -699,3 +699,213 @@ async def delete_question(session: AsyncSession, test_id: str, question_version_
         await session.execute(delete(Question).where(Question.id == qv.question_id))
     await session.commit()
     return True
+
+
+async def import_library_developer(session: AsyncSession, parsed: dict) -> dict:
+    """Import the new workbook where competencies/questions are profile-specific."""
+    org_id = await _org(session)
+    result = {
+        "competencies_created": 0,
+        "competencies_updated": 0,
+        "questions_created": 0,
+        "questions_skipped": 0,
+        "profiles_created": 0,
+        "profiles_updated": 0,
+        "errors": [],
+    }
+
+    profiles = parsed.get("profiles", [])
+    if not profiles:
+        result["errors"].append("Файл не содержит профилей.")
+        return result
+
+    test_by_key: dict[str, Test] = {
+        t.key: t for t in (await session.execute(
+            select(Test).where(Test.organization_id == org_id)
+        )).scalars().all() if t.key
+    }
+    comp_by_ext: dict[str, Competency] = {
+        c.key: c for c in (await session.execute(
+            select(Competency).where(Competency.organization_id == org_id)
+        )).scalars().all() if c.key
+    }
+
+    for profile in profiles:
+        for comp in profile.get("competencies", []):
+            ext = comp["ext_id"]
+            existing = comp_by_ext.get(ext)
+            if existing is None:
+                existing = Competency(
+                    id=gen_uuid(),
+                    organization_id=org_id,
+                    key=ext,
+                    title=comp["title"],
+                    description=comp.get("description"),
+                    kind=comp["kind"],
+                )
+                session.add(existing)
+                comp_by_ext[ext] = existing
+                result["competencies_created"] += 1
+            else:
+                existing.title = comp["title"]
+                existing.description = comp.get("description")
+                existing.kind = comp["kind"]
+                result["competencies_updated"] += 1
+    await session.flush()
+
+    existing_qv_map: dict[tuple[str, str], str] = {}
+    comp_ids = [c.id for c in comp_by_ext.values()]
+    if comp_ids:
+        for chunk in _chunked(comp_ids, 500):
+            rows = (await session.execute(
+                select(Question.competency_id, QuestionVersion.text, QuestionVersion.id)
+                .join(QuestionVersion, QuestionVersion.question_id == Question.id)
+                .where(
+                    Question.competency_id.in_(chunk),
+                    QuestionVersion.status == VersionStatus.published.value,
+                )
+            )).all()
+            for comp_id, text, qv_id in rows:
+                existing_qv_map[(comp_id, text)] = qv_id
+
+    qv_by_key: dict[tuple[str, str], str] = {}
+    for profile in profiles:
+        for comp in profile.get("competencies", []):
+            comp_obj = comp_by_ext.get(comp["ext_id"])
+            if comp_obj is None:
+                result["errors"].append(f"Компетенция {comp['ext_id']} не найдена после upsert.")
+                continue
+            for q in comp.get("questions", []):
+                existing_qv_id = existing_qv_map.get((comp_obj.id, q["text"]))
+                if existing_qv_id:
+                    qv_by_key[(comp["ext_id"], q["text"])] = existing_qv_id
+                    result["questions_skipped"] += 1
+                    continue
+
+                qtype = q["type"]
+                opts = q.get("options", [])
+                if qtype == "single_choice":
+                    max_score = max((o["score"] for o in opts), default=0)
+                elif qtype == "multiple_choice":
+                    max_score = sum(o["score"] for o in opts if o["score"] > 0)
+                elif qtype == "scale":
+                    max_score = q.get("scale_max") or 5
+                else:
+                    max_score = q.get("max_score") or 5
+
+                question = Question(
+                    id=gen_uuid(),
+                    organization_id=org_id,
+                    competency_id=comp_obj.id,
+                    scope=(QuestionScope.common.value if comp_obj.kind == "common" else QuestionScope.professional.value),
+                    is_system=False,
+                )
+                qv = QuestionVersion(
+                    id=gen_uuid(),
+                    question=question,
+                    version_no=1,
+                    type=qtype,
+                    text=q["text"],
+                    status=VersionStatus.published.value,
+                    max_score=max_score,
+                    scale_min=q.get("scale_min"),
+                    scale_max=q.get("scale_max"),
+                    ai_reference=q.get("ai_reference"),
+                    ai_criteria=q.get("ai_criteria"),
+                )
+                if qtype in ("single_choice", "multiple_choice"):
+                    for i, opt in enumerate(opts):
+                        qv.options.append(AnswerOption(
+                            id=gen_uuid(),
+                            text=opt["text"],
+                            score=opt["score"],
+                            is_correct=opt.get("is_correct", False),
+                            is_red_flag=opt.get("is_red_flag", False),
+                            sort_order=i,
+                        ))
+                session.add(question)
+                session.add(qv)
+                qv_by_key[(comp["ext_id"], q["text"])] = qv.id
+                result["questions_created"] += 1
+    await session.flush()
+
+    for profile in profiles:
+        ext = profile["ext_id"]
+        summary = profile.get("summary") or (f"≈{profile['duration']} мин" if profile.get("duration") else None)
+        test = test_by_key.get(ext)
+        if test is None:
+            test = Test(
+                id=gen_uuid(),
+                organization_id=org_id,
+                key=ext,
+                title=profile["title"],
+                category=profile.get("category"),
+                target_type=profile.get("target_type") or "candidate",
+                summary=summary,
+                is_system=False,
+            )
+            version = TestVersion(
+                id=gen_uuid(),
+                test_id=test.id,
+                version_no=1,
+                status=VersionStatus.published.value,
+                published_at=utcnow(),
+            )
+            session.add(test)
+            session.add(version)
+            test.current_version_id = version.id
+            version_id = version.id
+            result["profiles_created"] += 1
+        else:
+            test.title = profile["title"]
+            test.category = profile.get("category")
+            test.target_type = profile.get("target_type") or test.target_type
+            test.summary = summary
+            version_id = test.current_version_id
+            if not version_id:
+                version = TestVersion(
+                    id=gen_uuid(),
+                    test_id=test.id,
+                    version_no=1,
+                    status=VersionStatus.published.value,
+                    published_at=utcnow(),
+                )
+                session.add(version)
+                test.current_version_id = version.id
+                version_id = version.id
+            else:
+                await session.execute(delete(TestVersionItem).where(TestVersionItem.test_version_id == version_id))
+                await session.execute(delete(TestVersionCompetency).where(TestVersionCompetency.test_version_id == version_id))
+            result["profiles_updated"] += 1
+
+        order = 0
+        for comp in profile.get("competencies", []):
+            comp_obj = comp_by_ext.get(comp["ext_id"])
+            if comp_obj is None:
+                result["errors"].append(f"Профиль {ext}: компетенция {comp['ext_id']} не найдена.")
+                continue
+            weight = float(comp.get("weight", 1) or 1)
+            if weight > 1:
+                weight = weight / 100.0
+            session.add(TestVersionCompetency(
+                id=gen_uuid(),
+                test_version_id=version_id,
+                competency_id=comp_obj.id,
+                weight=weight,
+            ))
+            for q in comp.get("questions", []):
+                qv_id = qv_by_key.get((comp["ext_id"], q["text"])) or existing_qv_map.get((comp_obj.id, q["text"]))
+                if not qv_id:
+                    result["errors"].append(f"Профиль {ext}: вопрос «{q['text']}» не найден.")
+                    continue
+                session.add(TestVersionItem(
+                    id=gen_uuid(),
+                    test_version_id=version_id,
+                    question_version_id=qv_id,
+                    sort_order=order,
+                    weight=1.0,
+                ))
+                order += 1
+
+    await session.commit()
+    return result

@@ -39,6 +39,9 @@ class Test(TimestampMixin, Base):
     category: Mapped[str | None] = mapped_column(String(80), default=None)
     target_type: Mapped[str] = mapped_column(String(20), default=TestTarget.candidate.value)
     summary: Mapped[str | None] = mapped_column(Text, default=None)
+    # Лимит времени на прохождение, мин. NULL → без ограничения. Таймер серверный:
+    # отсчёт стартует с первого открытия ссылки (AssessmentLink.started_at).
+    time_limit_minutes: Mapped[int | None] = mapped_column(Integer, default=None)
     is_system: Mapped[bool] = mapped_column(Boolean, default=False)
     # Логическая ссылка на активную версию (без FK — цикл tests<->test_versions).
     current_version_id: Mapped[str | None] = mapped_column(String(32), default=None)
