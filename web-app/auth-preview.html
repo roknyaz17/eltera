@@ -311,42 +311,6 @@
   .authLink { color: #00E5D4; text-decoration: none; }
   .authLink:hover { text-decoration: underline; }
 
-  /* ── Email / Phone toggle ── */
-  .authContactToggle {
-    display: grid;
-    gap: 8px;
-  }
-
-  .authContactSwitch {
-    display: flex;
-    background: rgba(255,255,255,0.04);
-    border-radius: 10px;
-    padding: 3px;
-    border: 1px solid rgba(255,255,255,0.07);
-    gap: 3px;
-  }
-
-  .authContactBtn {
-    flex: 1;
-    padding: 7px 12px;
-    border-radius: 8px;
-    border: none;
-    background: transparent;
-    color: rgba(230,242,255,0.32);
-    font-size: 12px;
-    font-weight: 600;
-    font-family: 'Manrope', sans-serif;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-align: center;
-  }
-
-  .authContactBtn.active {
-    background: rgba(30,91,255,0.22);
-    color: #E6F2FF;
-    box-shadow: 0 2px 8px rgba(30,91,255,0.2);
-  }
-
   /* ── Checkbox ── */
   .authCheckbox {
     display: flex;
@@ -442,14 +406,8 @@
           <input class="authInput" type="text" placeholder="ООО Ромашка">
         </div>
         <div class="authInputGroup">
-          <label class="authLabel">Контакт для входа</label>
-          <div class="authContactToggle">
-            <div class="authContactSwitch">
-              <button class="authContactBtn active" onclick="setContact('email', this)">Email</button>
-              <button class="authContactBtn" onclick="setContact('phone', this)">Телефон</button>
-            </div>
-            <input class="authInput" id="contactInput" type="email" placeholder="name@company.ru">
-          </div>
+          <label class="authLabel">Email</label>
+          <input class="authInput" id="contactInput" type="email" placeholder="name@company.ru" autocomplete="email">
         </div>
         <div class="authInputGroup">
           <label class="authLabel">Пароль</label>
@@ -476,14 +434,6 @@
     document.getElementById('wrapRegister').classList.toggle('open', !isLogin);
   }
 
-  function setContact(type, btn) {
-    btn.closest('.authContactSwitch').querySelectorAll('.authContactBtn')
-      .forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    const input = document.getElementById('contactInput');
-    input.type = type === 'email' ? 'email' : 'tel';
-    input.placeholder = type === 'email' ? 'name@company.ru' : '+7 900 000-00-00';
-  }
 </script>
 </body>
 </html>

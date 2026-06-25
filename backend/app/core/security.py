@@ -1,5 +1,6 @@
-"""Хеширование паролей и работа с JWT/refresh-токенами."""
+"""Password hashing, JWT helpers and one-time email code helpers."""
 import hashlib
+import hmac
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -49,7 +50,6 @@ def decode_access_token(token: str) -> dict | None:
 
 
 def new_refresh_token() -> tuple[str, str, datetime]:
-    """Возвращает (raw_token, token_hash, expires_at)."""
     raw = secrets.token_urlsafe(48)
     expires = datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_ttl_days)
     return raw, hash_refresh(raw), expires
@@ -57,3 +57,32 @@ def new_refresh_token() -> tuple[str, str, datetime]:
 
 def hash_refresh(raw: str) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def normalize_email(email: str) -> str:
+    return email.strip().lower()
+
+
+def new_email_code() -> str:
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def hash_email_code(code: str) -> str:
+    return hashlib.sha256(
+        f"{settings.jwt_secret}:email-code:{code}".encode("utf-8")
+    ).hexdigest()
+
+
+def verify_email_code(code: str, code_hash: str) -> bool:
+    return hmac.compare_digest(hash_email_code(code), code_hash)
+
+
+def new_challenge_token() -> tuple[str, str]:
+    raw = secrets.token_urlsafe(32)
+    return raw, hash_challenge_token(raw)
+
+
+def hash_challenge_token(raw: str) -> str:
+    return hashlib.sha256(
+        f"{settings.jwt_secret}:challenge:{raw}".encode("utf-8")
+    ).hexdigest()

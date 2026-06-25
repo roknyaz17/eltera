@@ -199,6 +199,7 @@ function defaultState() {
     drilldownStage: "",
     reportId: "",
     modal: null,
+    authChallenge: null,
     company: {
       name: "Eltera Demo Company",
       tariff: "Start",
@@ -1053,7 +1054,7 @@ function render() {
 
   if (route.route === "login") {
     document.body.className = "landingBody";
-    app.innerHTML = renderLogin();
+    app.innerHTML = renderLogin(state);
     return;
   }
 

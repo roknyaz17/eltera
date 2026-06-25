@@ -725,6 +725,42 @@ p { line-height: 1.6; }
   box-shadow: 0 6px 20px rgba(30,91,255,0.40);
 }
 
+/* Auth challenge modal */
+.authChallengeModal {
+  width: min(520px, 100%);
+}
+
+.authChallengeField {
+  display: grid;
+  gap: 6px;
+}
+
+.authChallengeInput {
+  letter-spacing: 0.2em;
+  text-align: center;
+  font-weight: 800;
+}
+
+.authChallengeActions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.authChallengeActions .button.subtle,
+.authChallengeActions .authSubmitBtn {
+  flex: 1 1 180px;
+}
+
+.authChallengeClose {
+  align-self: center;
+  margin-top: -2px;
+  font-size: 12px;
+  text-align: center;
+  opacity: 0.9;
+}
+
 /* ── Auth hints & links ── */
 .authHint {
   font-size: 12px;

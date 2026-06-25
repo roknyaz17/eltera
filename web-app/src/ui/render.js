@@ -105,7 +105,46 @@ export function renderLanding(tariffs) {
   `;
 }
 
-export function renderLogin() {
+function renderAuthChallenge(challenge) {
+  if (!challenge) return "";
+  const isRegister = challenge.mode === "register";
+  const title = isRegister ? "Подтвердите email" : "Введите код из письма";
+  const subtitle = isRegister
+    ? `Мы отправили 6-значный код на ${escapeHtml(challenge.email)}. Введите его, чтобы завершить регистрацию.`
+    : `Мы отправили 6-значный код на ${escapeHtml(challenge.email)}. Введите его, чтобы войти в кабинет.`;
+  const resendLabel = challenge.status === "resending" ? "Отправляем…" : "Отправить код ещё раз";
+  const submitLabel = challenge.status === "verifying" ? "Проверяем…" : "Подтвердить";
+  return `
+    <div class="modalBackdrop">
+      <form class="modal authChallengeModal" data-auth-challenge-form>
+        <div class="modal-head">
+          <div class="modal-head-left">
+            <span class="modal-head-icon">✉️</span>
+            <h2 class="modal-head-title">${title}</h2>
+          </div>
+          <button type="button" class="modal-close-btn" data-auth-challenge-close title="Закрыть">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div class="modal-inner">
+          <p class="modal-subtitle">${subtitle}</p>
+          <div class="authChallengeField">
+            <label class="authLabel">Код из письма</label>
+            <input name="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" class="authInput authChallengeInput" placeholder="123456" required>
+          </div>
+          <div class="authChallengeActions">
+            <button type="button" class="button subtle" data-auth-challenge-resend>${resendLabel}</button>
+            <button class="authSubmitBtn" type="submit">${submitLabel}</button>
+          </div>
+          <button type="button" class="authLink authChallengeClose" data-auth-challenge-close>Вернуться к форме</button>
+          ${challenge.error ? `<div class="authError">${escapeHtml(challenge.error)}</div>` : ""}
+        </div>
+      </form>
+    </div>
+  `;
+}
+
+export function renderLogin(state = {}) {
   return `
     <div class="authPage">
       <section class="authBrand">
@@ -176,6 +215,7 @@ export function renderLogin() {
         </form>
         </div>
       </div>
+      ${renderAuthChallenge(state.authChallenge)}
     </div>
   `;
 }

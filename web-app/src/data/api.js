@@ -94,6 +94,10 @@ async function authRequest(path, body) {
 }
 export function authLogin(email, password) { return authRequest("/auth/login", { email, password }); }
 export function authRegister(payload) { return authRequest("/auth/register", payload); }
+export function authVerifyLogin(payload) { return authRequest("/auth/login/verify", payload); }
+export function authVerifyRegister(payload) { return authRequest("/auth/register/verify", payload); }
+export function authResendLogin(payload) { return authRequest("/auth/login/resend", payload); }
+export function authResendRegister(payload) { return authRequest("/auth/register/resend", payload); }
 export async function authLogout() {
   const t = getTokens();
   if (t && t.refresh_token) {

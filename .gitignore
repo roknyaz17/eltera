@@ -8,3 +8,6 @@ outputs/xlsx/
 outputs/screenshots/
 outputs/manus-packages/
 *.DS_Store
+
+.qodo
+.venv
