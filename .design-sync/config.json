@@ -1,0 +1,14 @@
+{
+  "pkg": "@eltera/design-system",
+  "globalName": "ElteraDS",
+  "shape": "package",
+  "buildCmd": "npm --prefix web-app/design-system run build",
+  "cssEntry": "styles.css",
+  "readmeHeader": ".design-sync/conventions.md",
+  "extraFonts": ["fonts/fonts.css"],
+  "runtimeFontPrefixes": ["Inter"],
+  "overrides": {
+    "Heatmap": { "cardMode": "column" },
+    "KpiCard": { "cardMode": "column" }
+  }
+}

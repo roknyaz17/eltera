@@ -13,3 +13,12 @@ outputs/manus-packages/
 *.sqlite3
 .claude/settings.local.json
 .impeccable/
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
+web-app/design-system/node_modules/
+web-app/design-system/dist/
+web-app/design-system/styles.css
+web-app/design-system/fonts/
