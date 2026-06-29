@@ -43,5 +43,12 @@
 ## Card mode overrides
 - Heatmap and KpiCard use {"cardMode":"column"} — Heatmap's grid min-width 860px and KpiCard's 3-up "Statuses" story overflow the default grid cell; column gives full card width.
 
+## Project / upload (2026-06-29) — FIRST SYNC COMPLETE
+- Target Claude Design project created: "Eltera Design System", projectId `a6848c6a-cbd7-4589-aff3-dd5ee55a6f35` (pinned in config.json).
+- URL: https://claude.ai/design/p/a6848c6a-cbd7-4589-aff3-dd5ee55a6f35
+- Incremental path: all 17 components + shared base (bundle, css, fonts, vendor, previews) uploaded in one push; anchor `_ds_sync.json` written last. Remote == local bundle (list_files verified, no orphans).
+- Conventions header re-validated against this build: all 21 named tokens + 17 component names verify. No edits.
+- Next sync is a re-sync (config now has both projectId + pkg) → resync.mjs with --remote will diff against the anchor and skip unchanged components.
+
 ## Known render warns (recorded)
 - [TOKENS_MISSING] --panel,--border,--text,--text-muted,--ov-* : belong to OTHER widgets in styles.css, not the 16 shipped components (grep-verified). Benign, expected on every run.
