@@ -37,7 +37,12 @@ const server = createServer(async (request, response) => {
 
   try {
     const body = await readFile(filePath);
-    response.writeHead(200, { "Content-Type": types[extname(filePath)] || "text/plain; charset=utf-8" });
+    response.writeHead(200, {
+      "Content-Type": types[extname(filePath)] || "text/plain; charset=utf-8",
+      // Dev: всегда отдаём свежие файлы, иначе браузер кэширует ES-модули
+      // (например src/ui/render.js) и не подхватывает правки.
+      "Cache-Control": "no-cache, no-store, must-revalidate"
+    });
     response.end(body);
   } catch {
     response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });

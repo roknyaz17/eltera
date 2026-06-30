@@ -1,4 +1,5 @@
 import { runPageAnimations } from "./ui/animations.js";
+import { initLanding } from "./ui/landing.js";
 import { initWizardController } from "./controllers/wizard.js";
 import { initFiltersController } from "./controllers/filters.js";
 import { initAuthController, getDevLibrary } from "./controllers/auth.js";
@@ -53,7 +54,6 @@ import {
   renderCandidateThanks,
   renderCandidates,
   renderConstructor,
-  renderDashboard,
   renderEmployees,
   renderGratitude,
   renderLanding,
@@ -715,6 +715,19 @@ async function deleteConstructorTest(testId) {
   }
 }
 
+// Временная заглушка дашборда. Premium-дашборд (renderPremiumDashboard в
+// dashboard-premium.js) ещё не подключён: ему нужны функции-построители данных
+// (dashboardData, candidateHeatmapFn и т.д.), которых пока нет в проекте.
+// Старая renderDashboard удалена из render.js, поэтому здесь — безопасная заглушка,
+// чтобы модуль загружался и остальные вкладки работали.
+function renderDashboardPlaceholder() {
+  return `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;padding:40px;color:#8899BB;">
+      <div style="font-size:20px;font-weight:800;color:#E6F2FF;margin-bottom:8px;">Дашборд в разработке</div>
+      <p style="max-width:42ch;line-height:1.6;margin:0;">Новый premium-дашборд ещё подключается. Остальные разделы доступны через меню.</p>
+    </div>`;
+}
+
 function render() {
   const route = currentRoute();
   state.route = route.route;
@@ -741,8 +754,7 @@ function render() {
   if (route.route === "landing") {
     document.body.className = "landingBody";
     app.innerHTML = renderLanding(tariffs);
-    initHeroLiveCard();
-    initLv3Landing();
+    initLanding();
     return;
   }
 
@@ -797,7 +809,7 @@ function render() {
   document.body.className = state.theme === "light" ? "appBody light" : "appBody dark";
   let content = "";
 
-  if (state.view === "dashboard") content = renderDashboard(state, dashboardFilters);
+  if (state.view === "dashboard") content = renderDashboardPlaceholder();
   if (state.view === "candidates") {
     // Подтягиваем данные с бэкенда при первом открытии вкладки.
     if (!state.candidatesStatus || state.candidatesStatus === "idle") {
@@ -880,7 +892,7 @@ function render() {
   if (state.view === "gratitude") content = renderGratitude(state);
   if (state.view === "settings") content = renderSettings(state);
 
-  const newHTML = renderAppShell(state, content || renderDashboard(state, dashboardFilters));
+  const newHTML = renderAppShell(state, content || renderDashboardPlaceholder());
 
   // Анимации (count-up, полосы) запускаем только при смене вкладки или когда
   // данные реально изменились (флаг _animateOnce). Обычные перерисовки
