@@ -68,6 +68,8 @@ async def _via_openai(
             {"role": "user", "content": user},
         ],
     )
+    from app.observability import metrics
+    metrics.record_ai_usage("scoring", settings.ai_model, getattr(resp, "usage", None))
     raw = resp.choices[0].message.content or "{}"
     match = re.search(r"\{.*\}", raw, re.DOTALL)
     data = json.loads(match.group(0) if match else raw)

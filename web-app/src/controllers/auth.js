@@ -3,7 +3,28 @@
  * Handles login, registration, dev portal authentication and library management.
  * Depends on: getState, setState, render, saveState, setHash
  */
-import { authLogin, authRegister, setTokens } from "../data/api.js";
+import {
+  authForgotPassword,
+  authLogin,
+  authRegister,
+  authResendLogin,
+  authResendRegister,
+  authResetPassword,
+  authVerifyLogin,
+  authVerifyRegister,
+  authVerifyReset,
+  setTokens,
+} from "../data/api.js";
+
+// Обновляет объект сброса пароля в состоянии (без записи в localStorage —
+// флоу transient, токены не должны переживать перезагрузку).
+function patchReset(setState, render, patch) {
+  setState((s) => ({
+    ...s,
+    passwordReset: s.passwordReset ? { ...s.passwordReset, ...patch } : s.passwordReset,
+  }));
+  render();
+}
 
 // Показывает текст ошибки под формой входа/регистрации.
 function authError(form, message) {
@@ -18,6 +39,24 @@ function authError(form, message) {
 
 const DEV_PASSWORD = "eltera-dev-2026";
 const DEV_LIB_KEY = "eltera-dev-library-v1";
+
+function toAuthChallenge(resp) {
+  return {
+    mode: resp.purpose === "registration" ? "register" : "login",
+    email: resp.email,
+    challengeToken: resp.challenge_token,
+    purpose: resp.purpose,
+    expiresIn: resp.expires_in,
+    status: "idle",
+    error: null,
+  };
+}
+
+function setAuthChallenge(setState, render, saveState, resp) {
+  setState((s) => ({ ...s, authChallenge: toAuthChallenge(resp) }));
+  saveState();
+  render();
+}
 
 export function getDevLibrary(professions, questions, commonCompetencies, professionalCompetencies) {
   try {
@@ -52,10 +91,8 @@ export function initAuthController({ getState, setState, render, saveState, setH
       if (btn) { btn.disabled = true; btn.dataset._t = btn.textContent; btn.textContent = "Вход…"; }
       authLogin(email, password)
         .then((resp) => {
-          setTokens({ access_token: resp.access_token, refresh_token: resp.refresh_token });
-          setState(s => ({ ...s, authenticated: true, user: resp.user }));
-          saveState();
-          setHash("#/app/dashboard");
+          setAuthChallenge(setState, render, saveState, resp);
+          if (btn) { btn.disabled = false; btn.textContent = btn.dataset._t || "Войти"; }
         })
         .catch((e) => {
           if (btn) { btn.disabled = false; btn.textContent = btn.dataset._t || "Войти"; }
@@ -73,6 +110,7 @@ export function initAuthController({ getState, setState, render, saveState, setH
       const lastName = String(fd.get("lastName") || "").trim();
       const company = String(fd.get("company") || "").trim();
       const contact = String(fd.get("contact") || "").trim();
+      const role = String(fd.get("role") || "").trim();
       const password = String(fd.get("password") || "");
       const fullName = `${lastName} ${firstName}`.trim() || firstName || lastName;
       if (!contact || !password || !company || !fullName) {
@@ -81,19 +119,154 @@ export function initAuthController({ getState, setState, render, saveState, setH
       }
       const btn = form.querySelector('button[type="submit"], button:not([type])');
       if (btn) { btn.disabled = true; btn.dataset._t = btn.textContent; btn.textContent = "Создаём…"; }
-      authRegister({ email: contact, password, full_name: fullName, company })
+      authRegister({ email: contact, password, full_name: fullName, company, ref_code: getState().refCode || null })
+        .then((resp) => {
+          setState((s) => ({
+            ...s,
+            authChallenge: toAuthChallenge(resp),
+            company: { ...s.company, name: company, contactName: fullName, contactEmail: contact, contactRole: role },
+          }));
+          saveState();
+          render();
+          if (btn) { btn.disabled = false; btn.textContent = btn.dataset._t || "Создать аккаунт"; }
+        })
+        .catch((e) => {
+          if (btn) { btn.disabled = false; btn.textContent = btn.dataset._t || "Создать аккаунт"; }
+          authError(form, e.message || "Не удалось зарегистрироваться");
+        });
+      return;
+    }
+
+    if (event.target.matches("[data-auth-challenge-form]")) {
+      event.preventDefault();
+      const form = event.target;
+      const challenge = getState().authChallenge;
+      if (!challenge) {
+        authError(form, "Код подтверждения не найден. Запросите его ещё раз.");
+        return;
+      }
+      const fd = new FormData(form);
+      const code = String(fd.get("code") || "").trim();
+      if (!code) {
+        authError(form, "Введите код из письма.");
+        return;
+      }
+      const btn = form.querySelector('button[type="submit"]');
+      if (btn) { btn.disabled = true; btn.dataset._t = btn.textContent; btn.textContent = "Проверяем…"; }
+      setState((s) => ({
+        ...s,
+        authChallenge: s.authChallenge ? { ...s.authChallenge, status: "verifying", error: null } : s.authChallenge,
+      }));
+      render();
+      const verify = challenge.mode === "register" ? authVerifyRegister : authVerifyLogin;
+      verify({ email: challenge.email, challenge_token: challenge.challengeToken, code })
         .then((resp) => {
           setTokens({ access_token: resp.access_token, refresh_token: resp.refresh_token });
-          setState(s => ({
-            ...s, authenticated: true, user: resp.user,
-            company: { ...s.company, name: company, contactName: fullName, contactEmail: contact },
+          // Реферальный код использован при регистрации — больше не нужен.
+          try { localStorage.removeItem("eltera_ref"); } catch { /* ignore */ }
+          setState((s) => ({
+            ...s,
+            authenticated: true,
+            user: resp.user,
+            authChallenge: null,
+            refCode: null,
           }));
           saveState();
           setHash("#/app/dashboard");
         })
         .catch((e) => {
-          if (btn) { btn.disabled = false; btn.textContent = btn.dataset._t || "Создать аккаунт"; }
-          authError(form, e.message || "Не удалось зарегистрироваться");
+          setState((s) => ({
+            ...s,
+            authChallenge: s.authChallenge ? { ...s.authChallenge, status: "idle" } : s.authChallenge,
+          }));
+          if (btn) { btn.disabled = false; btn.textContent = btn.dataset._t || "Подтвердить"; }
+          authError(form, e.message || "Не удалось подтвердить код");
+        });
+      return;
+    }
+
+    // Сброс пароля, шаг 1 — запрос кода по email
+    if (event.target.matches("[data-reset-request-form]")) {
+      event.preventDefault();
+      const form = event.target;
+      const email = String(new FormData(form).get("email") || "").trim();
+      if (!email) { authError(form, "Введите email."); return; }
+      patchReset(setState, render, { email, status: "sending", error: null });
+      authForgotPassword(email)
+        .then((resp) => {
+          patchReset(setState, render, {
+            step: "code",
+            email: resp.email || email,
+            challengeToken: resp.challenge_token,
+            status: "idle",
+            error: null,
+          });
+        })
+        .catch((e) => {
+          patchReset(setState, render, { status: "idle" });
+          authError(form, e.message || "Не удалось отправить код");
+        });
+      return;
+    }
+
+    // Сброс пароля, шаг 2 — подтверждение кода → reset-токен
+    if (event.target.matches("[data-reset-code-form]")) {
+      event.preventDefault();
+      const form = event.target;
+      const pr = getState().passwordReset;
+      if (!pr) return;
+      const code = String(new FormData(form).get("code") || "").trim();
+      if (!code) { authError(form, "Введите код из письма."); return; }
+      patchReset(setState, render, { status: "verifying", error: null });
+      authVerifyReset({ email: pr.email, challenge_token: pr.challengeToken, code })
+        .then((resp) => {
+          patchReset(setState, render, {
+            step: "newpass",
+            resetToken: resp.reset_token,
+            status: "idle",
+            error: null,
+          });
+        })
+        .catch((e) => {
+          patchReset(setState, render, { status: "idle" });
+          authError(form, e.message || "Неверный код подтверждения");
+        });
+      return;
+    }
+
+    // Сброс пароля, шаг 3 — установка нового пароля + автологин
+    if (event.target.matches("[data-reset-newpass-form]")) {
+      event.preventDefault();
+      const form = event.target;
+      const pr = getState().passwordReset;
+      if (!pr) return;
+      const fd = new FormData(form);
+      const password = String(fd.get("password") || "");
+      const passwordConfirm = String(fd.get("password_confirm") || "");
+      if (password.length < 6) { authError(form, "Пароль должен быть не короче 6 символов."); return; }
+      if (password !== passwordConfirm) { authError(form, "Пароли не совпадают."); return; }
+      patchReset(setState, render, { status: "saving", error: null });
+      authResetPassword({
+        email: pr.email,
+        reset_token: pr.resetToken,
+        password,
+        password_confirm: passwordConfirm,
+      })
+        .then((resp) => {
+          setTokens({ access_token: resp.access_token, refresh_token: resp.refresh_token });
+          setState((s) => ({
+            ...s,
+            authenticated: true,
+            user: resp.user,
+            passwordReset: null,
+            authChallenge: null,
+          }));
+          saveState();
+          setHash("#/app/dashboard");
+        })
+        .catch((e) => {
+          patchReset(setState, render, { status: "idle" });
+          authError(form, e.message || "Не удалось сменить пароль");
         });
       return;
     }
@@ -122,24 +295,85 @@ export function initAuthController({ getState, setState, render, saveState, setH
       return;
     }
 
-    // Contact type switch (email / phone)
-    const contactType = event.target.closest("[data-contact-type]")?.dataset.contactType;
-    if (contactType) {
-      const switchEl = event.target.closest(".authContactSwitch");
-      switchEl?.querySelectorAll(".authContactBtn").forEach(b => b.classList.remove("active"));
-      event.target.closest("[data-contact-type]").classList.add("active");
-      const input = event.target.closest(".authContactToggle")?.querySelector(".authInput");
-      if (input) {
-        input.placeholder = contactType === "email" ? "name@company.ru" : "+7 900 000-00-00";
-        input.type = contactType === "email" ? "email" : "tel";
-      }
+    if (event.target.closest("[data-auth-challenge-close]")) {
+      event.preventDefault();
+      setState((s) => ({ ...s, authChallenge: null }));
+      saveState();
+      render();
       return;
     }
 
-    // Forgot password mock
+    if (event.target.closest("[data-auth-challenge-resend]")) {
+      event.preventDefault();
+      const challenge = getState().authChallenge;
+      if (!challenge) return;
+      const form = event.target.closest("form");
+      const btn = event.target.closest("button");
+      if (btn) { btn.disabled = true; btn.dataset._t = btn.textContent; btn.textContent = "Отправляем…"; }
+      const resend = challenge.mode === "register" ? authResendRegister : authResendLogin;
+      setState((s) => ({
+        ...s,
+        authChallenge: s.authChallenge ? { ...s.authChallenge, status: "resending", error: null } : s.authChallenge,
+      }));
+      render();
+      resend({ email: challenge.email, challenge_token: challenge.challengeToken })
+        .then((resp) => {
+          setState((s) => ({ ...s, authChallenge: { ...toAuthChallenge(resp), status: "idle", error: null } }));
+          saveState();
+          render();
+        })
+        .catch((e) => {
+          setState((s) => ({
+            ...s,
+            authChallenge: s.authChallenge ? { ...s.authChallenge, status: "idle" } : s.authChallenge,
+          }));
+          if (form) authError(form, e.message || "Не удалось отправить код повторно");
+          if (btn) { btn.disabled = false; btn.textContent = btn.dataset._t || "Отправить код ещё раз"; }
+        });
+      return;
+    }
+
+    // Forgot password — открыть флоу сброса
     if (event.target.closest("[data-forgot-password]")) {
       event.preventDefault();
-      alert("Сброс пароля будет доступен после подключения backend. Напишите на hello@eltera.ai");
+      const prefill = String(
+        document.querySelector('[data-login-form] input[name="email"]')?.value || ""
+      ).trim();
+      setState((s) => ({
+        ...s,
+        passwordReset: { step: "request", email: prefill, status: "idle", error: null },
+      }));
+      render();
+      return;
+    }
+
+    // Закрыть модалку сброса пароля
+    if (event.target.closest("[data-reset-close]")) {
+      event.preventDefault();
+      setState((s) => ({ ...s, passwordReset: null }));
+      render();
+      return;
+    }
+
+    // Повторно отправить код сброса (создаёт новый challenge)
+    if (event.target.closest("[data-reset-resend]")) {
+      event.preventDefault();
+      const pr = getState().passwordReset;
+      if (!pr || !pr.email) return;
+      const form = event.target.closest("form");
+      patchReset(setState, render, { status: "resending", error: null });
+      authForgotPassword(pr.email)
+        .then((resp) => {
+          patchReset(setState, render, {
+            challengeToken: resp.challenge_token,
+            status: "idle",
+            error: null,
+          });
+        })
+        .catch((e) => {
+          patchReset(setState, render, { status: "idle" });
+          if (form) authError(form, e.message || "Не удалось отправить код повторно");
+        });
       return;
     }
 

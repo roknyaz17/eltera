@@ -4,9 +4,9 @@
 """
 import asyncio
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -31,7 +31,13 @@ from app.models.enums import (
     SessionStatus,
 )
 from app.models.person import Person
-from app.models.test import QuestionVersion, Test, TestVersion, TestVersionItem
+from app.models.test import (
+    QuestionVersion,
+    Test,
+    TestVersion,
+    TestVersionCompetency,
+    TestVersionItem,
+)
 from app.schemas.assessment import (
     AssessmentForm,
     AssessmentResult,
@@ -41,15 +47,27 @@ from app.schemas.assessment import (
     LinkListItem,
     ResultCompetency,
 )
+from app.observability import metrics
 from app.services import scoring
 from app.services.ai_scoring import score_open_answer
 
 FIT_THRESHOLD = scoring.FIT_THRESHOLD
 RISK_THRESHOLD = scoring.RISK_THRESHOLD
 
+# Запас к серверному дедлайну: компенсирует время на стартовом экране, задержку
+# сети и расхождение часов клиента. Отправка позже дедлайна+запас отклоняется.
+SUBMIT_GRACE_SECONDS = 90
+
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _job_seconds(job) -> float | None:
+    """Длительность AI-задачи, сек: finished_at − created_at (None если нет данных)."""
+    if job.created_at is None or job.finished_at is None:
+        return None
+    return (job.finished_at - job.created_at).total_seconds()
 
 
 class FlowError(Exception):
@@ -106,6 +124,28 @@ async def _ordered_question_versions(
         )
     ).scalars().all()
     return sorted(qvs, key=lambda qv: order.get(qv.id, 0))
+
+
+async def _item_weights(session: AsyncSession, test_version_id: str) -> dict[str, float]:
+    """Веса вопросов в версии теста: {question_version_id: weight}."""
+    rows = (
+        await session.execute(
+            select(TestVersionItem.question_version_id, TestVersionItem.weight)
+            .where(TestVersionItem.test_version_id == test_version_id)
+        )
+    ).all()
+    return {qid: (w if w is not None else 1.0) for qid, w in rows}
+
+
+async def _competency_weights(session: AsyncSession, test_version_id: str) -> dict[str, float]:
+    """Веса компетенций в версии теста: {competency_id: weight}."""
+    rows = (
+        await session.execute(
+            select(TestVersionCompetency.competency_id, TestVersionCompetency.weight)
+            .where(TestVersionCompetency.test_version_id == test_version_id)
+        )
+    ).all()
+    return {cid: (w if w is not None else 1.0) for cid, w in rows}
 
 
 async def _competency_titles(session: AsyncSession, ids) -> dict[str, str]:
@@ -173,6 +213,7 @@ async def create_link(session: AsyncSession, data: LinkCreate) -> AssessmentLink
         rater_role=data.rater_role,
     )
     link.events.append(AssessmentLinkEvent(event="created"))
+    metrics.record_assessment_event("created", link.recipient_type)
     session.add(link)
     await session.commit()
     await session.refresh(link)
@@ -224,6 +265,7 @@ async def _notify_invite(session, link, test, person) -> None:
         )
         if sent:
             link.events.append(AssessmentLinkEvent(event="email_sent"))
+            metrics.record_assessment_event("email_sent", link.recipient_type)
             await session.commit()
     except Exception:  # noqa: BLE001
         import logging
@@ -321,10 +363,26 @@ async def build_form(session: AsyncSession, token: str) -> AssessmentForm:
     qvs = await _ordered_question_versions(session, link.test_version_id)
     titles = await _competency_titles(session, [qv.question.competency_id for qv in qvs])
 
+    now = _now()
+    time_limit = test.time_limit_minutes if test else None
     if link.status in (LinkStatus.pending.value, LinkStatus.sent.value):
         link.status = LinkStatus.opened.value
         session.add(AssessmentLinkEvent(link_id=link.id, event="opened"))
-        await session.commit()
+        metrics.record_assessment_event("opened", link.recipient_type)
+        # Скорость отклика: от создания приглашения до первого открытия формы.
+        if link.created_at is not None:
+            metrics.observe_invite_to_open((now - link.created_at).total_seconds())
+    # Серверный таймер: фиксируем старт отсчёта при первом открытии формы теста
+    # с лимитом времени. Повторные открытия (перезагрузка) старт не сбрасывают.
+    if time_limit and link.started_at is None:
+        link.started_at = now
+        session.add(AssessmentLinkEvent(link_id=link.id, event="timer_started"))
+        metrics.record_assessment_event("timer_started", link.recipient_type)
+    await session.commit()
+
+    deadline_at = None
+    if time_limit and link.started_at is not None:
+        deadline_at = link.started_at + timedelta(minutes=time_limit)
 
     questions = []
     for qv in qvs:
@@ -362,6 +420,9 @@ async def build_form(session: AsyncSession, token: str) -> AssessmentForm:
         phone=link.recipient_phone or (person.phone if person else None),
         subject_name=subject_name,
         rater_role=link.rater_role,
+        time_limit_minutes=time_limit,
+        deadline_at=deadline_at,
+        server_now=now,
         questions=questions,
     )
 
@@ -375,6 +436,36 @@ async def submit(session: AsyncSession, token: str, payload) -> AssessmentResult
         raise FlowError(409, "Тест по этой ссылке уже пройден")
     if link.person_id is None:
         raise FlowError(409, "Ссылка не привязана к человеку")
+
+    # Серверный таймер: если у теста задан лимит и старт зафиксирован, отклоняем
+    # отправку позже дедлайна + запас (анти-чит против остановленного клиентского
+    # таймера). Проверяем до «захвата» ссылки, чтобы не закрыть её зря.
+    test = await session.get(Test, link.test_id)
+    if test and test.time_limit_minutes and link.started_at is not None:
+        deadline = link.started_at + timedelta(minutes=test.time_limit_minutes)
+        if _now() > deadline + timedelta(seconds=SUBMIT_GRACE_SECONDS):
+            link.status = LinkStatus.expired.value
+            session.add(AssessmentLinkEvent(link_id=link.id, event="time_expired"))
+            metrics.record_assessment_event("time_expired", link.recipient_type)
+            await session.commit()
+            raise FlowError(410, "Время на прохождение теста истекло")
+
+    # Идемпотентность: атомарно «захватываем» ссылку условным UPDATE. Параллельный
+    # второй запрос (двойной клик / две вкладки) обновит 0 строк и получит 409.
+    # UPDATE в той же транзакции, что и весь submit, — при ошибке скоринга откат
+    # вернёт ссылку в исходный статус.
+    claimed = await session.execute(
+        update(AssessmentLink)
+        .where(
+            AssessmentLink.id == link.id,
+            AssessmentLink.status != LinkStatus.completed.value,
+        )
+        .values(status=LinkStatus.completed.value)
+        .execution_options(synchronize_session=False)
+    )
+    if claimed.rowcount == 0:
+        raise FlowError(409, "Тест по этой ссылке уже пройден")
+    link.status = LinkStatus.completed.value
 
     qvs = await _ordered_question_versions(session, link.test_version_id)
     qv_by_id = {qv.id: qv for qv in qvs}
@@ -396,19 +487,12 @@ async def submit(session: AsyncSession, token: str, payload) -> AssessmentResult
     session.add(sess)
     await session.flush()
 
-    comp_score: dict[str, int] = {}
-    comp_max: dict[str, int] = {}
-    total_score = 0
-    total_max = 0
+    awarded_by_qid: dict[str, int] = {}
     red_flags = 0
     unanswered = 0
     has_open = False
 
     for qv in qvs:
-        comp_id = qv.question.competency_id
-        comp_max[comp_id] = comp_max.get(comp_id, 0) + qv.max_score
-        total_max += qv.max_score
-
         submitted = answers_by_qid.get(qv.id)
         if submitted is None:
             unanswered += 1
@@ -460,12 +544,16 @@ async def submit(session: AsyncSession, token: str, payload) -> AssessmentResult
             has_open = True
             awarded = 0
 
-        comp_score[comp_id] = comp_score.get(comp_id, 0) + awarded
-        total_score += awarded
+        awarded_by_qid[qv.id] = awarded
         if is_red:
             red_flags += 1
 
-    percent = round(total_score / total_max * 100) if total_max else 0
+    # Итог с двухуровневым взвешиванием (вопрос → компетенция → тест).
+    item_w = await _item_weights(session, link.test_version_id)
+    comp_w = await _competency_weights(session, link.test_version_id)
+    total_score, total_max, percent, comp_rows = scoring.aggregate(
+        qvs, awarded_by_qid, item_w, comp_w
+    )
     level, level_text = scoring.recommendation_for(percent, red_flags)
 
     sess.score = total_score
@@ -480,26 +568,30 @@ async def submit(session: AsyncSession, token: str, payload) -> AssessmentResult
     sess.scored_at = None if has_open else _now()
 
     competencies = []
-    titles = await _competency_titles(session, comp_max.keys())
-    for comp_id, cmax in comp_max.items():
-        cscore = comp_score.get(comp_id, 0)
-        cpercent = round(cscore / cmax * 100) if cmax else 0
+    titles = await _competency_titles(session, [r["competency_id"] for r in comp_rows])
+    for r in comp_rows:
         session.add(
             SessionCompetencyScore(
-                session_id=sess.id, competency_id=comp_id,
-                score=cscore, max_score=cmax, percent=cpercent,
+                session_id=sess.id, competency_id=r["competency_id"],
+                score=r["score"], max_score=r["max_score"], percent=r["percent"],
             )
         )
         competencies.append(
             ResultCompetency(
-                competency_id=comp_id, name=titles.get(comp_id, comp_id),
-                score=cscore, max_score=cmax, percent=cpercent,
+                competency_id=r["competency_id"],
+                name=titles.get(r["competency_id"], r["competency_id"]),
+                score=r["score"], max_score=r["max_score"], percent=r["percent"],
             )
         )
 
     # Закрываем ссылку всегда.
     link.status = LinkStatus.completed.value
     session.add(AssessmentLinkEvent(link_id=link.id, event="completed"))
+    metrics.record_assessment_event("completed", link.recipient_type)
+    # Длительность прохождения: от старта таймера до отправки (now). Доступна
+    # только для тестов с лимитом времени (иначе started_at не фиксируется).
+    if link.started_at is not None:
+        metrics.observe_test_duration((now - link.started_at).total_seconds())
 
     if has_open:
         # Итог провизорный — воронку/fit/письмо HR доведёт finalize_session
@@ -553,19 +645,12 @@ async def _recompute_and_apply(session: AsyncSession, sess: AssessmentSession):
     awarded_by_qid = {a.question_version_id: (a.awarded_score or 0) for a in answers}
     red_flags = sum(1 for a in answers if a.is_red_flag)
 
-    comp_score: dict[str, int] = {}
-    comp_max: dict[str, int] = {}
-    total_score = 0
-    total_max = 0
-    for qv in all_qvs:
-        cid = qv.question.competency_id
-        comp_max[cid] = comp_max.get(cid, 0) + qv.max_score
-        total_max += qv.max_score
-        aw = awarded_by_qid.get(qv.id, 0)
-        comp_score[cid] = comp_score.get(cid, 0) + aw
-        total_score += aw
-
-    percent = round(total_score / total_max * 100) if total_max else 0
+    # Тот же двухуровневый расчёт, что и в submit (через scoring.aggregate).
+    item_w = await _item_weights(session, sess.test_version_id)
+    comp_w = await _competency_weights(session, sess.test_version_id)
+    total_score, total_max, percent, comp_rows = scoring.aggregate(
+        all_qvs, awarded_by_qid, item_w, comp_w
+    )
     level, level_text = scoring.recommendation_for(percent, red_flags)
     sess.score = total_score
     sess.max_score = total_max
@@ -580,11 +665,10 @@ async def _recompute_and_apply(session: AsyncSession, sess: AssessmentSession):
     await session.execute(
         delete(SessionCompetencyScore).where(SessionCompetencyScore.session_id == sess.id)
     )
-    for cid, cmax in comp_max.items():
-        cscore = comp_score.get(cid, 0)
+    for r in comp_rows:
         session.add(SessionCompetencyScore(
-            session_id=sess.id, competency_id=cid, score=cscore, max_score=cmax,
-            percent=round(cscore / cmax * 100) if cmax else 0,
+            session_id=sess.id, competency_id=r["competency_id"],
+            score=r["score"], max_score=r["max_score"], percent=r["percent"],
         ))
 
     link = await session.get(AssessmentLink, sess.link_id) if sess.link_id else None
@@ -631,38 +715,85 @@ async def finalize_session(session_id: str) -> None:
             )).scalars().all()}
 
             async def _score(a):
+                """Оценивает один открытый ответ. Никогда не бросает: при ошибке
+                (после ретраев) возвращает ok=False, чтобы сессия не зависла."""
                 qv = qvs.get(a.question_version_id)
                 if qv is None:
-                    return a, 0, "", ""
-                s, r, raw = await score_open_answer(
-                    question_text=qv.text, answer_text=a.answer_text or "",
-                    reference=qv.ai_reference, criteria=qv.ai_criteria, max_score=qv.max_score,
-                )
-                return a, s, r, raw
+                    return a, 0, "Вопрос не найден.", "", False
+                last_exc = None
+                for _ in range(2):  # один ретрай на случай разовой ошибки модели
+                    try:
+                        s, r, raw = await score_open_answer(
+                            question_text=qv.text, answer_text=a.answer_text or "",
+                            reference=qv.ai_reference, criteria=qv.ai_criteria,
+                            max_score=qv.max_score,
+                        )
+                        return a, s, r, raw, True
+                    except Exception as exc:  # noqa: BLE001
+                        last_exc = exc
+                return a, 0, f"Ошибка AI-оценки: {last_exc}", str(last_exc), False
 
-            scored = await asyncio.gather(*[_score(a) for a in pending])
+            scored = await asyncio.gather(
+                *[_score(a) for a in pending], return_exceptions=True
+            )
             jobs = {j.session_answer_id: j for j in (await session.execute(
                 select(AiScoringJob).where(
                     AiScoringJob.session_answer_id.in_([a.id for a in pending])
                 )
             )).scalars().all()}
-            for a, s, r, raw in scored:
+            for idx, item in enumerate(scored):
+                # gather с return_exceptions: _score не бросает, но подстрахуемся.
+                if isinstance(item, BaseException):
+                    a = pending[idx]
+                    a.ai_status = AiStatus.failed.value
+                    a.ai_rationale = f"Ошибка AI-оценки: {item}"
+                    job = jobs.get(a.id)
+                    if job is not None:
+                        job.status = AiJobStatus.error.value
+                        job.error = str(item)
+                        job.finished_at = _now()
+                        metrics.record_ai_scoring(False, _job_seconds(job))
+                    else:
+                        metrics.record_ai_scoring(False)
+                    continue
+                a, s, r, raw, ok = item
                 a.awarded_score = s
-                a.ai_score = s
+                a.ai_score = s if ok else None
                 a.ai_rationale = r
-                a.ai_status = AiStatus.scored.value
+                a.ai_status = AiStatus.scored.value if ok else AiStatus.failed.value
                 job = jobs.get(a.id)
                 if job is not None:
-                    job.status = AiJobStatus.done.value
-                    job.score = s
+                    job.status = AiJobStatus.done.value if ok else AiJobStatus.error.value
+                    job.score = s if ok else None
                     job.rationale = r
                     job.raw_response = raw
+                    job.error = None if ok else r
                     job.finished_at = _now()
+                    metrics.record_ai_scoring(ok, _job_seconds(job))
+                else:
+                    metrics.record_ai_scoring(ok)
 
-            link, person, test_obj, category, percent = await _recompute_and_apply(session, sess)
-            await session.commit()
-            if link is not None:
-                await _notify_report_ready(link, person, test_obj, category, percent)
+            # Пересчёт и вывод сессии из статуса scoring выполняем всегда — даже
+            # если часть AI-оценок упала (ошибочные ответы засчитаны как 0), иначе
+            # сессия навсегда осталась бы в scoring.
+            try:
+                link, person, test_obj, category, percent = await _recompute_and_apply(
+                    session, sess
+                )
+                await session.commit()
+                if link is not None:
+                    await _notify_report_ready(link, person, test_obj, category, percent)
+            except Exception:  # noqa: BLE001
+                import logging
+                logging.getLogger("eltera.assessment").exception(
+                    "finalize_session recompute failed; forcing scored",
+                )
+                await session.rollback()
+                sess = await session.get(AssessmentSession, session_id)
+                if sess is not None and sess.status == SessionStatus.scoring.value:
+                    sess.status = SessionStatus.scored.value
+                    sess.scored_at = _now()
+                    await session.commit()
 
     # Нарратив (для кандидатов) — идемпотентно, отдельной сессией.
     from app.services.report_jobs import generate_and_store_narrative

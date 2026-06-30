@@ -1,7 +1,7 @@
 """Справочники: компетенции, отделы, вакансии."""
-from datetime import date
+from datetime import date, datetime
 
-from sqlalchemy import Date, ForeignKey, String, Text
+from sqlalchemy import Date, DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -42,6 +42,16 @@ class Department(Base):
 
 class Vacancy(TimestampMixin, Base):
     __tablename__ = "vacancies"
+    # Дубли импортируемых вакансий предотвращаем по связке организация+источник+
+    # внешний id. external_id=NULL у ручных вакансий → они под уникальность не
+    # попадают (NULL'ы в индексе считаются различными и в SQLite, и в PostgreSQL).
+    __table_args__ = (
+        Index(
+            "uq_vacancies_org_source_external",
+            "organization_id", "source", "external_id",
+            unique=True,
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=gen_uuid)
     organization_id: Mapped[str] = mapped_column(
@@ -58,3 +68,11 @@ class Vacancy(TimestampMixin, Base):
     # Логическая ссылка на тест по умолчанию (без жёсткого FK, чтобы избежать цикла).
     default_test_id: Mapped[str | None] = mapped_column(String(32), default=None)
     published_at: Mapped[date | None] = mapped_column(Date, default=None)
+    # Кто импортировал/выбрал вакансию (для персональной видимости и ответственного).
+    added_by_user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), default=None
+    )
+    # Момент первого отклика и дата закрытия — для метрик «время до отклика» и
+    # «закрыт за период» (заполняются при синхронизации с HH).
+    first_response_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    closed_at: Mapped[date | None] = mapped_column(Date, default=None)

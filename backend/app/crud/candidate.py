@@ -25,7 +25,7 @@ from app.models.enums import (
     SessionStatus,
 )
 from app.models.organization import Organization
-from app.models.person import CandidateProfile, Person
+from app.models.person import CandidateProfile, CandidateStageEvent, Person
 from app.models.test import QuestionVersion, Test, TestVersion, TestVersionItem
 from app.services.scoring import recommendation_for
 from app.schemas.candidate import (
@@ -55,6 +55,8 @@ from app.schemas.candidate import (
 
 FIT_THRESHOLD = 68
 RISK_THRESHOLD = 55
+# Минимум завершённых оценок, чтобы поднимать сигнал «мало подходящих».
+MIN_SCORED_FOR_ATTENTION = 3
 COMPLETED_STATUSES = [
     SessionStatus.submitted.value,
     SessionStatus.scored.value,
@@ -369,6 +371,25 @@ async def _resolve_vacancy_id(
     return vacancy.id
 
 
+def _record_stage_change(session: AsyncSession, person: Person, profile: CandidateProfile, new_stage: str | None) -> None:
+    """Переводит профиль на новую стадию и фиксирует переход в candidate_stage_events.
+
+    Событие пишется только при РЕАЛЬНОЙ смене стадии — это timestamped-источник
+    для честной воронки «за период» на вкладке «Вакансии» (профиль хранит лишь
+    текущее значение). Сама стадия профиля тоже обновляется здесь.
+    """
+    if new_stage is None or new_stage == profile.stage:
+        return
+    session.add(CandidateStageEvent(
+        organization_id=person.organization_id,
+        person_id=person.id,
+        vacancy_id=profile.vacancy_id,
+        from_stage=profile.stage,
+        to_stage=new_stage,
+    ))
+    profile.stage = new_stage
+
+
 async def create_candidate(session: AsyncSession, data: CandidateCreate) -> str:
     org_id = await _org(session)
     vacancy_id = await _resolve_vacancy_id(session, org_id, data.vacancy_id, data.vacancy_title)
@@ -392,6 +413,14 @@ async def create_candidate(session: AsyncSession, data: CandidateCreate) -> str:
         notes=data.notes,
     )
     session.add(person)
+    await session.flush()  # нужен person.id для стартового события воронки
+    session.add(CandidateStageEvent(
+        organization_id=org_id,
+        person_id=person.id,
+        vacancy_id=vacancy_id,
+        from_stage=None,
+        to_stage=data.stage.value,
+    ))
     await session.commit()
     return person.id
 
@@ -463,16 +492,23 @@ async def update_candidate(session: AsyncSession, person_id: str, data) -> bool:
 
     person_fields = {"last_name", "first_name", "patronymic", "full_name", "email", "phone", "city"}
     profile_fields = {
-        "vacancy_id", "source", "selection_type", "stage",
+        "vacancy_id", "source", "selection_type",
         "responsible_user_id", "applied_at", "notes",
     }
+    # Стадию выставляем отдельно (через _record_stage_change), чтобы залогировать
+    # переход в воронке. Остальные поля — обычным setattr.
+    new_stage = None
+    if "stage" in changes and changes["stage"] is not None:
+        v = changes["stage"]
+        new_stage = v.value if hasattr(v, "value") else v
     for field, value in changes.items():
-        if field == "stage" and value is not None:
-            value = value.value if hasattr(value, "value") else value
+        if field == "stage":
+            continue
         if field in person_fields:
             setattr(person, field, value)
         elif field in profile_fields:
             setattr(profile, field, value)
+    _record_stage_change(session, person, profile, new_stage)
 
     # пересобрать ФИО, если меняли части и не передали full_name явно
     if "full_name" not in changes and person_fields & set(changes):
@@ -908,21 +944,23 @@ async def record_result(
             )
         )
 
-    # Продвигаем по воронке.
+    # Продвигаем по воронке (через _record_stage_change — с логом перехода).
     profile = person.candidate_profile
+    target_stage = None
     if data.stage is not None:
-        profile.stage = data.stage.value
+        target_stage = data.stage.value
     elif profile.stage in (
         CandidateStage.new.value,
         CandidateStage.assessment_sent.value,
         CandidateStage.in_progress.value,
     ):
         if data.percent >= FIT_THRESHOLD:
-            profile.stage = CandidateStage.fit.value
+            target_stage = CandidateStage.fit.value
         elif data.percent >= RISK_THRESHOLD:
-            profile.stage = CandidateStage.conditional.value
+            target_stage = CandidateStage.conditional.value
         else:
-            profile.stage = CandidateStage.not_fit.value
+            target_stage = CandidateStage.not_fit.value
+    _record_stage_change(session, person, profile, target_stage)
 
     await session.commit()
     return sess.id
@@ -1036,6 +1074,9 @@ async def _by_vacancy(session: AsyncSession, latest) -> list[VacancyBreakdown]:
             select(
                 vacancy_label.label("vacancy"),
                 func.count().label("total"),
+                func.sum(
+                    case((latest.c.status.in_(COMPLETED_STATUSES), 1), else_=0)
+                ).label("completed"),
                 func.sum(_fit_case(latest)).label("fit"),
             )
             .select_from(CandidateProfile)
@@ -1047,8 +1088,13 @@ async def _by_vacancy(session: AsyncSession, latest) -> list[VacancyBreakdown]:
         )
     ).all()
     return [
-        VacancyBreakdown(vacancy=vac, total=total, fit=int(fit or 0))
-        for vac, total, fit in rows
+        VacancyBreakdown(
+            vacancy=vac,
+            total=total,
+            completed=int(comp or 0),
+            fit=int(fit or 0),
+        )
+        for vac, total, comp, fit in rows
     ]
 
 
@@ -1063,16 +1109,18 @@ def _attention_items(stuck: int, by_vacancy: list[VacancyBreakdown]) -> list[Att
                 target="Кандидаты:Зависли",
             )
         )
-    # Вакансия с худшей долей подходящих (где есть хотя бы 1 кандидат).
-    scored = [v for v in by_vacancy if v.total > 0]
+    # Вакансия с худшей долей подходящих — считаем только среди тех, кто
+    # реально завершил оценку, и не паникуем на малой выборке.
+    scored = [v for v in by_vacancy if v.completed >= MIN_SCORED_FOR_ATTENTION]
     if scored:
-        worst = min(scored, key=lambda v: v.fit / v.total)
-        rate = round(worst.fit / worst.total * 100)
+        worst = min(scored, key=lambda v: v.fit / v.completed)
+        rate = round(worst.fit / worst.completed * 100)
         if rate < 50:
             items.append(
                 AttentionItem(
                     title=worst.vacancy,
-                    text=f"Только {rate}% кандидатов подходят под профиль.",
+                    text=f"Из прошедших оценку подходят под профиль только {rate}% "
+                    f"({worst.fit} из {worst.completed}).",
                     status="bad",
                     target=f"Кандидаты:{worst.vacancy}",
                 )

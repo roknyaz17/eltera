@@ -4,6 +4,10 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
+class HHConnectUrl(BaseModel):
+    url: str  # authorize URL hh.ru, фронт редиректит браузер на него
+
+
 class HHStatus(BaseModel):
     configured: bool = False          # заданы ли client_id/secret на сервере
     connected: bool = False
@@ -21,6 +25,7 @@ class HHVacancy(BaseModel):
     url: str | None = None
     published_at: str | None = None
     archived: bool = False
+    imported: bool = False  # уже добавлена в систему (есть локальная вакансия)
 
 
 class HHVacancyList(BaseModel):

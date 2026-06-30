@@ -16,6 +16,20 @@ class Organization(TimestampMixin, Base):
     kpp: Mapped[str | None] = mapped_column(String(20), default=None)
     tariff: Mapped[str] = mapped_column(String(40), default="Start")
 
+    # Реквизиты компании (вкладка «Настройки»).
+    site: Mapped[str | None] = mapped_column(String(200), default=None)
+    report_email: Mapped[str | None] = mapped_column(String(200), default=None)
+    phone: Mapped[str | None] = mapped_column(String(50), default=None)
+    legal_address: Mapped[str | None] = mapped_column(String(300), default=None)
+    actual_address: Mapped[str | None] = mapped_column(String(300), default=None)
+
+    # Контактное лицо.
+    contact_last_name: Mapped[str | None] = mapped_column(String(100), default=None)
+    contact_first_name: Mapped[str | None] = mapped_column(String(100), default=None)
+    contact_patronymic: Mapped[str | None] = mapped_column(String(100), default=None)
+    contact_phone: Mapped[str | None] = mapped_column(String(50), default=None)
+    contact_email: Mapped[str | None] = mapped_column(String(200), default=None)
+
 
 class User(TimestampMixin, Base):
     """Сотрудник платформы: рекрутер / руководитель / админ."""

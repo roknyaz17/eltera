@@ -23,18 +23,57 @@ import {
   fetchTaxonomy,
   getTokens,
   authLogout,
+  fetchOrganization,
+  updateOrganization,
   recordCandidateResult,
   createLink,
   fetchLinks,
+  fetchReports,
   fetchAssessmentForm,
   submitAssessment,
   updateCandidate,
-  candidatePdfUrl,
+  openCandidatePdf,
   fetchCandidateAnswers,
   fetchCandidate,
   fetchEmployees,
   fetchEmployeeStats,
   fetchEmployee,
+  fetchEmployeeAssessments,
+  fetchEmployeeSessionAnswers,
+  fetchEmployee360,
+  fetchAdaptationCycles,
+  fetchAdaptationAlerts,
+  runAdaptationDue,
+  sendSupportTicket,
+  importEmployees,
+  importCandidates,
+  fetchOverview,
+  fetchNotifications,
+  markNotificationsRead,
+  fetchReferrals,
+  spendReferralBonuses,
+  createReferralWithdrawal,
+  recordReferralPayment,
+  fetchBilling,
+  createTopup,
+  fetchPaymentStatus,
+  cancelPayment,
+  simulatePayment,
+  debitBalance,
+  importLibrary,
+  fetchHhStatus,
+  fetchHhVacancies,
+  hhDisconnect,
+  startHhConnect,
+  fetchVacancyKpi,
+  fetchVacancyDrill,
+  fetchVacancyResponses,
+  fetchVacancyFunnel,
+  fetchAssessmentTests,
+  setVacancyDefaultTest,
+  convertResponse,
+  importHhVacancies,
+  syncHhVacancies,
   recordEmployeeResult,
   fetchOrgTree,
   addStructureMember,
@@ -43,7 +82,16 @@ import {
   createTest,
   addQuestion,
   deleteQuestion,
-  deleteTest
+  deleteTest,
+  fetchCompetencies,
+  fetchCompetency,
+  createCompetency,
+  updateCompetency,
+  deleteCompetency,
+  addCompetencyQuestion,
+  deleteCompetencyQuestion,
+  addProfileCompetency,
+  removeProfileCompetency
 } from "./data/api.js";
 import {
   renderAppShell,
@@ -54,6 +102,8 @@ import {
   renderCandidateThanks,
   renderCandidates,
   renderConstructor,
+  renderDashboard,
+  renderOverview,
   renderEmployees,
   renderGratitude,
   renderLanding,
@@ -119,6 +169,8 @@ const competencyTitleById = {
 let state = loadState();
 // Аутентификация — источник истины это наличие токенов в localStorage.
 state.authenticated = !!getTokens();
+// Код реферального приглашения переживает перезагрузку (ведём на регистрацию).
+try { state.refCode = state.refCode || localStorage.getItem("eltera_ref") || null; } catch { /* ignore */ }
 // Данные кандидатов всегда загружаем заново с бэкенда (не из localStorage).
 state.candidatesStatus = "idle";
 state.candidatesApi = null;
@@ -126,6 +178,7 @@ state.candidateStats = null;
 state.candidateHeatmap = null;
 state.kebabMenu = null;
 state.answersData = null;
+state.answersList = null;
 state.cardData = null;
 state.employeesStatus = "idle";
 state.employeesApi = null;
@@ -157,6 +210,9 @@ if (!state.period) {
   state.period = "30 дней";
   saveState();
 }
+if (!state.vacancyPeriod) {
+  state.vacancyPeriod = "7d";  // предсказуемый дефолт периода вкладки «Вакансии»
+}
 
 function defaultState() {
   const firstLink = createLinkObject({ professionId: "recruiter", recipientType: "Кандидат", email: "demo@eltera.ai", forcedToken: "demo-link" });
@@ -170,6 +226,7 @@ function defaultState() {
     drilldownStage: "",
     reportId: "",
     modal: null,
+    authChallenge: null,
     company: {
       name: "Eltera Demo Company",
       tariff: "Start",
@@ -191,26 +248,27 @@ function defaultState() {
       legalAddress: "Москва, ул. Примерная, 1",
       actualAddress: "Москва, офис 12"
     },
+    // Стартовые значения до загрузки с бэкенда — пустой счёт без моков.
+    // Реальные данные приходят из applyReferralSummary (GET /referrals).
     referrals: {
-      invited: 8,
-      paid: 5,
-      totalPayments: 238400,
-      accrued: 23840,
-      available: 4950,
-      spent: 6000,
-      withdrawn: 8400,
-      operations: [
-        ["Север IT", "29 900 ₽", "+2 990 ₽", "начислен"],
-        ["HR Project", "12 900 ₽", "+1 290 ₽", "начислен"],
-        ["Оценки за бонусы", "100 оценок", "-4 950 ₽", "списано"]
-      ],
+      code: "",
+      invited: 0,
+      paid: 0,
+      totalPayments: 0,
+      accrued: 0,
+      available: 0,
+      spent: 0,
+      withdrawn: 0,
+      reserved: 0,
+      invites: [],
+      operations: [],
       withdrawals: []
     },
     links: [firstLink],
     sessions: seedSessions(),
     vacancies: seedVacancies(),
     employees: seedEmployees(),
-    departments: seedDepartments(),
+    departments: [], // наполняется реальными отделами из API (deriveDepartments)
     candidate: {
       token: "",
       answers: {}
@@ -355,13 +413,26 @@ function seedEmployees() {
   }));
 }
 
-function seedDepartments() {
-  return [
-    { name: "Отдел продаж", head: "Иван Петров", employees: 18, risk: 3 },
-    { name: "Операционный отдел", head: "Анна Сергеева", employees: 12, risk: 2 },
-    { name: "Контакт-центр", head: "Ольга Смирнова", employees: 34, risk: 7 },
-    { name: "Финансы", head: "Наталья Орлова", employees: 6, risk: 1 }
-  ];
+// Реальные отделы из загруженных сотрудников (раньше — хардкод seedDepartments
+// с выдуманными name/head/employees/risk). Форма {name, head, employees, risk}
+// сохранена — её ждут премиум-дашборд (deptRow), оргструктура и модалка добавления.
+function deriveDepartments(employees) {
+  const byName = new Map();
+  (employees || []).forEach((e) => {
+    const name = e.department && e.department !== "—" ? e.department : "Без отдела";
+    if (!byName.has(name)) byName.set(name, []);
+    byName.get(name).push(e);
+  });
+  const elevated = (e) => ["средний", "повышенный", "высокий"].includes(String(e.turnoverRisk || "").toLowerCase());
+  return [...byName.entries()]
+    .map(([name, emps]) => {
+      // «Руководитель отдела» — самый частый менеджер среди сотрудников отдела.
+      const mgrCount = {};
+      emps.forEach((e) => { if (e.manager && e.manager !== "—") mgrCount[e.manager] = (mgrCount[e.manager] || 0) + 1; });
+      const head = Object.entries(mgrCount).sort((a, b) => b[1] - a[1])[0]?.[0] || "—";
+      return { name, head, employees: emps.length, risk: emps.filter(elevated).length };
+    })
+    .sort((a, b) => b.employees - a.employees);
 }
 
 function createLinkObject({ professionId, recipientType, email = "", forcedToken, firstName = "", lastName = "", patronymic = "", phone = "", position = "", company = "", department = "", vacancy = "", project = "" }) {
@@ -405,7 +476,11 @@ function mergeState(base, saved) {
     ...base,
     ...saved,
     company: { ...base.company, ...saved.company },
-    referrals: { ...base.referrals, ...saved.referrals },
+    // referrals не берём из localStorage: единственный источник — бэкенд
+    // (GET /referrals). Иначе устаревший кэш мог бы показать старые мок-данные.
+    referrals: { ...base.referrals },
+    // Сбрасываем статус загрузки, чтобы при входе на вкладку всегда был свежий GET.
+    referralsStatus: null,
     employeePhotos: { ...(base.employeePhotos || {}), ...(saved.employeePhotos || {}) }
   };
 }
@@ -417,8 +492,15 @@ function saveState() {
 function currentRoute() {
   const hash = location.hash || "#/";
   if (hash.startsWith("#/app/report/")) return { route: "app", view: "report", reportId: hash.replace("#/app/report/", "") };
-  if (hash.startsWith("#/app/")) return { route: "app", view: hash.replace("#/app/", "") || "dashboard" };
+  if (hash.startsWith("#/app/")) {
+    let rest = hash.replace("#/app/", "") || "dashboard";
+    let query = "";
+    const qi = rest.indexOf("?");
+    if (qi >= 0) { query = rest.slice(qi + 1); rest = rest.slice(0, qi); }
+    return { route: "app", view: rest || "dashboard", query };
+  }
   if (hash.startsWith("#/assess/")) return { route: "assess", token: hash.replace("#/assess/", "") };
+  if (hash.startsWith("#/ref/")) return { route: "ref", refCode: hash.replace("#/ref/", "").split(/[?&/]/)[0] };
   if (hash === "#/login") return { route: "login" };
   if (hash === "#/thanks") return { route: "thanks" };
   if (hash === "#/dev") return { route: "dev" };
@@ -457,6 +539,7 @@ function mapApiCandidate(item) {
   const passed = a && ["submitted", "scored", "reviewed"].includes(a.status);
   return {
     id: item.id,
+    assessed: Boolean(passed), // есть завершённая оценка → показываем %/риск, иначе «Не оценён»
     vacancy: item.vacancy_title || "—",
     source: item.source || "—",
     selectionType: item.selection_type || "",
@@ -521,8 +604,9 @@ function mapApiEmployee(e) {
     project: e.project || "—",
     manager: e.manager || "—",
     startDate: e.start_date || "",
-    fit: e.fit ?? 0,
-    turnoverRisk: RISK_LABELS[e.turnover_risk] || e.turnover_risk || "низкий",
+    fit: e.fit ?? null, // null = «не оценён» (нет профильной оценки)
+    // «none»/пусто = риск ещё не оценивался → показываем «—», не «низкий».
+    turnoverRisk: (!e.turnover_risk || e.turnover_risk === "none") ? "—" : (RISK_LABELS[e.turnover_risk] || e.turnover_risk),
     burnout: e.burnout || "—",
     satisfaction: e.satisfaction ?? 0,
     recommendation: e.recommendation || ""
@@ -534,6 +618,7 @@ async function loadEmployeesFromApi() {
   try {
     const [list, stats] = await Promise.all([fetchEmployees(), fetchEmployeeStats()]);
     state.employeesApi = (list.items || []).map(mapApiEmployee);
+    state.departments = deriveDepartments(state.employeesApi);
     state.employeeStats = stats;
     state.employeesStatus = "ready";
   } catch (error) {
@@ -543,6 +628,425 @@ async function loadEmployeesFromApi() {
     state.employeesStatus = "error";
   }
   state._animateOnce = true;
+  render();
+}
+
+async function loadNotifications() {
+  if (state.notifStatus === "loading") return;
+  state.notifStatus = "loading";
+  try {
+    const data = await fetchNotifications();
+    state.notifications = data.items || [];
+    state.notifUnread = data.unread || 0;
+    state.notifStatus = "ready";
+  } catch (error) {
+    console.warn("Не удалось загрузить уведомления:", error);
+    state.notifStatus = "error";
+  }
+  render();
+}
+
+// Переносит серверную сводку реферальной программы в state.referrals.
+function applyReferralSummary(summary) {
+  state.referrals = {
+    code: summary.code,
+    invited: summary.invited,
+    paid: summary.paid,
+    totalPayments: summary.total_payments,
+    accrued: summary.accrued,
+    available: summary.available,
+    spent: summary.spent,
+    withdrawn: summary.withdrawn,
+    reserved: summary.reserved,
+    invites: summary.invites || [],
+    operations: summary.operations || [],
+    withdrawals: summary.withdrawals || []
+  };
+  if (typeof summary.assessment_price === "number") {
+    state.company.assessmentPrice = summary.assessment_price;
+  }
+}
+
+async function loadReferrals() {
+  if (state.referralsStatus === "loading") return;
+  state.referralsStatus = "loading";
+  try {
+    applyReferralSummary(await fetchReferrals());
+    state.referralsStatus = "ready";
+  } catch (error) {
+    console.warn("Не удалось загрузить реферальную программу:", error);
+    state.referralsStatus = "error";
+  }
+  render();
+}
+
+async function loadHhStatus() {
+  if (state.hhStatusLoading) return;
+  state.hhStatusLoading = true;
+  try {
+    state.hhStatus = await fetchHhStatus();
+    if (state.hhStatus.connected && !state.hhVacancies && state.hhVacanciesStatus !== "loading") {
+      loadHhVacancies();
+    }
+  } catch (error) {
+    console.warn("Не удалось получить статус hh.ru:", error);
+    state.hhStatus = { configured: false, connected: false };
+  }
+  state.hhStatusLoading = false;
+  render();
+}
+
+async function loadHhVacancies() {
+  state.hhVacanciesStatus = "loading";
+  try {
+    const data = await fetchHhVacancies();
+    state.hhVacancies = data.items || [];
+    state.hhVacanciesStatus = "ready";
+  } catch (error) {
+    console.warn("Не удалось загрузить вакансии hh.ru:", error);
+    state.hhVacancies = [];
+    state.hhVacanciesStatus = "error";
+  }
+  render();
+}
+
+function vacancyPeriod() {
+  return state.vacancyPeriod || "7d";
+}
+
+// KPI и метрики вакансий за выбранный период (реальные данные из БД).
+async function loadVacancyKpi() {
+  state.vacancyKpiStatus = "loading";
+  try {
+    state.vacancyKpi = await fetchVacancyKpi(vacancyPeriod());
+    state.vacancyKpiStatus = "ready";
+  } catch (error) {
+    console.warn("Не удалось загрузить метрики вакансий:", error);
+    state.vacancyKpi = null;
+    state.vacancyKpiStatus = "error";
+  }
+  render();
+}
+
+// Drill-down по KPI-карточке: список вакансий, отфильтрованный бэкендом.
+async function loadVacancyDrill(card) {
+  state.vacancyDrillStatus = "loading";
+  state.vacancyDrill = null;
+  render();
+  try {
+    state.vacancyDrill = await fetchVacancyDrill(card, vacancyPeriod());
+    state.vacancyDrillStatus = "ready";
+  } catch (error) {
+    console.warn("Не удалось загрузить drill-down вакансий:", error);
+    state.vacancyDrill = null;
+    state.vacancyDrillStatus = "error";
+  }
+  render();
+}
+
+// Отклики по вакансии за выбранный период.
+async function loadVacancyResponses(vacancyId) {
+  state.vacancyResponsesStatus = "loading";
+  state.vacancyResponses = null;
+  render();
+  try {
+    state.vacancyResponses = await fetchVacancyResponses(vacancyId, vacancyPeriod());
+    state.vacancyResponsesStatus = "ready";
+  } catch (error) {
+    console.warn("Не удалось загрузить отклики:", error);
+    state.vacancyResponses = null;
+    state.vacancyResponsesStatus = "error";
+  }
+  render();
+}
+
+// Список тестов для назначения (грузим один раз).
+async function loadAssessmentTests() {
+  if (state.assessmentTests || state.assessmentTestsLoading) return;
+  state.assessmentTestsLoading = true;
+  try {
+    state.assessmentTests = await fetchAssessmentTests();
+  } catch (error) {
+    console.warn("Не удалось загрузить тесты:", error);
+    state.assessmentTests = [];
+  }
+  state.assessmentTestsLoading = false;
+  render();
+}
+
+// Перевод отклика в кандидата: создаёт кандидата, назначает тест, шлёт ссылку в чат HH.
+async function runConvertResponse(vacancyId, eventId, testId) {
+  try {
+    const r = await convertResponse(vacancyId, eventId, testId);
+    showToast(r && r.chat_sent ? "Кандидат создан, ссылка отправлена в чат HH" : "Кандидат создан (ссылка в чат HH не ушла)", r && r.chat_sent ? "success" : "error");
+    state.vacancyKpi = null;
+    loadVacancyResponses(vacancyId);   // обновим список (статусы/повторная конвертация)
+    loadVacancyKpi();
+  } catch (error) {
+    console.warn("Конвертация отклика не удалась:", error);
+    showToast((error && error.message) || "Не удалось перевести отклик в кандидата", "error");
+  }
+}
+
+// Импорт выбранных вакансий из HH, затем обновление метрик.
+async function runHhImport(externalIds) {
+  if (!externalIds.length) return;
+  state.hhImportStatus = "loading";
+  render();
+  try {
+    await importHhVacancies(externalIds);
+    state.hhImportStatus = "ready";
+    state.modal = null;
+    state.vacancyKpi = null;
+    loadVacancyKpi();
+  } catch (error) {
+    console.warn("Импорт вакансий не удался:", error);
+    state.hhImportStatus = "error";
+    render();
+  }
+}
+
+// Окно лимитинга синхронизации hh.ru: не более 3 запусков в минуту.
+const HH_SYNC_LIMIT = 3;
+const HH_SYNC_WINDOW_MS = 60_000;
+const hhSyncTimestamps = [];
+
+// true, если в текущем окне ещё остался лимит на синхронизацию.
+function hhSyncAllowed() {
+  const now = Date.now();
+  while (hhSyncTimestamps.length && now - hhSyncTimestamps[0] > HH_SYNC_WINDOW_MS) {
+    hhSyncTimestamps.shift();
+  }
+  return hhSyncTimestamps.length < HH_SYNC_LIMIT;
+}
+
+// «Обновить из hh.ru»: синхронизация истории + перезагрузка метрик.
+// Кнопка недоступна, пока идёт запрос (state.hhSyncing) или исчерпан лимит.
+async function runHhSync({ silent = false } = {}) {
+  if (state.hhSyncing) return;
+  if (!hhSyncAllowed()) {
+    if (!silent) showToast("Слишком часто. Обновить можно не более 3 раз в минуту.", "error");
+    return;
+  }
+  hhSyncTimestamps.push(Date.now());
+  state.hhSyncing = true;
+  state.vacancyKpiStatus = "loading";
+  render();
+  try {
+    await syncHhVacancies();
+  } catch (error) {
+    console.warn("Синхронизация hh.ru не удалась:", error);
+  } finally {
+    state.hhSyncing = false;
+  }
+  state.hhVacancies = null;
+  state.vacancyKpi = null;
+  loadHhVacancies();
+  loadVacancyKpi();
+}
+
+// ── Профиль организации (вкладка «Настройки») ──
+// Соответствие snake_case (бэкенд) ↔ camelCase (state.company).
+const ORG_FIELD_MAP = {
+  name: "name",
+  inn: "inn",
+  kpp: "kpp",
+  site: "site",
+  report_email: "reportEmail",
+  phone: "phone",
+  legal_address: "legalAddress",
+  actual_address: "actualAddress",
+  contact_last_name: "contactLastName",
+  contact_first_name: "contactFirstName",
+  contact_patronymic: "contactPatronymic",
+  contact_phone: "contactPhone",
+  contact_email: "contactEmail"
+};
+
+function applyOrgToCompany(org) {
+  Object.entries(ORG_FIELD_MAP).forEach(([apiKey, stateKey]) => {
+    if (org[apiKey] != null) state.company[stateKey] = org[apiKey];
+  });
+  if (org.tariff) state.company.tariff = org.tariff;
+}
+
+async function loadOrganization() {
+  state.orgStatus = "loading";
+  try {
+    applyOrgToCompany(await fetchOrganization());
+    state.orgStatus = "ready";
+    saveState();
+  } catch (error) {
+    console.warn("Не удалось загрузить реквизиты компании:", error);
+    state.orgStatus = "error";
+  }
+  render();
+}
+
+// Сохранение реквизитов: собираем поля карточки в payload и шлём PATCH.
+async function saveOrganization(card) {
+  const root = document.querySelector(`[data-org-card="${card}"]`);
+  if (!root) return;
+  const payload = {};
+  root.querySelectorAll("[data-org-field]").forEach((el) => {
+    payload[el.dataset.orgField] = el.value.trim();
+  });
+  const btn = root.querySelector("[data-org-save]");
+  if (btn) { btn.disabled = true; btn.textContent = "Сохранение…"; }
+  try {
+    applyOrgToCompany(await updateOrganization(payload));
+    saveState();
+    showToast("Реквизиты сохранены", "success");
+  } catch (error) {
+    console.warn("Не удалось сохранить реквизиты:", error);
+    showToast((error && error.message) || "Не удалось сохранить", "error");
+  }
+  render();
+}
+
+// ─── Биллинг: баланс оценок и пополнение через провайдера Монета ──────────────
+// Бэкенд — источник истины по балансу: localStorage используем лишь как кэш для
+// мгновенной отрисовки. После загрузки/оплаты синхронизируем state.company.balance.
+
+async function loadBilling({ silent = false } = {}) {
+  if (!silent) state.billingStatus = "loading";
+  try {
+    const data = await fetchBilling();
+    state.billing = data;
+    state.company.balance = data.balance;
+    state.billingStatus = "ready";
+    saveState();
+  } catch (error) {
+    console.warn("Не удалось загрузить баланс:", error);
+    state.billingStatus = "error";
+  }
+  if (!silent) render();
+}
+
+// Списание оценки на бэкенде при отправке приглашения. Оптимистично уменьшаем
+// локальный баланс для мгновенной реакции, затем выравниваем по ответу сервера.
+function debitBalanceOnSend(count = 1) {
+  debitBalance(count, "Отправка оценки")
+    .then((data) => { if (data && typeof data.balance === "number") { state.company.balance = data.balance; state.billing = data; saveState(); } })
+    .catch((error) => console.warn("Не удалось списать оценку с баланса:", error));
+}
+
+function openTopup() {
+  state.modal = { type: "topup", step: "select", pack: 20, promoApplied: false, promoCode: "", error: null };
+  if (!state.billing) loadBilling({ silent: true }).then(render);
+  render();
+}
+
+// Создание платежа и переход к оплате. Если провайдер настроен — ведём на форму
+// Монеты и опрашиваем статус; иначе (демо-режим) подтверждаем оплату имитацией.
+async function startTopupPayment() {
+  const m = state.modal;
+  if (!m || m.type !== "topup" || m.busy) return;
+  m.busy = true; m.error = null; m.step = "processing"; render();
+  try {
+    const res = await createTopup(m.pack, m.promoApplied ? (m.promoCode || "") : "");
+    m.paymentId = res.payment_id;
+    m.amount = res.amount;
+    if (res.redirect_url) {
+      // Реальный провайдер: уходим на защищённую форму Монеты. Вернёмся по
+      // success/fail/return URL на #/app/settings?pay=...&order=..., где
+      // handlePaymentReturn() покажет результат, а зачисление сделает webhook.
+      m.step = "redirecting";
+      render();
+      window.location.href = res.redirect_url;
+    } else {
+      // Демо-режим: провайдер не настроен — имитируем успешную оплату на бэкенде.
+      m.step = "waiting";
+      m.demo = true;
+      m.busy = false;
+      render();
+      await new Promise((r) => setTimeout(r, 900));
+      try {
+        const st = await simulatePayment(res.payment_id);
+        finishTopup(st);
+      } catch (e) {
+        m.step = "error"; m.error = (e && e.message) || "Не удалось подтвердить демо-оплату";
+        render();
+      }
+    }
+  } catch (error) {
+    m.busy = false; m.step = "error";
+    m.error = (error && error.message) || "Не удалось создать платёж";
+    render();
+  }
+}
+
+// Поллинг статуса платежа (после возврата с формы Монеты). До ~5 минут, затем
+// предлагаем проверить вручную. Останавливается при закрытии/смене модалки.
+function pollPaymentStatus(paymentId, attempt = 0) {
+  const MAX_ATTEMPTS = 100;  // ~5 мин при шаге 3с
+  const m = state.modal;
+  if (!m || m.type !== "topup" || m.paymentId !== paymentId) return;  // модалку закрыли
+  fetchPaymentStatus(paymentId)
+    .then((st) => {
+      if (!state.modal || state.modal.type !== "topup" || state.modal.paymentId !== paymentId) return;
+      if (st.status === "paid") { finishTopup(st); return; }
+      if (st.status === "failed" || st.status === "canceled") {
+        state.modal.step = "error";
+        state.modal.error = st.status === "canceled" ? "Платёж отменён" : "Платёж отклонён банком";
+        render();
+        return;
+      }
+      if (attempt >= MAX_ATTEMPTS) { state.modal.step = "timeout"; render(); return; }
+      setTimeout(() => pollPaymentStatus(paymentId, attempt + 1), 3000);
+    })
+    .catch(() => {
+      if (attempt >= MAX_ATTEMPTS) { if (state.modal?.type === "topup") { state.modal.step = "timeout"; render(); } return; }
+      setTimeout(() => pollPaymentStatus(paymentId, attempt + 1), 3000);
+    });
+}
+
+// Платёж подтверждён: обновляем баланс, показываем успех, начисляем бонус рефереру.
+function finishTopup(status) {
+  const m = state.modal;
+  if (status && typeof status.balance === "number") { state.company.balance = status.balance; }
+  if (m && m.type === "topup") { m.step = "success"; m.creditedPack = status?.pack || m.pack; }
+  saveState();
+  render();
+  // Реферальный бонус пригласившему начисляется на бэкенде (в process_pay).
+  // Перечитываем баланс/историю платежей, чтобы UI был консистентен.
+  loadBilling({ silent: true });
+}
+
+// Возврат с платёжной формы Монеты: #/app/settings?pay=success|fail|cancel&order=ID.
+// Зачисление делает webhook, поэтому при success опрашиваем статус до paid.
+function handlePaymentReturn() {
+  const route = currentRoute();
+  if (route.route !== "app" || !route.query) return false;
+  const params = new URLSearchParams(route.query);
+  const pay = params.get("pay");
+  const order = params.get("order");
+  if (!pay) return false;
+  // Убираем query из хеша, чтобы возврат не срабатывал повторно при перерисовках.
+  try { history.replaceState(null, "", "#/app/" + (route.view || "settings")); } catch { /* ignore */ }
+  if (pay === "success" || pay === "progress") {
+    state.modal = { type: "topup", step: "waiting", pack: 0, paymentId: order || null };
+    if (order) pollPaymentStatus(order);
+    else loadBilling({ silent: true });
+  } else if (pay === "cancel") {
+    showToast("Платёж отменён", "error");
+    loadBilling({ silent: true });
+  } else if (pay === "fail") {
+    state.modal = { type: "topup", step: "error", error: "Платёж отклонён. Попробуйте ещё раз.", paymentId: order || null };
+  }
+  return true;
+}
+
+async function loadOverview() {
+  state.overviewStatus = "loading";
+  try {
+    state.overview = await fetchOverview();
+    state.overviewStatus = "ready";
+  } catch (error) {
+    console.warn("Не удалось загрузить сводку Главной:", error);
+    state.overview = null;
+    state.overviewStatus = "error";
+  }
   render();
 }
 
@@ -557,6 +1061,64 @@ async function loadStructureFromApi() {
     state.structureStatus = "error";
   }
   render();
+}
+
+// Импорт базы компетенций/вопросов/профилей из Excel.
+async function runLibraryImport() {
+  const fileInput = document.querySelector("[data-import-file]");
+  if (!fileInput || !fileInput.files || !fileInput.files.length) {
+    state.modal = { type: "import-library", status: "idle", error: "Сначала выберите Excel-файл." };
+    render();
+    return;
+  }
+  const file = fileInput.files[0];
+  state.modal = { type: "import-library", status: "importing", error: null };
+  render();
+  try {
+    const result = await importLibrary(file);
+    state.modal = { type: "import-library", status: "done", result };
+    // Сбрасываем кэш конструктора и тестов — новые профили сразу видны.
+    state.constructorStatus = "idle";
+    state.testsApi = null;
+    render();
+  } catch (error) {
+    console.warn("Импорт базы не удался:", error);
+    state.modal = { type: "import-library", status: "idle", error: error.message || "Не удалось импортировать файл." };
+    render();
+  }
+}
+
+// Импорт из Excel (сотрудники/кандидаты): файл → сводка → обновление списка.
+async function runImport(kind) {
+  const modalType = kind === "candidates" ? "import-candidates" : "import-employees";
+  const importFn = kind === "candidates" ? importCandidates : importEmployees;
+  const fileInput = document.querySelector("[data-import-file]");
+  if (!fileInput || !fileInput.files || !fileInput.files.length) {
+    state.modal = { type: modalType, status: "idle", error: "Сначала выберите Excel-файл." };
+    render();
+    return;
+  }
+  const file = fileInput.files[0];
+  state.modal = { type: modalType, status: "importing", error: null };
+  render();
+  try {
+    const result = await importFn(file);
+    state.modal = { type: modalType, status: "done", result };
+    // Сбрасываем кэш, чтобы новые записи сразу появились в списке.
+    if (kind === "candidates") {
+      state.candidatesStatus = "idle";
+      loadCandidatesFromApi();
+    } else {
+      state.employeesStatus = "idle";
+      state.structureStatus = "idle";
+      loadEmployeesFromApi();
+    }
+    render();
+  } catch (error) {
+    console.warn("Импорт не удался:", error);
+    state.modal = { type: modalType, status: "idle", error: error.message || "Не удалось импортировать файл." };
+    render();
+  }
 }
 
 async function loadTests() {
@@ -621,6 +1183,8 @@ function mapApiLink(row) {
     status: linkStatusMap[row.status] || row.status,
     percent: row.percent,
     createdAt: row.created_at,
+    subjectPersonId: row.subject_person_id || null,
+    raterRole: row.rater_role || null,
     fromApi: true
   };
 }
@@ -639,12 +1203,71 @@ async function loadLinksFromApi() {
   render();
 }
 
+async function loadAdaptationCycles() {
+  state.adaptationStatus = "loading";
+  try {
+    const [cycles, alerts] = await Promise.all([fetchAdaptationCycles(), fetchAdaptationAlerts()]);
+    state.adaptationCycles = cycles.items || [];
+    state.adaptationStandalone = cycles.standalone || [];
+    state.adaptationAlerts = alerts.items || [];
+    state.adaptationStatus = "ready";
+  } catch (error) {
+    console.warn("Не удалось загрузить циклы адаптации:", error);
+    state.adaptationCycles = null;
+    state.adaptationAlerts = null;
+    state.adaptationStatus = "error";
+  }
+  render();
+}
+
+async function runAdaptationTick() {
+  try {
+    await runAdaptationDue();
+  } catch (error) {
+    console.warn("Не удалось обработать рассылку адаптации:", error);
+  }
+  state.adaptationStatus = "idle";
+  await loadAdaptationCycles();
+}
+
+async function load360Report(personId) {
+  state.threeSixtySubject = personId;
+  state.threeSixtyReport = null;
+  render();
+  try {
+    const data = await fetchEmployee360(personId);
+    if (state.threeSixtySubject === personId) state.threeSixtyReport = data;
+  } catch (error) {
+    console.warn("Не удалось загрузить 360-отчёт:", error);
+    state.threeSixtyReport = { error: true };
+  }
+  render();
+}
+
+async function loadReportsFromApi() {
+  state.reportsStatus = "loading";
+  try {
+    const data = await fetchReports();
+    state.reportsApi = data.items || [];
+    state.reportsStatus = "ready";
+  } catch (error) {
+    console.warn("Не удалось загрузить отчёты:", error);
+    state.reportsApi = null;
+    state.reportsStatus = "error";
+  }
+  render();
+}
+
 // --- Конструктор тестов ---
 
-async function loadConstructorTests() {
+const CONSTRUCTOR_PROFILES_LIMIT = 50;
+
+async function loadConstructorTests(q) {
+  const query = q !== undefined ? q : (state.constructorProfileQuery || "");
+  state.constructorProfileQuery = query;
   state.constructorStatus = "loading";
   try {
-    state.constructorTests = await fetchTests();
+    state.constructorTests = await fetchTests({ q: query, limit: CONSTRUCTOR_PROFILES_LIMIT });
     state.constructorStatus = "ready";
   } catch (error) {
     console.warn("Не удалось загрузить тесты:", error);
@@ -680,6 +1303,7 @@ async function createConstructorTest(payload) {
   try {
     const test = await createTest(payload);
     state.constructorTest = test;
+    state.modal = null;
     await loadConstructorTests();
   } catch (error) {
     console.warn("Не удалось создать тест:", error);
@@ -690,6 +1314,7 @@ async function addConstructorQuestion(testId, payload) {
   try {
     state.constructorTest = await addQuestion(testId, payload);
     state.testsApi = null; // счётчики/список тестов обновим
+    state.modal = null;
     await loadConstructorTests();
   } catch (error) {
     console.warn("Не удалось добавить вопрос:", error);
@@ -715,25 +1340,103 @@ async function deleteConstructorTest(testId) {
   }
 }
 
-// Временная заглушка дашборда. Premium-дашборд (renderPremiumDashboard в
-// dashboard-premium.js) ещё не подключён: ему нужны функции-построители данных
-// (dashboardData, candidateHeatmapFn и т.д.), которых пока нет в проекте.
-// Старая renderDashboard удалена из render.js, поэтому здесь — безопасная заглушка,
-// чтобы модуль загружался и остальные вкладки работали.
-function renderDashboardPlaceholder() {
-  return `
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;padding:40px;color:#8899BB;">
-      <div style="font-size:20px;font-weight:800;color:#E6F2FF;margin-bottom:8px;">Дашборд в разработке</div>
-      <p style="max-width:42ch;line-height:1.6;margin:0;">Новый premium-дашборд ещё подключается. Остальные разделы доступны через меню.</p>
-    </div>`;
+// ── Конструктор: библиотека компетенций ──
+async function loadConstructorCompetencies() {
+  state.constructorCompsStatus = "loading";
+  try {
+    state.constructorComps = await fetchCompetencies();
+    state.constructorCompsStatus = "ready";
+  } catch (error) {
+    console.warn("Не удалось загрузить компетенции:", error);
+    state.constructorComps = null;
+    state.constructorCompsStatus = "error";
+  }
+  render();
+}
+
+async function selectConstructorCompetency(compId) {
+  try {
+    state.constructorComp = await fetchCompetency(compId);
+  } catch (error) {
+    console.warn("Не удалось загрузить компетенцию:", error);
+    state.constructorComp = null;
+  }
+  render();
+}
+
+async function createConstructorCompetency(payload) {
+  try {
+    state.constructorComp = await createCompetency(payload);
+    state.modal = null;
+    await loadConstructorCompetencies();
+  } catch (error) {
+    console.warn("Не удалось создать компетенцию:", error);
+  }
+}
+
+async function addConstructorCompQuestion(compId, payload) {
+  try {
+    state.constructorComp = await addCompetencyQuestion(compId, payload);
+    state.modal = null;
+    state.testsApi = null;
+    await loadConstructorCompetencies();
+  } catch (error) {
+    console.warn("Не удалось добавить вопрос в компетенцию:", error);
+  }
+}
+
+async function deleteConstructorCompQuestion(compId, qvId) {
+  try {
+    state.constructorComp = await deleteCompetencyQuestion(compId, qvId);
+    await loadConstructorCompetencies();
+  } catch (error) {
+    console.warn("Не удалось удалить вопрос:", error);
+  }
+}
+
+async function deleteConstructorCompetency(compId) {
+  try {
+    await deleteCompetency(compId);
+    if (state.constructorComp && state.constructorComp.id === compId) state.constructorComp = null;
+    await loadConstructorCompetencies();
+  } catch (error) {
+    console.warn("Не удалось удалить компетенцию:", error);
+  }
+}
+
+async function addProfileCompetencyFlow(testId, compId) {
+  try {
+    state.constructorTest = await addProfileCompetency(testId, compId);
+    state.modal = null;
+    state.testsApi = null;
+    await loadConstructorTests();
+  } catch (error) {
+    console.warn("Не удалось добавить компетенцию в профиль:", error);
+  }
+}
+
+async function removeProfileCompetencyFlow(testId, compId) {
+  try {
+    state.constructorTest = await removeProfileCompetency(testId, compId);
+    state.testsApi = null;
+    await loadConstructorTests();
+  } catch (error) {
+    console.warn("Не удалось убрать компетенцию из профиля:", error);
+  }
 }
 
 function render() {
   const route = currentRoute();
   state.route = route.route;
   if (route.view && route.view !== state.view) {
-    // Close filters modal on page navigation
-    if (state.modal?.type === "filters") state.modal = null;
+    // Закрываем любое открытое модальное окно при переходе между страницами —
+    // иначе оно «переезжает» на новую вкладку и всплывает при входе.
+    if (state.modal) state.modal = null;
+    // При входе на «Адаптацию» перезапрашиваем циклы — бэкенд при чтении сам
+    // подтягивает свежие прохождения, поэтому данные всегда актуальны.
+    if (route.view === "adaptation") state.adaptationStatus = "idle";
+    // На Главной показываем самое свежее: сводка пересчитывается при каждом входе.
+    if (route.view === "dashboard") state.overviewStatus = "idle";
     state.view = route.view;
   } else if (route.view) {
     state.view = route.view;
@@ -758,9 +1461,20 @@ function render() {
     return;
   }
 
+  // Реферальная ссылка: запоминаем код приглашения и ведём на регистрацию.
+  if (route.route === "ref") {
+    if (route.refCode) {
+      state.refCode = route.refCode;
+      try { localStorage.setItem("eltera_ref", route.refCode); } catch { /* ignore */ }
+      saveState();
+    }
+    setHash("#/login");
+    return;
+  }
+
   if (route.route === "login") {
     document.body.className = "landingBody";
-    app.innerHTML = renderLogin();
+    app.innerHTML = renderLogin(state);
     return;
   }
 
@@ -780,14 +1494,26 @@ function render() {
     if (apiToken && !isMockLink) {
       state.candidate.apiToken = apiToken;
       if (state.candidate.formToken !== apiToken) {
+        // Новый тест — сбрасываем прогресс прохождения.
         state.candidate.formToken = apiToken;
         state.candidate.form = null;
         state.candidate.formError = null;
+        state.candidate.answers = {};
+        state.candidate.stage = "intro";
+        state.candidate.qIndex = 0;
+        state.candidate.deadlineTs = 0;
+        state.candidate.name = null;
+        state.candidate.email = null;
         loadAssessmentForm(apiToken);
       }
+      if (!state.candidate.stage) state.candidate.stage = "intro";
+      if (!state.candidate.answers) state.candidate.answers = {};
       if (link && link.status === "pending") link.status = "opened";
       const headLink = link || { recipientType: "Кандидат", token: route.token, apiToken, fullName: "", history: [] };
-      app.innerHTML = renderCandidateAssessment(headLink, null, null, null, competencyTitleById, state.candidate.form, state.candidate.formError);
+      app.innerHTML = renderCandidateAssessment(headLink, null, null, null, competencyTitleById, state.candidate.form, state.candidate.formError, state.candidate);
+      // Таймер обратного отсчёта работает только на этапе вопросов.
+      if (state.candidate.stage === "questions") ensureAssessTimer();
+      else stopAssessTimer();
       saveState();
       return;
     }
@@ -809,7 +1535,30 @@ function render() {
   document.body.className = state.theme === "light" ? "appBody light" : "appBody dark";
   let content = "";
 
-  if (state.view === "dashboard") content = renderDashboardPlaceholder();
+  // Возврат из OAuth hh.ru: показываем тост и обновляем статус (одноразово).
+  if (route.query && (route.query.includes("hh=connected") || route.query.includes("hh=error"))) {
+    const ok = route.query.includes("hh=connected");
+    state.hhStatus = null; state.hhVacancies = null; state.hhVacanciesStatus = null; state.vacancyKpi = null;
+    const t = document.createElement("div");
+    t.className = `elt-toast elt-toast-${ok ? "success" : "error"}`;
+    t.textContent = ok ? "hh.ru подключён ✓" : "Не удалось подключить hh.ru";
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+    history.replaceState(null, "", "#/app/vacancies");
+  }
+
+  // Уведомления — подгружаем один раз при входе в приложение.
+  // (loadNotifications сам выставит notifStatus="loading"; не делаем это здесь,
+  // иначе сработает его же guard от повторных загрузок.)
+  if (!state.notifStatus) loadNotifications();
+
+  if (state.view === "dashboard") {
+    if (!state.overviewStatus || state.overviewStatus === "idle") {
+      state.overviewStatus = "idle";
+      loadOverview();
+    }
+    content = renderOverview(state);
+  }
   if (state.view === "candidates") {
     // Подтягиваем данные с бэкенда при первом открытии вкладки.
     if (!state.candidatesStatus || state.candidatesStatus === "idle") {
@@ -830,6 +1579,11 @@ function render() {
       state.structureStatus = "idle";
       loadStructureFromApi();
     }
+    // Подтягиваем сотрудников — для статусов «Активен / Новый» в списке структуры.
+    if (!state.employeesStatus || state.employeesStatus === "idle") {
+      state.employeesStatus = "idle";
+      loadEmployeesFromApi();
+    }
     content = renderStructure(state);
   }
   if (state.view === "constructor") {
@@ -837,11 +1591,24 @@ function render() {
       state.constructorStatus = "idle";
       loadConstructorTests();
     }
+    // Библиотека компетенций — грузим один раз (нужна в обоих режимах).
+    if (!state.constructorComps && state.constructorCompsStatus !== "loading") {
+      loadConstructorCompetencies();
+    }
     content = renderConstructor(state);
   }
   if (state.view === "people") content = renderPeople(state);
   if (state.view === "vacancies") {
     if (!state.hhStatus && !state.hhStatusLoading) loadHhStatus();
+    // Подключён HH → автоматически синхронизируемся с hh.ru один раз при заходе
+    // на вкладку (без нажатия кнопки), затем подтягиваем метрики за период.
+    if (state.hhStatus && state.hhStatus.connected && !state.hhAutoSynced) {
+      state.hhAutoSynced = true;
+      runHhSync({ silent: true });
+    } else if (state.hhStatus && state.hhStatus.connected && !state.vacancyKpi && state.vacancyKpiStatus !== "loading") {
+      loadVacancyKpi();
+    }
+    if (state.hhStatus && state.hhStatus.connected) loadAssessmentTests();
     content = renderVacancies(state);
   }
   if (state.view === "assessments") {
@@ -883,14 +1650,29 @@ function render() {
     if (!state.testsApi) loadTests();
     content = renderLinks(state, professions);
   }
-  if (state.view === "reports") content = renderReports(state);
+  if (state.view === "reports") {
+    if (!state.reportsStatus || state.reportsStatus === "idle") {
+      state.reportsStatus = "idle";
+      loadReportsFromApi();
+    }
+    content = renderReports(state);
+  }
   if (state.view === "report") content = renderReport(state, state.sessions.find((item) => item.id === state.reportId));
   if (state.view === "tariffs") content = renderTariffs(state, tariffs);
-  if (state.view === "referrals") content = renderReferrals(state);
+  if (state.view === "referrals") {
+    if (!state.referralsStatus) loadReferrals();
+    content = renderReferrals(state);
+  }
   if (state.view === "api") content = renderApiKeys(state);
   if (state.view === "support") content = renderSupport(state);
   if (state.view === "gratitude") content = renderGratitude(state);
-  if (state.view === "settings") content = renderSettings(state);
+  if (state.view === "settings") {
+    if (!state.orgStatus || state.orgStatus === "idle") {
+      state.orgStatus = "idle";
+      loadOrganization();
+    }
+    content = renderSettings(state);
+  }
 
   const newHTML = renderAppShell(state, content || renderDashboardPlaceholder());
 
@@ -905,7 +1687,22 @@ function render() {
     if (typeof morphdom !== 'undefined') {
       const tmp = document.createElement('div');
       tmp.innerHTML = newHTML;
-      morphdom(app, tmp, { childrenOnly: true });
+      morphdom(app, tmp, {
+        childrenOnly: true,
+        // Не трогаем текстовое поле, которое пользователь редактирует прямо
+        // сейчас, — иначе сбрасывается значение и курсор прыгает в начало.
+        onBeforeElUpdated(fromEl, toEl) {
+          if (
+            fromEl === document.activeElement &&
+            (fromEl.tagName === "INPUT" || fromEl.tagName === "TEXTAREA") &&
+            fromEl.type !== "checkbox" &&
+            fromEl.type !== "radio"
+          ) {
+            return false;
+          }
+          return true;
+        },
+      });
     } else {
       app.innerHTML = newHTML;
     }
@@ -971,6 +1768,7 @@ function createLinkFromForm(form) {
     });
   }
   if (state.company.balance > 0) state.company.balance -= 1;
+  debitBalanceOnSend(1);  // списываем оценку на бэкенде (источник истины по балансу)
   saveState();
   if (location.hash === "#/app/links") render();
   else setHash("#/app/links");
@@ -1354,6 +2152,9 @@ async function loadCandidateCard(personId) {
   } catch (candidateError) {
     try {
       data = { ...(await fetchEmployee(personId)), _kind: "employee" };
+      // Все оценки сотрудника по каждому тесту + средний балл.
+      try { data.assessments = await fetchEmployeeAssessments(personId); }
+      catch (e) { console.warn("Не удалось загрузить оценки сотрудника:", e); }
     } catch (employeeError) {
       console.warn("Не удалось загрузить карточку:", employeeError);
       data = { error: true };
@@ -1365,11 +2166,89 @@ async function loadCandidateCard(personId) {
   render();
 }
 
-// Загрузка реальных ответов кандидата с бэкенда для модалки «Ответы».
-async function loadCandidateAnswers(personId) {
+// Поддержка: собрать форму и отправить обращение в Telegram (через бэкенд).
+// Сообщение в Telegram различается по типу обращения (срочное/обычное/идея).
+async function sendSupport() {
+  const typeEl = document.querySelector("[data-support-type]");
+  const subjEl = document.querySelector("[data-support-subject]");
+  const descEl = document.querySelector("[data-support-description]");
+  const nameEl = document.querySelector("[data-support-name]");
+  const emailEl = document.querySelector("[data-support-email]");
+  const statusEl = document.querySelector("[data-support-status]");
+  const btn = document.querySelector('[data-action="support-send"]');
+  const setStatus = (text, color) => { if (statusEl) { statusEl.textContent = text; statusEl.style.color = color || ""; } };
+
+  const type = typeEl ? typeEl.value : "normal";
+  const subject = subjEl ? subjEl.value.trim() : "";
+  const description = descEl ? descEl.value.trim() : "";
+  if (!subject && !description) {
+    setStatus("Заполните тему или описание", "#E5484D");
+    return;
+  }
+  if (btn) btn.disabled = true;
+  setStatus("Отправляем…", "");
   try {
-    const data = await fetchCandidateAnswers(personId);
-    if (state.modal && state.modal.type === "answers" && state.modal.id === personId) {
+    const res = await sendSupportTicket({
+      type, subject, description,
+      from_name: nameEl ? nameEl.value || null : null,
+      from_email: emailEl ? emailEl.value || null : null
+    });
+    if (res.sent) {
+      setStatus("✓ Отправлено в Telegram", "#22C55E");
+      if (subjEl) subjEl.value = "";
+      if (descEl) descEl.value = "";
+    } else if (res.ok) {
+      // Принято на сервере, но бот не настроен (нет токена/chat_id).
+      setStatus(res.detail || "Принято, но Telegram-бот не настроен", "#D9A441");
+      if (subjEl) subjEl.value = "";
+      if (descEl) descEl.value = "";
+    } else {
+      setStatus(res.detail || "Не удалось отправить", "#E5484D");
+    }
+  } catch (error) {
+    console.warn("Не удалось отправить обращение:", error);
+    setStatus("Ошибка сети — попробуйте позже", "#E5484D");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// Модалка «Ответы»: сначала тянем список оценок человека (по тестам).
+// Один тест — открываем сразу; несколько — показываем выбор; ноль — пусто.
+async function loadAnswersFlow(personId) {
+  let list = null;
+  try {
+    list = await fetchEmployeeAssessments(personId);
+  } catch (error) {
+    console.warn("Не удалось загрузить список оценок:", error);
+  }
+  if (!(state.modal && state.modal.type === "answers" && state.modal.id === personId)) return;
+  state.answersList = list;
+  if (list && list.count === 1) {
+    selectAnswerSession(personId, list.items[0].session_id);
+  } else {
+    render();
+  }
+}
+
+// Открыть ответы по конкретному этапу адаптации (прямой переход к сессии).
+function openStageAnswers(personId, sessionId) {
+  state.modal = { type: "answers", id: personId, sessionId };
+  state.answersData = null;
+  state.answersList = null; // без выбора теста — сразу нужная сессия
+  render();
+  selectAnswerSession(personId, sessionId);
+}
+
+// Загрузка ответов по выбранной оценке (сессии).
+async function selectAnswerSession(personId, sessionId) {
+  if (!(state.modal && state.modal.type === "answers")) return;
+  state.modal = { ...state.modal, id: personId, sessionId };
+  state.answersData = null;
+  render();
+  try {
+    const data = await fetchEmployeeSessionAnswers(personId, sessionId);
+    if (state.modal && state.modal.type === "answers" && state.modal.sessionId === sessionId) {
       state.answersData = data;
     }
   } catch (error) {
@@ -1418,6 +2297,7 @@ function quickCreateLink(professionId = "recruiter") {
   const link = createLinkObject({ professionId, recipientType: "Кандидат", email: "" });
   state.links.unshift(link);
   if (state.company.balance > 0) state.company.balance -= 1;
+  debitBalanceOnSend(1);  // списываем оценку на бэкенде (источник истины по балансу)
   saveState();
   if (location.hash === "#/app/links") render();
   else setHash("#/app/links");
@@ -1436,28 +2316,64 @@ async function loadAssessmentForm(apiToken) {
   render();
 }
 
-// Прохождение теста, заданного на бэке: собираем ответы по типам и отправляем.
-async function submitBackendAssessment(formEl, link) {
+// ─── Таймер прохождения (обратный отсчёт) ────────────────────────────────────
+let assessTimerId = null;
+function ensureAssessTimer() {
+  if (assessTimerId) return;
+  assessTimerId = setInterval(() => {
+    const remaining = Math.max(0, Math.floor(((state.candidate.deadlineTs || 0) - Date.now()) / 1000));
+    const el = document.getElementById("assessTimer");
+    if (el) {
+      const m = String(Math.floor(remaining / 60)).padStart(2, "0");
+      const s = String(remaining % 60).padStart(2, "0");
+      const span = el.querySelector("span");
+      if (span) span.textContent = `${m}:${s}`;
+      el.classList.toggle("urgent", remaining <= 60);
+    }
+    if (remaining <= 0) {
+      stopAssessTimer();
+      finishAssessment(); // время вышло — отправляем что есть
+    }
+  }, 1000);
+}
+function stopAssessTimer() {
+  if (assessTimerId) { clearInterval(assessTimerId); assessTimerId = null; }
+}
+
+// Завершение прохождения: отправляем накопленные ответы на бэк.
+function finishAssessment() {
+  stopAssessTimer();
+  const link = state.links.find((item) => item.token === state.candidate.token) || null;
+  submitBackendAssessment(link);
+}
+
+// Прохождение теста, заданного на бэке: собираем ответы из состояния и отправляем.
+async function submitBackendAssessment(link) {
   const form = state.candidate.form;
   if (!form) return;
-  const data = new FormData(formEl);
+  // Защита от повторной отправки: двойной клик «Завершить» и срабатывание
+  // таймера не должны слать ответы дважды (сервер тоже идемпотентен, но не
+  // будем дёргать его зря и плодить ошибки).
+  if (state.candidate.submitting) return;
+  state.candidate.submitting = true;
+  stopAssessTimer();
+  const stored = state.candidate.answers || {};
   const answers = form.questions.map((q) => {
     const qid = q.question_version_id;
+    const v = stored[qid];
     if (q.type === "single_choice") {
-      const v = data.get(qid);
       return { question_version_id: qid, selected_option_ids: v ? [v] : [] };
     }
     if (q.type === "multiple_choice") {
-      return { question_version_id: qid, selected_option_ids: data.getAll(`m_${qid}`) };
+      return { question_version_id: qid, selected_option_ids: Array.isArray(v) ? v : [] };
     }
     if (q.type === "scale") {
-      const v = data.get(qid);
-      return { question_version_id: qid, scale_value: v ? Number(v) : null };
+      return { question_version_id: qid, scale_value: (v !== undefined && v !== null && v !== "") ? Number(v) : null };
     }
-    return { question_version_id: qid, answer_text: data.get(`o_${qid}`) || null };
+    return { question_version_id: qid, answer_text: (typeof v === "string" && v.trim()) ? v : null };
   });
   const apiToken = state.candidate.apiToken || (link && link.apiToken);
-  if (!apiToken) return;
+  if (!apiToken) { state.candidate.submitting = false; return; }
   try {
     await submitAssessment(apiToken, { answers });
     if (link) {
@@ -1469,11 +2385,23 @@ async function submitBackendAssessment(formEl, link) {
     state.employeesStatus = "idle";
     state.linksStatus = "idle";
   } catch (error) {
-    console.warn("Не удалось отправить ответы на бэкенд:", error);
-    alert("Не удалось отправить ответы. Проверьте, что все вопросы заполнены, и попробуйте снова.");
-    return;
+    const msg = String((error && error.message) || "");
+    if (msg.includes("410")) {
+      // Серверный таймер: время вышло — ответы не приняты. Повтор бессмыслен.
+      if (link) link.status = "expired";
+      alert("Время на прохождение теста истекло — ответы не приняты.");
+    } else if (msg.includes("409")) {
+      // Идемпотентность: тест уже отправлен (другая вкладка / повторный клик).
+      if (link) link.status = "completed";
+      alert("Этот тест уже был отправлен.");
+    } else {
+      console.warn("Не удалось отправить ответы на бэкенд:", error);
+      state.candidate.submitting = false;
+      alert("Не удалось отправить ответы. Попробуйте снова.");
+      return;
+    }
   }
-  state.candidate = { token: "", answers: {}, form: null, formToken: null, formError: null, apiToken: null };
+  state.candidate = { token: "", answers: {}, form: null, formToken: null, formError: null, apiToken: null, stage: "intro", qIndex: 0, deadlineTs: 0, submitting: false };
   saveState();
   setHash("#/thanks");
 }
@@ -1484,7 +2412,7 @@ function completeCandidateAssessment(form) {
 
   // Тест с бэка — отправляем ответы на сервер (он считает баллы и закрывает воронку).
   if (state.candidate.apiToken && state.candidate.form) {
-    submitBackendAssessment(form, link);
+    submitBackendAssessment(link);
     return;
   }
   if (!link) return;
@@ -1562,34 +2490,37 @@ function buyAssessments(count) {
   render();
 }
 
-function spendBonuses(count) {
+async function spendBonuses(count) {
   const amount = Math.round(count * state.company.assessmentPrice);
   if (amount > state.referrals.available) return;
-  state.referrals.available -= amount;
-  state.referrals.spent += amount;
-  state.company.balance += count;
-  state.referrals.operations.unshift(["Докупить оценки", `${count} оценок`, `-${amount.toLocaleString("ru-RU")} ₽`, "списано"]);
   state.modal = null;
+  try {
+    applyReferralSummary(await spendReferralBonuses(count));
+    state.company.balance += count;  // оценки зачисляются на баланс компании
+  } catch (error) {
+    console.warn("Не удалось потратить бонусы:", error);
+  }
   saveState();
   render();
 }
 
-function createWithdrawal(form) {
+async function createWithdrawal(form) {
   const data = new FormData(form);
   const amount = Number(data.get("amount") || 0);
   if (!amount || amount > state.referrals.available) return;
-  state.referrals.available -= amount;
-  state.referrals.withdrawals.unshift({
-    amount,
-    card: String(data.get("card") || ""),
-    name: String(data.get("name") || ""),
-    bank: String(data.get("bank") || ""),
-    phone: String(data.get("phone") || ""),
-    comment: String(data.get("comment") || ""),
-    status: "на проверке"
-  });
-  state.referrals.operations.unshift(["Заявка на вывод", "карта", `-${amount.toLocaleString("ru-RU")} ₽`, "на проверке"]);
   state.modal = null;
+  try {
+    applyReferralSummary(await createReferralWithdrawal({
+      amount,
+      card: String(data.get("card") || ""),
+      name: String(data.get("name") || ""),
+      bank: String(data.get("bank") || ""),
+      phone: String(data.get("phone") || ""),
+      comment: String(data.get("comment") || "")
+    }));
+  } catch (error) {
+    console.warn("Не удалось создать заявку на вывод:", error);
+  }
   saveState();
   render();
 }
@@ -1646,11 +2577,54 @@ document.addEventListener("click", (event) => {
     setHash(`#/app/${view}`);
   }
 
+  const orgSave = event.target.closest("[data-org-save]");
+  if (orgSave) { saveOrganization(orgSave.dataset.orgSave); return; }
+
+  const setTheme = event.target.closest("[data-set-theme]")?.dataset.setTheme;
+  if (setTheme && setTheme !== state.theme) {
+    state.theme = setTheme;
+    saveState();
+    render();
+    return;
+  }
+
   const action = event.target.closest("[data-action]")?.dataset.action;
   if (action === "toggle-theme") {
     state.theme = state.theme === "light" ? "dark" : "light";
     saveState();
     render();
+  }
+
+  // ── Центр уведомлений ──
+  if (action === "toggle-notifications") {
+    state.notifPanelOpen = !state.notifPanelOpen;
+    render();
+    if (state.notifPanelOpen) loadNotifications(); // обновляем при открытии
+    return;
+  }
+  if (action === "close-notifications") {
+    state.notifPanelOpen = false;
+    render();
+    return;
+  }
+  if (action === "notif-mark-all") {
+    markNotificationsRead({ all: true })
+      .then((data) => { state.notifications = data.items || []; state.notifUnread = data.unread || 0; render(); })
+      .catch((e) => console.warn("mark-all failed", e));
+    return;
+  }
+  const notifOpen = event.target.closest("[data-notif-open]");
+  if (notifOpen) {
+    const id = notifOpen.dataset.notifOpen;
+    const view = notifOpen.dataset.notifView;
+    state.notifPanelOpen = false;
+    // Отмечаем прочитанным и переходим в нужный раздел.
+    markNotificationsRead({ ids: [id] })
+      .then((data) => { state.notifications = data.items || []; state.notifUnread = data.unread || 0; if (!view) render(); })
+      .catch((e) => console.warn("mark-read failed", e));
+    if (view) setHash(`#/app/${view}`);
+    else render();
+    return;
   }
   if (action === "create-link") {
     const professionId = event.target.closest("[data-profession]")?.dataset.profession || "recruiter";
@@ -1673,9 +2647,108 @@ document.addEventListener("click", (event) => {
     loadCandProfiles("");
     return;
   }
-  if (action === "top-up") {
-    state.modal = { type: "sbp-payment", mode: "topup", pack: 20 };
+  if (action === "open-create-test") {
+    state.modal = { type: "create-test" };
     render();
+    return;
+  }
+  if (action === "adapt-run-due") {
+    runAdaptationTick();
+    return;
+  }
+  if (action === "open-add-question") {
+    if (!state.constructorTest) return;
+    state.modal = { type: "add-question", testId: state.constructorTest.id };
+    render();
+    return;
+  }
+
+  // ── Конструктор: режимы и компетенции ──
+  const ctrMode = event.target.closest("[data-constructor-mode]")?.dataset.constructorMode;
+  if (ctrMode) {
+    state.constructorMode = ctrMode;
+    render();
+    return;
+  }
+  // Профили (Инструменты → Профили): запустить оценку по готовому профилю.
+  const launchProfile = event.target.closest("[data-launch-profile]")?.dataset.launchProfile;
+  if (launchProfile) {
+    state.modal = { type: "assess-wizard", step: 1, scope: null, assessType: "standard", selected: [], dept: null, profId: launchProfile, deadline: "", searchQ: "" };
+    render();
+    return;
+  }
+  // Профили: открыть профиль в Конструкторе для правки.
+  const openProfCtr = event.target.closest("[data-open-profile-constructor]")?.dataset.openProfileConstructor;
+  if (openProfCtr) {
+    state.constructorMode = "profiles";
+    selectConstructorTest(openProfCtr);
+    setHash("#/app/constructor");
+    return;
+  }
+  if (action === "open-create-competency") {
+    state.modal = { type: "create-competency" };
+    render();
+    return;
+  }
+  if (action === "open-add-comp-question") {
+    if (!state.constructorComp) return;
+    state.modal = { type: "add-question", competencyId: state.constructorComp.id };
+    render();
+    return;
+  }
+  if (action === "open-add-profile-comp") {
+    if (!state.constructorTest) return;
+    state.modal = { type: "pick-competency", testId: state.constructorTest.id };
+    render();
+    return;
+  }
+  const selComp = event.target.closest("[data-select-competency]")?.dataset.selectCompetency;
+  if (selComp) { selectConstructorCompetency(selComp); return; }
+  const delComp = event.target.closest("[data-delete-competency]")?.dataset.deleteCompetency;
+  if (delComp) { if (confirm("Удалить компетенцию со всеми вопросами? Она исчезнет из профилей.")) deleteConstructorCompetency(delComp); return; }
+  const delCompQ = event.target.closest("[data-delete-comp-question]")?.dataset.deleteCompQuestion;
+  if (delCompQ) { const [cid, qv] = delCompQ.split("|"); deleteConstructorCompQuestion(cid, qv); return; }
+  const addProfComp = event.target.closest("[data-add-profile-comp]")?.dataset.addProfileComp;
+  if (addProfComp) { const tid = event.target.closest("[data-add-profile-comp]").dataset.testId; addProfileCompetencyFlow(tid, addProfComp); return; }
+  const rmProfComp = event.target.closest("[data-remove-profile-comp]")?.dataset.removeProfileComp;
+  if (rmProfComp) { const tid = event.target.closest("[data-remove-profile-comp]").dataset.testId; removeProfileCompetencyFlow(tid, rmProfComp); return; }
+  if (action === "top-up") {
+    openTopup();
+    return;
+  }
+  // ── Пополнение баланса через Монету ──
+  if (action === "topup-select-pack") {
+    const pack = parseInt(event.target.closest("[data-pack]")?.dataset.pack || "20", 10);
+    if (state.modal?.type === "topup") { state.modal.pack = pack; render(); }
+    return;
+  }
+  if (action === "topup-apply-promo") {
+    const input = document.querySelector("[data-topup-promo-input]");
+    const code = (input?.value || "").trim().toUpperCase();
+    if (state.modal?.type === "topup") {
+      // Серверная проверка — единственный гард; здесь лишь мгновенная подсказка.
+      if (code === "ELTERA10" || code === "DEMO") { state.modal.promoApplied = true; state.modal.promoCode = code; state.modal.error = null; }
+      else { state.modal.promoApplied = false; state.modal.error = "Неверный промокод"; }
+      render();
+    }
+    return;
+  }
+  if (action === "topup-clear-promo") {
+    if (state.modal?.type === "topup") { state.modal.promoApplied = false; state.modal.promoCode = ""; state.modal.error = null; render(); }
+    return;
+  }
+  if (action === "topup-pay") { startTopupPayment(); return; }
+  if (action === "topup-retry") {
+    if (state.modal?.type === "topup") { state.modal.step = "select"; state.modal.error = null; state.modal.paymentId = null; state.modal.busy = false; render(); }
+    return;
+  }
+  if (action === "topup-check") { if (state.modal?.paymentId) pollPaymentStatus(state.modal.paymentId); return; }
+  if (action === "topup-done") { state.modal = null; render(); return; }
+  if (action === "topup-cancel") {
+    const pid = state.modal?.paymentId;
+    if (pid) cancelPayment(pid).catch(() => {});
+    state.modal = null; render();
+    return;
   }
   if (action === "print-report") window.print();
   if (action === "add-structure-member") {
@@ -1689,20 +2762,67 @@ document.addEventListener("click", (event) => {
     state.modal = { type: "import-employees" };
     render();
   }
-  if (action === "run-employee-import") {
-    const fileInput = document.querySelector("[data-import-employees-file]");
-    if (!fileInput || !fileInput.files || !fileInput.files.length) {
-      alert("Выберите Excel-файл со списком сотрудников.");
-      return;
-    }
-    const name = fileInput.files[0].name;
-    state.modal = null;
+  if (action === "import-candidates") {
+    state.modal = { type: "import-candidates" };
     render();
-    const toast = document.createElement("div");
-    toast.className = "sbp-toast";
-    toast.textContent = `✓ Файл «${name}» получен, импорт обрабатывается`;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3500);
+  }
+  if (action === "run-employee-import") runImport("employees");
+  if (action === "run-candidate-import") runImport("candidates");
+  if (action === "open-import-library") {
+    state.modal = { type: "import-library" };
+    render();
+  }
+  if (action === "run-library-import") runLibraryImport();
+
+  // ── HeadHunter ──
+  if (action === "hh-connect") {
+    // Открываем модалку подключения вместо мгновенного редиректа.
+    state.modal = { type: "hh-connect" };
+    state.hhConnectStatus = null;
+    render();
+    return;
+  }
+  if (action === "hh-connect-start") {
+    // Запрашиваем authorize URL с токеном, затем редиректим браузер на hh.ru.
+    state.hhConnectStatus = "connecting";
+    render();
+    startHhConnect()
+      .then((r) => {
+        if (r && r.url) { window.location.href = r.url; return; }
+        state.hhConnectStatus = "error";
+        render();
+        showToast("Не удалось начать подключение hh.ru.", "error");
+      })
+      .catch((e) => {
+        console.warn("hh connect failed", e);
+        state.hhConnectStatus = "error";
+        render();
+        showToast("Не удалось начать подключение hh.ru. Проверьте настройку HH на сервере.", "error");
+      });
+    return;
+  }
+  if (action === "hh-refresh") {
+    runHhSync();
+    return;
+  }
+  if (action === "hh-import-open") {
+    state.modal = { type: "hh-import" };
+    state.hhImportSearch = "";
+    state.hhImportStatus = null;
+    if (!state.hhVacancies && state.hhVacanciesStatus !== "loading") loadHhVacancies();
+    render();
+    return;
+  }
+  if (action === "hh-import-confirm") {
+    const ids = Array.from(document.querySelectorAll('[data-hh-pick]:checked')).map((el) => el.dataset.hhPick);
+    runHhImport(ids);
+    return;
+  }
+  if (action === "hh-disconnect") {
+    hhDisconnect()
+      .then(() => { state.hhStatus = null; state.hhVacancies = null; state.hhVacanciesStatus = null; state.hhAutoSynced = false; loadHhStatus(); })
+      .catch((e) => console.warn("hh disconnect failed", e));
+    return;
   }
 
   // Click on avatar circle — trigger hidden file input
@@ -1720,8 +2840,58 @@ document.addEventListener("click", (event) => {
       inp.addEventListener("change", handleAvatarUpload);
     }
     inp.click();
+    return; // клик по аватарке — только загрузка фото, карточку не открываем
   }
-  if (action === "copy-ref") navigator.clipboard?.writeText(`${location.origin}${location.pathname}#/ref/roman123`);
+
+  // Клик по карточке/строке в оргструктуре (но не по аватарке) — открыть карточку сотрудника.
+  const ocSelectId = event.target.closest("[data-oc-select]")?.dataset.ocSelect;
+  if (ocSelectId) {
+    state.modal = { type: "card", id: ocSelectId };
+    state.cardData = null;
+    render();
+    loadCandidateCard(ocSelectId);
+    return;
+  }
+
+  // Структура: масштаб графа.
+  const ocZoom = event.target.closest("[data-oc-zoom]")?.dataset.ocZoom;
+  if (ocZoom) {
+    const cur = state.structureZoom || 80;
+    state.structureZoom = Math.max(50, Math.min(120, cur + (ocZoom === "in" ? 10 : -10)));
+    render();
+    return;
+  }
+
+  // Структура: развернуть/свернуть список сотрудников отдела.
+  const ocDept = event.target.closest("[data-oc-dept-toggle]")?.dataset.ocDeptToggle;
+  if (ocDept) {
+    const set = new Set(state.structureExpandedDepts || []);
+    if (set.has(ocDept)) set.delete(ocDept); else set.add(ocDept);
+    state.structureExpandedDepts = [...set];
+    render();
+    return;
+  }
+
+  // Структура: показать все отделы / свернуть.
+  if (action === "oc-show-all-depts") {
+    state.structureAllDepts = !state.structureAllDepts;
+    render();
+    return;
+  }
+
+  // Поддержка: карточка-«быстрый выбор» проставляет тип обращения и фокусирует форму.
+  const supportPick = event.target.closest("[data-support-pick]")?.dataset.supportPick;
+  if (supportPick) {
+    const sel = document.querySelector("[data-support-type]");
+    if (sel) sel.value = supportPick;
+    document.querySelector(".elt-support-form")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    document.querySelector("[data-support-subject]")?.focus();
+    return;
+  }
+
+  if (action === "support-send") { sendSupport(); return; }
+
+  if (action === "copy-ref") navigator.clipboard?.writeText(`${location.origin}${location.pathname}#/ref/${state.referrals.code || ""}`);
   if (action === "open-bonus-modal") {
     state.modal = "spendBonuses";
     render();
@@ -1771,6 +2941,10 @@ document.addEventListener("click", (event) => {
     const cand = (state.candidatesApi || []).find((c) => c.id === id);
     state.kebabMenu = null;
     state.modal = { type: "convert-employee", personId: id, fullName: cand ? (cand.person?.fullName || cand.full_name) : "" };
+    // Подгружаем список сотрудников, чтобы выбрать руководителя из выпадающего списка.
+    if (!state.employeesApi && state.employeesStatus !== "loading") {
+      loadEmployeesFromApi().then(render);
+    }
     render();
     return;
   }
@@ -1816,7 +2990,7 @@ document.addEventListener("click", (event) => {
   // PDF-отчёт по кандидату — открываем в новой вкладке (генерит бэкенд).
   const pdfBtn = event.target.closest("[data-pdf-id]");
   if (pdfBtn) {
-    window.open(candidatePdfUrl(pdfBtn.dataset.pdfId), "_blank");
+    openCandidatePdf(pdfBtn.dataset.pdfId).catch((e) => console.error("PDF report:", e));
     return;
   }
 
@@ -1844,8 +3018,43 @@ document.addEventListener("click", (event) => {
   if (openAnswers) {
     state.modal = { type: "answers", id: openAnswers };
     state.answersData = null;
+    state.answersList = null;
     render();
-    loadCandidateAnswers(openAnswers);
+    loadAnswersFlow(openAnswers);
+    return;
+  }
+
+  // Выбрать сотрудника для сводного 360-отчёта.
+  // ВАЖНО: атрибут data-open360 без дефиса перед цифрой — иначе dataset-ключ
+  // получается «open-360» (дефис перед цифрой не камелкейсится).
+  const open360 = event.target.closest("[data-open360]")?.dataset.open360;
+  if (open360) {
+    load360Report(open360);
+    return;
+  }
+
+  // Выбор конкретной оценки в модалке «Ответы»: data-answer-session="personId|sessionId"
+  const answerSession = event.target.closest("[data-answer-session]")?.dataset.answerSession;
+  if (answerSession) {
+    const [pid, sid] = answerSession.split("|");
+    selectAnswerSession(pid, sid);
+    return;
+  }
+
+  // Ответы по этапу адаптации: data-open-stage-answers="personId|sessionId"
+  const stageAnswers = event.target.closest("[data-open-stage-answers]")?.dataset.openStageAnswers;
+  if (stageAnswers) {
+    const [pid, sid] = stageAnswers.split("|");
+    openStageAnswers(pid, sid);
+    return;
+  }
+
+  // Назад к списку тестов в модалке «Ответы».
+  if (event.target.closest("[data-answer-back]")) {
+    state.modal = { ...state.modal, sessionId: null };
+    state.answersData = null;
+    render();
+    return;
   }
 
   const openCompetency = event.target.closest("[data-open-competency]")?.dataset.openCompetency;
@@ -1897,9 +3106,14 @@ document.addEventListener("click", (event) => {
     const btn = event.target.closest("[data-action='sbp-confirm']");
     const tariffId = btn?.dataset.tariffId;
     const assessments = parseInt(btn?.dataset.assessments || 0);
+    const paidAmount = Number(state.modal?.price || 0);
     const statusEl = document.querySelector("[data-sbp-status]");
     if (statusEl) statusEl.textContent = "⏳ Обработка платежа...";
     setTimeout(() => {
+      // Реальная оплата → начисляем 10% пригласившему рефереру (если есть).
+      if (paidAmount > 0) {
+        recordReferralPayment(paidAmount).catch((e) => console.warn("Начисление реферу не выполнено:", e));
+      }
       if (tariffId) {
         state.company.tariff = tariffId;
         const TARIFF_LIMITS = { TalentCheck: 100, TalentPro: 500, TalentStudio: 2000 };
@@ -1964,6 +3178,43 @@ document.addEventListener("click", (event) => {
     render();
   }
 
+  // Переключатель периода вкладки «Вакансии» (7 / 14 / 30 дней).
+  const vacPeriod = event.target.closest("[data-vacancy-period]")?.dataset.vacancyPeriod;
+  if (vacPeriod) {
+    state.vacancyPeriod = vacPeriod;
+    state.vacancyKpi = null;
+    loadVacancyKpi();
+    return;
+  }
+
+  // Клик по KPI-карточке вакансий → drill-down список.
+  const vacCard = event.target.closest("[data-vac-card]")?.dataset.vacCard;
+  if (vacCard) {
+    state.modal = { type: "vacancy-list", card: vacCard };
+    loadVacancyDrill(vacCard);
+    return;
+  }
+
+  // Кнопка «Отклики» по вакансии → модалка со списком откликов.
+  const vacResp = event.target.closest("[data-vac-responses]")?.dataset.vacResponses;
+  if (vacResp) {
+    const m = (state.vacancyKpi?.items || []).find((x) => x.vacancy_id === vacResp);
+    state.modal = { type: "vacancy-responses", id: vacResp, defaultTestId: m ? m.default_test_id : null };
+    loadAssessmentTests();
+    loadVacancyResponses(vacResp);
+    return;
+  }
+
+  // «В кандидаты»: конвертация отклика с выбранным в модалке тестом.
+  const convBtn = event.target.closest("[data-convert-response]");
+  if (convBtn) {
+    const eventId = convBtn.dataset.convertResponse;
+    const vacancyId = state.modal && state.modal.id;
+    const sel = document.querySelector("[data-convert-test]");
+    runConvertResponse(vacancyId, eventId, sel ? sel.value : "");
+    return;
+  }
+
   const stage = event.target.closest("[data-stage]")?.dataset.stage;
   if (stage) {
     state.drilldownStage = stage;
@@ -1976,6 +3227,50 @@ document.addEventListener("click", (event) => {
 
   const openAssess = event.target.closest("[data-open-assess]")?.dataset.openAssess;
   if (openAssess) setHash(`#/assess/${openAssess}`);
+
+  // ── Прохождение теста: стартовый экран и навигация по вопросам ──
+  if (event.target.closest("[data-assess-start]")) {
+    const nameEl = document.getElementById("assessName");
+    const emailEl = document.getElementById("assessEmail");
+    state.candidate.name = nameEl ? nameEl.value.trim() : "";
+    state.candidate.email = emailEl ? emailEl.value.trim() : "";
+    state.candidate.stage = "questions";
+    state.candidate.qIndex = 0;
+    const form = state.candidate.form;
+    if (form && form.deadline_at) {
+      // Серверный таймер: дедлайн считает бэк (с момента открытия ссылки).
+      // Корректируем расхождение часов клиента через server_now.
+      const serverNow = Date.parse(form.server_now || "") || Date.now();
+      const skew = Date.now() - serverNow; // локальные часы − серверные
+      state.candidate.deadlineTs = Date.parse(form.deadline_at) + skew;
+    } else if (form && form.time_limit_minutes) {
+      state.candidate.deadlineTs = Date.now() + form.time_limit_minutes * 60 * 1000;
+    } else {
+      const mins = (form && form.duration_min) || 25;
+      state.candidate.deadlineTs = Date.now() + mins * 60 * 1000;
+    }
+    saveState();
+    render();
+    return;
+  }
+  if (event.target.closest("[data-assess-prev]")) {
+    if ((state.candidate.qIndex || 0) > 0) state.candidate.qIndex = (state.candidate.qIndex || 0) - 1;
+    saveState();
+    render();
+    return;
+  }
+  if (event.target.closest("[data-assess-next]")) {
+    const form = state.candidate.form;
+    const total = form ? form.questions.length : 0;
+    if ((state.candidate.qIndex || 0) < total - 1) {
+      state.candidate.qIndex = (state.candidate.qIndex || 0) + 1;
+      saveState();
+      render();
+    } else {
+      finishAssessment();
+    }
+    return;
+  }
 
   const cancelToken = event.target.closest("[data-cancel-link]")?.dataset.cancelLink;
   if (cancelToken) cancelLink(cancelToken);
@@ -2076,9 +3371,10 @@ document.addEventListener("submit", (event) => {
   if (event.target.matches("[data-add-question-form]")) {
     event.preventDefault();
     const fd = new FormData(event.target);
-    const testId = event.target.dataset.testId;
+    const testId = event.target.dataset.testId || "";
+    const competencyId = event.target.dataset.competencyId || "";
     const text = String(fd.get("text") || "").trim();
-    if (!text || !testId) return;
+    if (!text || (!testId && !competencyId)) return;
     const type = String(fd.get("type") || "single_choice");
     const payload = {
       text,
@@ -2106,7 +3402,22 @@ document.addEventListener("submit", (event) => {
       payload.ai_reference = String(fd.get("ai_reference") || "").trim() || null;
       payload.ai_criteria = String(fd.get("ai_criteria") || "").trim() || null;
     }
-    addConstructorQuestion(testId, payload);
+    if (competencyId) addConstructorCompQuestion(competencyId, payload);
+    else addConstructorQuestion(testId, payload);
+    event.target.reset();
+    return;
+  }
+  // Конструктор: создать компетенцию.
+  if (event.target.matches("[data-create-competency-form]")) {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+    const title = String(fd.get("title") || "").trim();
+    if (!title) return;
+    createConstructorCompetency({
+      title,
+      kind: String(fd.get("kind") || "professional"),
+      description: String(fd.get("description") || "").trim() || null,
+    });
     event.target.reset();
     return;
   }
@@ -2122,7 +3433,8 @@ document.addEventListener("submit", (event) => {
       role: String(fd.get("role") || "employee"),
       department_name: String(fd.get("department_name") || "").trim() || null,
       manager_id: String(fd.get("manager_id") || "") || null,
-      project: String(fd.get("project") || "").trim() || null
+      project: String(fd.get("project") || "").trim() || null,
+      send_adaptation: fd.get("send_adaptation") != null
     };
     state.modal = null;
     render();
@@ -2131,9 +3443,17 @@ document.addEventListener("submit", (event) => {
         await addStructureMember(payload);
         state.structureStatus = "idle";  // перезагрузить дерево
         state.employeesStatus = "idle";  // и список сотрудников
+        if (payload.send_adaptation) {
+          state.adaptationStatus = "idle";  // появился новый цикл адаптации
+          state.linksApi = null;            // и новая ссылка-опрос
+        }
         render();
+        showToast(payload.send_adaptation
+          ? "Добавлен в структуру, адаптация запущена"
+          : "Добавлен в структуру");
       } catch (error) {
         console.warn("Не удалось добавить в структуру:", error);
+        showToast("Не удалось добавить в структуру", "info");
       }
     })();
   }
@@ -2197,6 +3517,15 @@ let _ctrProfileSearchTimer = null;
 let _candProfTimer = null;
 let _libSearchTimer = null;
 document.addEventListener("input", (event) => {
+  // Поиск в модалке «Добавить из HeadHunter» — клиентская фильтрация по названию.
+  const hhSearch = event.target.closest("[data-hh-search]");
+  if (hhSearch) {
+    state.hhImportSearch = hhSearch.value;
+    render();
+    const again = document.querySelector("[data-hh-search]");
+    if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
+    return;
+  }
   // Поиск по библиотеке тестов (серверный, debounce).
   const libInput = event.target.closest("[data-library-search]");
   if (libInput) {
@@ -2235,9 +3564,25 @@ document.addEventListener("input", (event) => {
     if (again) { again.focus(); try { again.setSelectionRange(caret, caret); } catch (e) { /* noop */ } }
   }
 });
+
 document.addEventListener("change", (event) => {
   if (event.target.matches("[data-avatar-upload]")) {
     handleAvatarUpload(event);
+    return;
+  }
+  // Смена теста по умолчанию у HH-вакансии.
+  const defTest = event.target.closest("[data-vac-default-test]");
+  if (defTest) {
+    setVacancyDefaultTest(defTest.dataset.vacDefaultTest, defTest.value)
+      .then(() => { showToast("Тест по умолчанию сохранён"); state.vacancyKpi = null; loadVacancyKpi(); })
+      .catch((e) => { console.warn("default test save failed", e); showToast("Не удалось сохранить тест", "error"); });
+    return;
+  }
+  // Конструктор: переключение типа вопроса показывает нужную секцию полей
+  // (без перерисовки — уже введённые значения сохраняются).
+  if (event.target.matches("[data-question-type]")) {
+    const form = event.target.closest("form");
+    if (form) form.dataset.qtype = event.target.value;
     return;
   }
   if (event.target.matches(".answer input")) {
@@ -2248,6 +3593,34 @@ document.addEventListener("change", (event) => {
       link.history.push(["начата", new Date().toISOString()]);
     }
     saveState();
+  }
+  // Ответ на вопрос в новом мастере прохождения (API-тест).
+  const assessInput = event.target.closest("[data-assess-input]");
+  if (assessInput) {
+    state.candidate.answers = state.candidate.answers || {};
+    const qid = assessInput.dataset.qid;
+    const qtype = assessInput.dataset.qtype;
+    if (qtype === "single_choice") {
+      state.candidate.answers[qid] = assessInput.value;
+    } else if (qtype === "scale") {
+      state.candidate.answers[qid] = Number(assessInput.value);
+    } else if (qtype === "multiple_choice") {
+      const checked = Array.from(document.querySelectorAll(`[data-assess-input][data-qid="${qid}"]`))
+        .filter((el) => el.checked)
+        .map((el) => el.value);
+      state.candidate.answers[qid] = checked;
+    } else {
+      state.candidate.answers[qid] = assessInput.value;
+    }
+    const link = state.links.find((item) => item.token === state.candidate.token);
+    if (link && link.status === "opened") {
+      link.status = "started";
+      if (Array.isArray(link.history)) link.history.push(["начата", new Date().toISOString()]);
+    }
+    saveState();
+    // Перерисовываем, чтобы обновить выбор, точки и доступность кнопки «Далее».
+    // Для открытого ответа событие change приходит на blur — фокус уже снят.
+    render();
   }
 });
 
@@ -2281,733 +3654,16 @@ window.addEventListener("eltera-logout", () => {
   render();
 });
 
+// Баланс — с бэкенда (источник истины); затем разбираем возможный возврат с
+// формы оплаты Монеты. Делаем до первого render(), чтобы сразу показать модалку.
+if (state.authenticated) {
+  loadBilling({ silent: true }).then(() => { handlePaymentReturn(); render(); });
+}
+
 render();
 
-// ─── Hero Live Card Animation ─────────────────────────────────────────────────
-function initHeroLiveCard() {
-  const scenarios = [
-    {
-      label: "Оценка кандидата · Live",
-      metrics: [
-        { title: "Коммуникация", value: "87%", width: 87 },
-        { title: "Стрессоустойчивость", value: "72%", width: 72 },
-        { title: "Ответственность", value: "91%", width: 91 },
-        { title: "Обучаемость", value: "65%", width: 65 }
-      ],
-      note: "AI: Высокая ответственность и коммуникация. Рекомендую пригласить на интервью."
-    },
-    {
-      label: "Оценка сотрудника · Live",
-      metrics: [
-        { title: "Лидерство", value: "78%", width: 78 },
-        { title: "Инициативность", value: "84%", width: 84 },
-        { title: "Командная работа", value: "69%", width: 69 },
-        { title: "Результативность", value: "88%", width: 88 }
-      ],
-      note: "AI: Сотрудник показывает высокую результативность. Готов к повышению."
-    },
-    {
-      label: "Пульс-опрос команды · Live",
-      metrics: [
-        { title: "Вовлечённость", value: "73%", width: 73 },
-        { title: "Удовлетворённость", value: "61%", width: 61 },
-        { title: "Риск выгорания", value: "38%", width: 38 },
-        { title: "Лояльность", value: "82%", width: 82 }
-      ],
-      note: "AI: Риск выгорания в норме. Рекомендую провести 1-on-1 с 2 сотрудниками."
-    },
-    {
-      label: "Performance Review · Live",
-      metrics: [
-        { title: "Достижение целей", value: "92%", width: 92 },
-        { title: "Потенциал роста", value: "76%", width: 76 },
-        { title: "Управленческий стиль", value: "68%", width: 68 },
-        { title: "Соответствие роли", value: "85%", width: 85 }
-      ],
-      note: "AI: Высокий потенциал. Включить в кадровый резерв на позицию руководителя."
-    }
-  ];
-
-  let idx = 0;
-  let timer = null;
-
-  function updateCard() {
-    const card = document.getElementById('heroLiveCard');
-    if (!card) { clearInterval(timer); return; }
-
-    const s = scenarios[idx % scenarios.length];
-    idx++;
-
-    const labelEl = document.getElementById('heroCardLabel');
-    const metricsEl = document.getElementById('heroMetrics');
-    const noteEl = document.getElementById('heroAiNote');
-
-    if (!labelEl || !metricsEl || !noteEl) return;
-
-    // Fade out
-    card.style.transition = 'opacity .3s';
-    card.style.opacity = '0.4';
-
-    setTimeout(() => {
-      labelEl.textContent = s.label;
-      metricsEl.innerHTML = s.metrics.map(m =>
-        `<div class="metric"><div><span>${m.title}</span><b>${m.value}</b></div><i><em style="width:0%"></em></i></div>`
-      ).join('');
-      noteEl.textContent = 'AI: ' + s.note.replace('AI: ', '');
-
-      card.style.opacity = '1';
-
-      // Animate bars
-      setTimeout(() => {
-        const bars = metricsEl.querySelectorAll('.metric em');
-        bars.forEach((bar, i) => {
-          setTimeout(() => {
-            bar.style.transition = 'width .7s cubic-bezier(.22,.68,0,1.1)';
-            bar.style.width = s.metrics[i].width + '%';
-          }, i * 80);
-        });
-      }, 50);
-    }, 300);
-  }
-
-  // Initial bar animation
-  setTimeout(() => {
-    const bars = document.querySelectorAll('#heroMetrics .metric em');
-    const widths = [87, 72, 91, 65];
-    bars.forEach((bar, i) => {
-      setTimeout(() => {
-        bar.style.transition = 'width .7s cubic-bezier(.22,.68,0,1.1)';
-        bar.style.width = widths[i] + '%';
-      }, 600 + i * 100);
-    });
-  }, 100);
-
-  // Cycle every 4 seconds
-  timer = setInterval(updateCard, 4000);
-}
-
-function initLv3Landing() {
-  // TABS
-  const tabBtns = document.querySelectorAll('.lv3-tab-btn');
-  const tabPanels = document.querySelectorAll('.lv3-tab-panel');
-  tabBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const idx = btn.dataset.lv3Tab;
-      tabBtns.forEach(b => b.classList.remove('active'));
-      tabPanels.forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      const panel = document.querySelector(`.lv3-tab-panel[data-lv3-panel="${idx}"]`);
-      if (panel) panel.classList.add('active');
-    });
-  });
-
-  // ACCORDION (old)
-  const accItems = document.querySelectorAll('.lv3-acc-item');
-  accItems.forEach(item => {
-    const head = item.querySelector('.lv3-acc-head');
-    if (head) {
-      head.addEventListener('click', () => {
-        const isActive = item.classList.contains('active');
-        accItems.forEach(i => i.classList.remove('active'));
-        if (!isActive) item.classList.add('active');
-      });
-    }
-  });
-
-  // ACCORDION2 (AI section)
-  const acc2Items = document.querySelectorAll('.lv3-acc2-item');
-  acc2Items.forEach(item => {
-    const head = item.querySelector('.lv3-acc2-head');
-    if (!head) return;
-    head.addEventListener('click', () => {
-      const isActive = item.classList.contains('lv3-acc2-item--active');
-      // close all
-      acc2Items.forEach(i => {
-        i.classList.remove('lv3-acc2-item--active');
-        const arrow = i.querySelector('.lv3-acc2-arrow');
-        if (arrow) { arrow.classList.remove('lv3-acc2-arrow--open'); arrow.style.color = ''; }
-      });
-      // open clicked (if was closed)
-      if (!isActive) {
-        item.classList.add('lv3-acc2-item--active');
-        const arrow = item.querySelector('.lv3-acc2-arrow');
-        if (arrow) { arrow.classList.add('lv3-acc2-arrow--open'); }
-      }
-    });
-  });
-
-  // TARIFF CARD SELECTION GLOW
-  const tariffCards = document.querySelectorAll('.elt-tariff-card');
-  tariffCards.forEach(card => {
-    card.addEventListener('click', () => {
-      tariffCards.forEach(c => c.classList.remove('lv3-tariff-selected'));
-      card.classList.add('lv3-tariff-selected');
-    });
-  });
-
-  // BILLING TOGGLE
-  const billingBtns = document.querySelectorAll('.lv3-billing-btn');
-  billingBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      billingBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-    });
-  });
-
-  // HERO CARD SLIDER
-  (function() {
-    const slider = document.getElementById('lv3HSlider');
-    if (!slider) return;
-    const slides = slider.querySelectorAll('.lv3-hslide');
-    const dots = slider.querySelectorAll('.lv3-hsdot');
-    let current = 0;
-    let timer = null;
-    const INTERVAL = 4000;
-
-    function animateBars(slide) {
-      // Reset all bars to 0, then animate to target width
-      const bars = slide.querySelectorAll('.lv3-hbar-fill');
-      bars.forEach(bar => {
-        const target = bar.style.getPropertyValue('--w') || bar.style.width || '0%';
-        bar.style.transition = 'none';
-        bar.style.width = '0%';
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            bar.style.transition = 'width 0.9s cubic-bezier(0.22, 0.68, 0, 1.1)';
-            bar.style.width = target;
-          });
-        });
-      });
-    }
-
-    function goTo(idx) {
-      // Remove active from current (CSS handles fade out via transition)
-      slides[current].classList.remove('lv3-hslide--active');
-      dots[current].classList.remove('lv3-hsdot--active');
-      current = (idx + slides.length) % slides.length;
-      // Add active to new (CSS handles fade in via transition)
-      slides[current].classList.add('lv3-hslide--active');
-      dots[current].classList.add('lv3-hsdot--active');
-      // Animate bars after a short delay so they start after slide appears
-      setTimeout(() => animateBars(slides[current]), 100);
-    }
-
-    function startTimer() {
-      clearInterval(timer);
-      timer = setInterval(() => goTo(current + 1), INTERVAL);
-    }
-
-    // Dot clicks
-    dots.forEach((dot, i) => {
-      dot.addEventListener('click', () => { goTo(i); startTimer(); });
-    });
-
-    // Pause on hover
-    slider.addEventListener('mouseenter', () => clearInterval(timer));
-    slider.addEventListener('mouseleave', () => startTimer());
-
-    // Start
-    startTimer();
-  })();
-
-  // NAV scroll effect
-  const nav = document.getElementById('lv3Nav');
-  if (nav) {
-    window.addEventListener('scroll', () => {
-      if (window.scrollY > 40) {
-        nav.classList.add('lv3-nav--scrolled');
-      } else {
-        nav.classList.remove('lv3-nav--scrolled');
-      }
-    }, { passive: true });
-  }
-
-  // BURGER MENU
-  const burger = document.getElementById('lv3Burger');
-  const mobileNav = document.getElementById('lv3MobileNav');
-  if (burger && mobileNav) {
-    burger.addEventListener('click', () => {
-      const isOpen = burger.classList.toggle('open');
-      if (isOpen) {
-        mobileNav.classList.add('open');
-        document.body.style.overflow = 'hidden';
-      } else {
-        mobileNav.classList.remove('open');
-        document.body.style.overflow = '';
-      }
-    });
-    // Close on link click
-    mobileNav.querySelectorAll('a, button').forEach(el => {
-      el.addEventListener('click', () => {
-        burger.classList.remove('open');
-        mobileNav.classList.remove('open');
-        document.body.style.overflow = '';
-      });
-    });
-  }
-
-  // SCROLL REVEAL ANIMATIONS
-  const revealEls = document.querySelectorAll('[data-reveal]');
-  if (revealEls.length > 0 && 'IntersectionObserver' in window) {
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('revealed');
-          // Also reveal children with data-reveal-delay
-          entry.target.querySelectorAll('[data-reveal-delay]').forEach(child => {
-            child.classList.add('revealed');
-          });
-          observer.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
-    revealEls.forEach(el => observer.observe(el));
-  } else {
-    // Fallback: show all immediately
-    revealEls.forEach(el => el.classList.add('revealed'));
-  }
-
-  // CANVAS PARTICLES
-  const canvas = document.getElementById('lv3Particles');
-  if (canvas) {
-    const ctx = canvas.getContext('2d');
-    let particles = [];
-    let animFrame;
-
-    function resizeCanvas() {
-      const hero = canvas.parentElement.parentElement;
-      canvas.width = hero.offsetWidth;
-      canvas.height = hero.offsetHeight;
-    }
-
-    function createParticles() {
-      particles = [];
-      const count = Math.floor(canvas.width / 12);
-      for (let i = 0; i < count; i++) {
-        particles.push({
-          x: Math.random() * canvas.width,
-          y: Math.random() * canvas.height,
-          r: Math.random() * 1.5 + 0.3,
-          vx: (Math.random() - 0.5) * 0.3,
-          vy: (Math.random() - 0.5) * 0.3,
-          alpha: Math.random() * 0.5 + 0.1,
-          color: Math.random() > 0.5 ? '30,91,255' : '0,229,212'
-        });
-      }
-    }
-
-    function drawParticles() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      particles.forEach(p => {
-        p.x += p.vx;
-        p.y += p.vy;
-        if (p.x < 0) p.x = canvas.width;
-        if (p.x > canvas.width) p.x = 0;
-        if (p.y < 0) p.y = canvas.height;
-        if (p.y > canvas.height) p.y = 0;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${p.color},${p.alpha})`;
-        ctx.fill();
-      });
-      // Draw connecting lines
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x;
-          const dy = particles[i].y - particles[j].y;
-          const dist = Math.sqrt(dx*dx + dy*dy);
-          if (dist < 80) {
-            ctx.beginPath();
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = `rgba(30,91,255,${0.08 * (1 - dist/80)})`;
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
-          }
-        }
-      }
-      animFrame = requestAnimationFrame(drawParticles);
-    }
-
-    resizeCanvas();
-    createParticles();
-    drawParticles();
-    window.addEventListener('resize', () => { resizeCanvas(); createParticles(); }, { passive: true });
-
-    // Stop animation when hero not visible
-    const heroObs = new IntersectionObserver(([entry]) => {
-      if (!entry.isIntersecting) { cancelAnimationFrame(animFrame); }
-      else { drawParticles(); }
-    }, { threshold: 0 });
-    heroObs.observe(canvas.parentElement.parentElement);
-  }
-
-  // CANVAS PARTICLES — FEATURES SECTION (identical to hero)
-  const featCanvas = document.getElementById('lv3FeatParticles');
-  if (featCanvas) {
-    const fCtx = featCanvas.getContext('2d');
-    let fParticles = [];
-    let fAnimFrame;
-
-    function resizeFeatCanvas() {
-      const section = featCanvas.closest('.lv3-scroll-features');
-      if (section) {
-        featCanvas.width = section.offsetWidth || window.innerWidth;
-        featCanvas.height = Math.max(section.scrollHeight, section.offsetHeight, 600);
-      }
-    }
-
-    function createFeatParticles() {
-      fParticles = [];
-      const count = Math.floor(featCanvas.width / 12);
-      for (let i = 0; i < count; i++) {
-        fParticles.push({
-          x: Math.random() * featCanvas.width,
-          y: Math.random() * featCanvas.height,
-          r: Math.random() * 1.5 + 0.3,
-          vx: (Math.random() - 0.5) * 0.3,
-          vy: (Math.random() - 0.5) * 0.3,
-          alpha: Math.random() * 0.5 + 0.1,
-          color: Math.random() > 0.5 ? '30,91,255' : '0,229,212'
-        });
-      }
-    }
-
-    function drawFeatParticles() {
-      fCtx.clearRect(0, 0, featCanvas.width, featCanvas.height);
-      fParticles.forEach(p => {
-        p.x += p.vx;
-        p.y += p.vy;
-        if (p.x < 0) p.x = featCanvas.width;
-        if (p.x > featCanvas.width) p.x = 0;
-        if (p.y < 0) p.y = featCanvas.height;
-        if (p.y > featCanvas.height) p.y = 0;
-        fCtx.beginPath();
-        fCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        fCtx.fillStyle = `rgba(${p.color},${p.alpha})`;
-        fCtx.fill();
-      });
-      for (let i = 0; i < fParticles.length; i++) {
-        for (let j = i + 1; j < fParticles.length; j++) {
-          const dx = fParticles[i].x - fParticles[j].x;
-          const dy = fParticles[i].y - fParticles[j].y;
-          const dist = Math.sqrt(dx*dx + dy*dy);
-          if (dist < 80) {
-            fCtx.beginPath();
-            fCtx.moveTo(fParticles[i].x, fParticles[i].y);
-            fCtx.lineTo(fParticles[j].x, fParticles[j].y);
-            fCtx.strokeStyle = `rgba(30,91,255,${0.08 * (1 - dist/80)})`;
-            fCtx.lineWidth = 0.5;
-            fCtx.stroke();
-          }
-        }
-      }
-      fAnimFrame = requestAnimationFrame(drawFeatParticles);
-    }
-
-    resizeFeatCanvas();
-    createFeatParticles();
-    drawFeatParticles();
-    // Re-init after layout settles to pick up correct section height
-    setTimeout(() => {
-      cancelAnimationFrame(fAnimFrame);
-      resizeFeatCanvas();
-      createFeatParticles();
-      drawFeatParticles();
-    }, 300);
-    window.addEventListener('resize', () => { resizeFeatCanvas(); createFeatParticles(); }, { passive: true });
-
-    const featObs = new IntersectionObserver(([entry]) => {
-      if (!entry.isIntersecting) { cancelAnimationFrame(fAnimFrame); }
-      else { drawFeatParticles(); }
-    }, { threshold: 0 });
-    featObs.observe(featCanvas.closest('.lv3-scroll-features'));
-  }
-
-  // COMPARE TABLE TOGGLE
-  const compareToggle = document.getElementById('lv3CompareToggle');
-  const compareTable = document.getElementById('lv3CompareTable');
-  if (compareToggle && compareTable) {
-    compareToggle.addEventListener('click', () => {
-      const isOpen = compareTable.classList.toggle('open');
-      compareToggle.textContent = isOpen ? 'Скрыть сравнение ↑' : 'Сравнить тарифы ↓';
-    });
-  }
-
-  // ANIMATED COUNTERS ON SCROLL
-  function animateCounter(el, target, suffix, prefix, duration) {
-    const start = performance.now();
-    const isFloat = String(target).includes('.');
-    function step(now) {
-      const elapsed = now - start;
-      const progress = Math.min(elapsed / duration, 1);
-      // easeOutExpo
-      const eased = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
-      const current = Math.round(eased * target);
-      el.textContent = prefix + (isFloat ? current.toFixed(1) : current.toLocaleString('ru-RU')) + suffix;
-      if (progress < 1) requestAnimationFrame(step);
-    }
-    requestAnimationFrame(step);
-  }
-
-  function parseCounterEl(el) {
-    const raw = el.dataset.countTo || el.textContent.trim();
-    // Extract numeric value, prefix and suffix
-    const match = raw.match(/^([^\d]*?)([\d\s]+(?:[.,]\d+)?)(.*?)$/);
-    if (!match) return null;
-    const prefix = match[1];
-    const num = parseFloat(match[2].replace(/[\s]/g, '').replace(',', '.'));
-    const suffix = match[3];
-    return { prefix, num, suffix };
-  }
-
-  const counterEls = document.querySelectorAll('.lv3-hstat b[data-count-to], .lv3-proof-stat b[data-count-to], .lv3-astat b[data-count-to]');
-  if (counterEls.length > 0 && 'IntersectionObserver' in window) {
-    const counterObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const el = entry.target;
-          if (el.dataset.counted === 'true') return;
-          el.dataset.counted = 'true';
-          const target = parseFloat(el.dataset.countTo);
-          const prefix = el.dataset.countPrefix || '';
-          const suffix = el.dataset.countSuffix || '';
-          if (!isNaN(target)) {
-            // Special case: 3000 displays as "3 000+"
-            if (el.dataset.countSuffix === ' 000+') {
-              el.textContent = prefix + '0 000+';
-              const startTime = performance.now();
-              const dur = 1600;
-              function stepK(now) {
-                const p = Math.min((now - startTime) / dur, 1);
-                const e = p === 1 ? 1 : 1 - Math.pow(2, -10 * p);
-                const v = Math.round(e * 3);
-                el.textContent = prefix + v + ' 000+';
-                if (p < 1) requestAnimationFrame(stepK);
-              }
-              requestAnimationFrame(stepK);
-            } else {
-              el.textContent = prefix + '0' + suffix;
-              animateCounter(el, target, suffix, prefix, 1400);
-            }
-          }
-          counterObserver.unobserve(el);
-        }
-      });
-    }, { threshold: 0.5 });
-
-    counterEls.forEach(el => counterObserver.observe(el));
-  }
-
-  // ── FOLDER TABS + SCROLL-DRIVEN ──
-  const folderTabs = document.querySelectorAll('.lv3-folder-tab');
-  const folderPanels = document.querySelectorAll('.lv3-folder-panel');
-  const scrollDots = document.querySelectorAll('.lv3-scroll-dot');
-  let folderTimers = {};
-  let currentFolder = 0;
-
-  function stopFolderAnimations() {
-    Object.values(folderTimers).forEach(t => clearTimeout(t));
-    folderTimers = {};
-    aiChatRunning = false;
-    sendRunning = false;
-  }
-
-  function activateFolder(idx) {
-    if (idx === currentFolder && document.querySelector(`.lv3-folder-panel[data-folder-panel="${idx}"]`)?.classList.contains('active')) return;
-    stopFolderAnimations();
-    currentFolder = idx;
-    folderTabs.forEach(t => t.classList.remove('active'));
-    folderPanels.forEach(p => p.classList.remove('active'));
-    scrollDots.forEach(d => d.classList.remove('active'));
-    const tab = document.querySelector(`.lv3-folder-tab[data-folder="${idx}"]`);
-    const panel = document.querySelector(`.lv3-folder-panel[data-folder-panel="${idx}"]`);
-    const dot = document.querySelector(`.lv3-scroll-dot[data-dot="${idx}"]`);
-    if (tab) tab.classList.add('active');
-    if (dot) dot.classList.add('active');
-    if (panel) {
-      panel.classList.add('active');
-      if (idx === 0) {
-        panel.querySelectorAll('.lv3-dash-bar-fill').forEach((bar, i) => {
-          const w = bar.dataset.w ? bar.dataset.w + '%' : bar.style.width;
-          bar.style.width = '0';
-          folderTimers[`bar${i}`] = setTimeout(() => { bar.style.width = w; }, 150 + i * 150);
-        });
-      }
-      if (idx === 1) startAiChatLoop();
-      if (idx === 2) startSendLoop();
-      if (idx === 3) startOrgExpand();
-    }
-  }
-
-  // Click on tabs still works
-  folderTabs.forEach(tab => {
-    tab.addEventListener('click', () => activateFolder(parseInt(tab.dataset.folder)));
-  });
-  // Click on dots
-  scrollDots.forEach(dot => {
-    dot.addEventListener('click', () => activateFolder(parseInt(dot.dataset.dot)));
-  });
-
-  // Click-only tab switching (no scroll-driven)
-
-  // Animate bars on initial load (slide 0 is active)
-  setTimeout(() => {
-    document.querySelectorAll('.lv3-folder-panel[data-folder-panel="0"] .lv3-dash-bar-fill').forEach((bar, i) => {
-      const w = bar.dataset.w ? bar.dataset.w + '%' : bar.style.width;
-      bar.style.width = '0';
-      setTimeout(() => { bar.style.width = w; }, 400 + i * 150);
-    });
-  }, 600);
-
-  // ── AI CHAT LOOP (Slide 2) ──
-  const aiConversations = [
-    [
-      { type: 'user', text: 'Как провести оценку 360 для руководителя?' },
-      { type: 'bot', text: 'Для оценки 360 выберите профиль «Руководитель», добавьте 5–8 оценщиков и установите срок 7 дней. Я сформирую сводный отчёт. 📊' },
-    ],
-    [
-      { type: 'user', text: 'На кого из кандидатов обратить внимание?' },
-      { type: 'bot', text: 'Рекомендую Анну К. — fit к роли 94%, высокая обучаемость. Красных флагов нет. ✅' },
-    ],
-    [
-      { type: 'user', text: 'Что значит низкая вовлечённость?' },
-      { type: 'bot', text: 'Вовлечённость ниже 60% — риск выгорания. Рекомендую 1-on-1 с сотрудником. 🔥' },
-    ],
-    [
-      { type: 'user', text: 'Как составить ИПР для сотрудника?' },
-      { type: 'bot', text: 'На основе оценки AI сформирует ИПР автоматически: зоны роста, рекомендации, сроки. Вы можете отредактировать. 📄' },
-    ],
-  ];
-  let aiConvIdx = 0;
-  let aiChatRunning = false;
-
-  function startAiChatLoop() {
-    const container = document.getElementById('lv3AiMessages');
-    if (!container) return;
-    if (aiChatRunning) return;
-    aiChatRunning = true;
-    runAiConversation();
-  }
-
-  function runAiConversation() {
-    const container = document.getElementById('lv3AiMessages');
-    if (!container) { aiChatRunning = false; return; }
-    const conv = aiConversations[aiConvIdx % aiConversations.length];
-    aiConvIdx++;
-    // Clear messages
-    container.querySelectorAll('.lv3-ai-msg').forEach(m => m.remove());
-    let delay = 0;
-    conv.forEach((msg, i) => {
-      delay += i === 0 ? 400 : 1200;
-      folderTimers[`aiMsg${i}`] = setTimeout(() => {
-        const el = document.createElement('div');
-        el.className = `lv3-ai-msg lv3-ai-msg-${msg.type}`;
-        el.textContent = msg.text;
-        container.appendChild(el);
-        requestAnimationFrame(() => el.classList.add('lv3-ai-msg-visible'));
-        container.scrollTop = container.scrollHeight;
-      }, delay);
-    });
-    // Loop
-    folderTimers['aiLoop'] = setTimeout(() => {
-      if (aiChatRunning) runAiConversation();
-    }, delay + 2500);
-  }
-
-  // ── SEND ANIMATION LOOP (Slide 3) ──
-  let sendRunning = false;
-
-  function startSendLoop() {
-    if (sendRunning) return;
-    sendRunning = true;
-    runSendCycle();
-  }
-
-  function runSendCycle() {
-    const stage0 = document.querySelector('.lv3-send-stage[data-stage="0"]');
-    const stage1 = document.querySelector('.lv3-send-stage[data-stage="1"]');
-    const stage2 = document.querySelector('.lv3-send-stage[data-stage="2"]');
-    const bar = document.getElementById('lv3SendBar');
-    const btn = document.getElementById('lv3SendBtn');
-    if (!stage0) { sendRunning = false; return; }
-    // Reset to stage 0
-    stage0.style.display = '';
-    stage1.style.display = 'none';
-    stage2.style.display = 'none';
-    if (btn) btn.style.display = '';
-    // Stage 1: sending
-    folderTimers['send1'] = setTimeout(() => {
-      stage0.style.display = 'none';
-      stage1.style.display = '';
-      if (btn) btn.style.display = 'none';
-      if (bar) {
-        bar.style.width = '0';
-        let pct = 0;
-        const prog = setInterval(() => {
-          pct += 4;
-          bar.style.width = pct + '%';
-          if (pct >= 100) clearInterval(prog);
-        }, 40);
-      }
-    }, 1800);
-    // Stage 2: done
-    folderTimers['send2'] = setTimeout(() => {
-      stage1.style.display = 'none';
-      stage2.style.display = '';
-    }, 3600);
-    // Loop
-    folderTimers['sendLoop'] = setTimeout(() => {
-      if (sendRunning) runSendCycle();
-    }, 6000);
-  }
-
-  // ── ORG EXPAND ANIMATION (Slide 4) ──
-  function startOrgExpand() {
-    const children = document.querySelectorAll('.lv3-org-children');
-    children.forEach(c => c.classList.remove('open'));
-    let i = 0;
-    function expandNext() {
-      if (i < children.length) {
-        children[i].classList.add('open');
-        i++;
-        folderTimers[`org${i}`] = setTimeout(expandNext, 500);
-      } else {
-        // Collapse and restart
-        folderTimers['orgReset'] = setTimeout(() => {
-          children.forEach(c => c.classList.remove('open'));
-          folderTimers['orgRestart'] = setTimeout(startOrgExpand, 600);
-        }, 3000);
-      }
-    }
-    folderTimers['orgStart'] = setTimeout(expandNext, 400);
-  }
-
-  // ── REFERRAL COPY BUTTON (Slide 5) ──
-  document.addEventListener('click', (e) => {
-    const btn = e.target.closest('#lv3RefCopyBtn');
-    if (!btn) return;
-    const url = 'eltera.ai/ref/xK9mP2qR';
-    navigator.clipboard?.writeText(url).catch(() => {});
-    btn.textContent = 'Скопировано ✓';
-    btn.classList.add('copied');
-    setTimeout(() => {
-      btn.textContent = 'Скопировать';
-      btn.classList.remove('copied');
-    }, 2000);
-  });
-
-  // SMOOTH ANCHOR SCROLL
-  document.querySelectorAll('a[href^="#lv3-"]').forEach(link => {
-    link.addEventListener('click', (e) => {
-      const id = link.getAttribute('href').slice(1);
-      const target = document.getElementById(id);
-      if (target) {
-        e.preventDefault();
-        const offset = 70;
-        const top = target.getBoundingClientRect().top + window.scrollY - offset;
-        window.scrollTo({ top, behavior: 'smooth' });
-      }
-    });
-  });
-}
+// Лёгкий поллинг уведомлений (раз в 60с), пока пользователь в приложении и
+// панель закрыта (чтобы не дёргать список под рукой у пользователя).
+setInterval(() => {
+  if (state.authenticated && !state.notifPanelOpen) loadNotifications();
+}, 60000);

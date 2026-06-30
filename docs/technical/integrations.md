@@ -2,4 +2,4 @@
 
 Список поддерживаемых интеграций и инструкции по подключению.
 
-_Заполнить_
+- [HeadHunter: ТЗ для вкладки «Вакансии»](F:/elteraassestment/eltera/docs/technical/vacancies-hh-spec.md)

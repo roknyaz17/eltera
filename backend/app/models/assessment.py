@@ -51,6 +51,9 @@ class AssessmentLink(Base):
     )
     status: Mapped[str] = mapped_column(String(20), default=LinkStatus.pending.value, index=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    # Момент старта серверного таймера (первое открытие формы). NULL — таймер не
+    # запущен (тест без лимита времени или ссылку ещё не открывали).
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     # 360: кого оценивают и в какой роли оценщик (self/manager/peer/report).
     subject_person_id: Mapped[str | None] = mapped_column(String(32), default=None, index=True)
     rater_role: Mapped[str | None] = mapped_column(String(20), default=None)

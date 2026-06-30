@@ -640,4 +640,8 @@ async def add_structure_member(session: AsyncSession, data: StructureMemberCreat
         if dept is not None:
             dept.head_person_id = person.id
     await session.commit()
+    # Опционально сразу запускаем цикл адаптации (первый опрос уходит сотруднику).
+    if data.send_adaptation:
+        from app.services import adaptation
+        await adaptation.start_cycle(session, person.id)
     return person.id

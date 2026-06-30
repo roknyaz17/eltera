@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.org_context import get_current_org
 from app.models.hh import HHConnection
 from app.models.organization import Organization
 
@@ -24,6 +25,7 @@ AUTHORIZE_URL = "https://hh.ru/oauth/authorize"
 TOKEN_URL = "https://hh.ru/oauth/token"
 API_BASE = "https://api.hh.ru"
 REFRESH_SKEW = timedelta(minutes=5)  # обновляем токен заранее
+HH_PER_PAGE = 50  # HH ограничивает per_page значением 50 для списков работодателя
 
 
 class HHError(Exception):
@@ -119,6 +121,29 @@ async def _ensure_fresh(session: AsyncSession, conn: HHConnection) -> None:
     await session.commit()
 
 
+async def send_negotiation_message(session: AsyncSession, conn: HHConnection, negotiation_id: str, message: str) -> bool:
+    """Отправляет сообщение в чат отклика HH (`POST /negotiations/{id}/messages`).
+
+    Best-effort: возвращает True при успехе, False при отказе HH (например, нет
+    прав messen или чат закрыт) — конвертация кандидата из-за этого не падает.
+    """
+    if not negotiation_id:
+        return False
+    await _ensure_fresh(session, conn)
+    url = f"{API_BASE}/negotiations/{negotiation_id}/messages"
+    async with httpx.AsyncClient(timeout=20) as client:
+        resp = await client.post(url, headers=_headers(conn.access_token), data={"message": message})
+        if resp.status_code in (401, 403) and conn.refresh_token:
+            token = await refresh_tokens(conn.refresh_token)
+            _apply_token(conn, token)
+            await session.commit()
+            resp = await client.post(url, headers=_headers(conn.access_token), data={"message": message})
+    if resp.status_code not in (200, 201, 204):
+        logger.warning("HH send message %s: %s %s", negotiation_id, resp.status_code, resp.text[:200])
+        return False
+    return True
+
+
 async def api_get(session: AsyncSession, conn: HHConnection, path: str, params: dict | None = None) -> dict:
     await _ensure_fresh(session, conn)
     url = f"{API_BASE}{path}"
@@ -138,7 +163,12 @@ async def api_get(session: AsyncSession, conn: HHConnection, path: str, params: 
 
 # ── Подключение ──
 
-async def _default_org_id(session: AsyncSession) -> str:
+async def _resolve_org_id(session: AsyncSession) -> str:
+    """Организация текущего запроса (из JWT-контекста). Вне запроса —
+    первая организация в БД (сиды/планировщик)."""
+    org_id = get_current_org()
+    if org_id is not None:
+        return org_id
     org_id = (await session.execute(select(Organization.id).limit(1))).scalar_one_or_none()
     if org_id is None:
         org = Organization(name="Eltera Demo Company")
@@ -149,7 +179,7 @@ async def _default_org_id(session: AsyncSession) -> str:
 
 
 async def get_connection(session: AsyncSession) -> HHConnection | None:
-    org_id = await _default_org_id(session)
+    org_id = await _resolve_org_id(session)
     return (await session.execute(
         select(HHConnection).where(HHConnection.organization_id == org_id)
     )).scalar_one_or_none()
@@ -159,7 +189,7 @@ async def start_oauth(session: AsyncSession) -> str:
     """Готовит pending-подключение со state и возвращает authorize URL."""
     if not is_configured():
         raise HHError("HH не настроен: задайте HH_CLIENT_ID/HH_CLIENT_SECRET.", 503)
-    org_id = await _default_org_id(session)
+    org_id = await _resolve_org_id(session)
     conn = await get_connection(session)
     state = secrets.token_urlsafe(24)
     if conn is None:
@@ -218,6 +248,79 @@ def _map_vacancy(v: dict) -> dict:
     }
 
 
+def _map_negotiation(n: dict) -> dict:
+    """Один отклик (negotiation) HH → плоский dict для HHResponseEvent."""
+    resume = n.get("resume") or {}
+    name = " ".join(p for p in [resume.get("last_name"), resume.get("first_name"), resume.get("middle_name")] if p)
+    # Текущее состояние отклика в воронке работодателя (response/consider/interview/...).
+    state = n.get("employer_state") or n.get("state")
+    if isinstance(state, dict):
+        state = state.get("id")
+    return {
+        "id": str(n.get("id")) if n.get("id") is not None else None,
+        "state": state,
+        "created_at": n.get("created_at"),
+        "candidate_name": name or (resume.get("title") or None),
+        "candidate_url": resume.get("alternate_url") or n.get("url"),
+        "resume_id": str(resume.get("id")) if resume.get("id") is not None else None,
+    }
+
+
+# Стадии воронки работодателя (fallback, если HH не вернул список коллекций).
+HH_NEGOTIATION_STATES = [
+    "response", "consider", "phone_interview", "assessment", "interview",
+    "offer", "hired", "discard_by_employer", "discard_by_applicant",
+    "discard_no_interaction", "discard_vacancy_closed", "discard_to_other_vacancy",
+]
+
+
+async def fetch_vacancy_responses(session: AsyncSession, conn: HHConnection, vacancy_external_id: str) -> list[dict]:
+    """Все отклики по вакансии по ВСЕМ стадиям воронки работодателя.
+
+    HH хранит отклики в коллекциях по состояниям (`/negotiations/{state}`); голый
+    `/negotiations` отдаёт только метаданные. Обходим каждую коллекцию и
+    проставляем реальную стадию (`employer_state`). Best-effort: отказ по
+    отдельной коллекции не роняет синхронизацию.
+    """
+    # Уточняем актуальный набор коллекций у HH (на случай новых стадий).
+    states = list(HH_NEGOTIATION_STATES)
+    try:
+        meta = await api_get(session, conn, "/negotiations", params={"vacancy_id": vacancy_external_id})
+        ids = [e.get("id") for e in (meta.get("employer_states") or []) if e.get("id")]
+        if ids:
+            states = ids
+    except HHError as exc:
+        logger.warning("HH negotiations meta for vacancy %s: %s", vacancy_external_id, exc.message)
+
+    items: list[dict] = []
+    for coll in states:
+        page, pages = 0, 1
+        try:
+            while page < pages and page < 40:
+                data = await api_get(
+                    session, conn, f"/negotiations/{coll}",
+                    params={"vacancy_id": vacancy_external_id, "page": page, "per_page": HH_PER_PAGE},
+                )
+                items.extend(data.get("items", []))
+                pages = data.get("pages", 1)
+                page += 1
+        except HHError as exc:
+            logger.warning("HH negotiations/%s vac %s: %s", coll, vacancy_external_id, exc.message)
+            continue
+
+    # Дедуп по id переговоров (каждый отклик — ровно в одной коллекции, но страхуемся).
+    seen: set[str] = set()
+    out: list[dict] = []
+    for n in items:
+        m = _map_negotiation(n)
+        if m["id"]:
+            if m["id"] in seen:
+                continue
+            seen.add(m["id"])
+        out.append(m)
+    return out
+
+
 async def fetch_active_vacancies(session: AsyncSession, conn: HHConnection) -> list[dict]:
     """Активные вакансии работодателя + счётчики откликов."""
     if not conn.employer_id:
@@ -233,10 +336,10 @@ async def fetch_active_vacancies(session: AsyncSession, conn: HHConnection) -> l
 
     items: list[dict] = []
     page, pages = 0, 1
-    while page < pages and page < 20:
+    while page < pages and page < 40:
         data = await api_get(
             session, conn, f"/employers/{conn.employer_id}/vacancies/active",
-            params={"page": page, "per_page": 100},
+            params={"page": page, "per_page": HH_PER_PAGE},
         )
         items.extend(data.get("items", []))
         pages = data.get("pages", 1)

@@ -1,6 +1,7 @@
 """ORM-модели. Импортируются здесь, чтобы Alembic видел все таблицы."""
 from app.models.adaptation import AdaptationCheckin, AdaptationCycle
-from app.models.auth import RefreshToken
+from app.models.auth import EmailChallenge, RefreshToken
+from app.models.billing import BalanceEntry, Payment
 from app.models.assessment import (
     AiScoringJob,
     AssessmentLink,
@@ -11,10 +12,27 @@ from app.models.assessment import (
     SessionCompetencyScore,
 )
 from app.models.catalog import Competency, Department, Vacancy
-from app.models.hh import HHConnection
+from app.models.hh import (
+    HHCandidateLink,
+    HHConnection,
+    HHResponseEvent,
+    HHVacancySelection,
+    HHVacancySnapshot,
+)
 from app.models.notification import Notification
 from app.models.organization import Organization, User
-from app.models.person import CandidateProfile, EmployeeProfile, Person
+from app.models.referral import (
+    ReferralAccount,
+    ReferralInvite,
+    ReferralOperation,
+    ReferralWithdrawal,
+)
+from app.models.person import (
+    CandidateProfile,
+    CandidateStageEvent,
+    EmployeeProfile,
+    Person,
+)
 from app.models.test import (
     AnswerOption,
     Category,
@@ -43,6 +61,7 @@ __all__ = [
     "TestVersionItem",
     "Person",
     "CandidateProfile",
+    "CandidateStageEvent",
     "EmployeeProfile",
     "AssessmentLink",
     "AssessmentLinkEvent",
@@ -55,7 +74,18 @@ __all__ = [
     "AdaptationCheckin",
     "Notification",
     "HHConnection",
+    "HHVacancySelection",
+    "HHVacancySnapshot",
+    "HHResponseEvent",
+    "HHCandidateLink",
     "RefreshToken",
+    "EmailChallenge",
+    "ReferralAccount",
+    "ReferralInvite",
+    "ReferralOperation",
+    "ReferralWithdrawal",
+    "Payment",
+    "BalanceEntry",
     "Category",
     "TestCategory",
     "TestLevel",

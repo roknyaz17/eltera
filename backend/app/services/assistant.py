@@ -19,7 +19,7 @@ from app.crud import test as test_crud
 
 settings = get_settings()
 
-VIEWS = ["dashboard", "candidates", "employees", "structure", "constructor",
+VIEWS = ["dashboard", "candidates", "vacancies", "employees", "structure", "constructor",
          "adaptation", "performance", "reports", "settings", "support"]
 
 SYSTEM = (
@@ -33,12 +33,15 @@ SYSTEM = (
     "Отвечай ВСЕГДА строго одним JSON-объектом, без markdown и пояснений вокруг:\n"
     '{"reply": "<кратко и по делу, по-русски>", "action": {"type": "<тип>", "params": {}}}\n\n'
     "Типы action:\n"
-    '- "navigate" — перейти в раздел. params: {"view": "<dashboard|candidates|employees|'
+    '- "navigate" — перейти в раздел. params: {"view": "<dashboard|candidates|vacancies|employees|'
     'structure|constructor|adaptation|performance|reports|settings|support>"}.\n'
     '- "lookup_person" — найти человека и получить его данные ПЕРЕД консультацией. '
     'params: {"query": "<имя или часть имени>"}.\n'
     '- "suggest_competencies" — получить банк компетенций, чтобы подобрать под роль. '
     'params: {"role": "<роль или описание>"}.\n'
+    '- "lookup_vacancy" — получить данные вакансии (метрики, воронку и ОТКЛИКИ) ПЕРЕД '
+    'консультацией по вакансии или её откликам. params: {"query": "<название вакансии или '
+    'часть; пусто = все доступные>", "period": "<7d|14d|30d, по умолчанию 7d>"}.\n'
     '- "add_candidate" — ПРЕДЛОЖИТЬ добавление кандидата (пользователь подтвердит в интерфейсе). '
     'params: {"full_name": "<ФИО>", "email": "", "phone": "", "vacancy_title": ""}.\n'
     '- "add_employee" — ПРЕДЛОЖИТЬ добавление сотрудника (пользователь подтвердит). '
@@ -52,6 +55,12 @@ SYSTEM = (
     "дай вывод (action none).\n"
     "- Чтобы подобрать компетенции — верни suggest_competencies; затем по присланному банку "
     "предложи 4–7 подходящих и кратко объясни выбор.\n"
+    "- Чтобы консультировать по вакансии или её откликам (сколько откликов, кто откликнулся, "
+    "конверсия, воронка, почему мало/много, что делать) — СНАЧАЛА верни lookup_vacancy с названием "
+    "вакансии и нужным периодом; данные придут следующим сообщением, после чего дай разбор "
+    "(action none). НЕ выдумывай отклики и цифры — бери только из присланных данных. Если вакансий "
+    "несколько (multiple) — перечисли их и уточни, какая нужна. Если данных нет — честно скажи и "
+    "предложи подключить/синхронизировать HeadHunter в разделе Вакансии.\n"
     "- Добавление кандидата/сотрудника: собери данные в диалоге. Для кандидата обязательно ФИО; "
     "для сотрудника — ФИО и должность. Если обязательного не хватает — задай уточняющий вопрос "
     "(action none). Когда данных достаточно — верни action add_candidate/add_employee с заполненными "
@@ -60,7 +69,7 @@ SYSTEM = (
     "- Если пользователь просит добавить кандидата/сотрудника и обязательные данные есть — "
     "СРАЗУ верни add_candidate/add_employee, не отвечай отказом и не делай navigate вместо этого.\n"
     "- Изменение/удаление уже существующих записей пока недоступно — но ДОБАВЛЕНИЕ доступно.\n"
-    "- Разделы: Главная(dashboard), Кандидаты(candidates), Сотрудники(employees), "
+    "- Разделы: Главная(dashboard), Кандидаты(candidates), Вакансии(vacancies), Сотрудники(employees), "
     "Структура(structure), Конструктор(constructor), Адаптация(adaptation), "
     "Performance Review(performance), Отчёты(reports), Настройки(settings), Поддержка(support)."
 )
@@ -78,6 +87,16 @@ KNOWLEDGE = (
     "Оценку прошли → Подходит/Условно/Не подходит → Интервью → Принят), KPI, источники, "
     "тепловая карта вакансий. Можно добавить кандидата, отправить оценку, открыть карточку, "
     "PDF-отчёт, перевести в сотрудники.\n"
+    "• Вакансии — работа с вакансиями и откликами на реальных данных HeadHunter. Подключение "
+    "кабинета hh.ru по OAuth (кнопка «Подключить hh.ru»), импорт выбранных вакансий из HH "
+    "(модалка «Добавить из HeadHunter»), синхронизация статусов и откликов. KPI-карточки за "
+    "период (по умолчанию 7 дней, переключатель 7/14/30): «Активная вакансия без откликов», "
+    "«Низкая конверсия», «Хорошая конверсия», «Всего откликов», «Всего оценок отправлено», "
+    "«Подходит под профиль», «Закрытый за период» — каждая кликабельна и открывает "
+    "отфильтрованный список (drill-down). Есть таблица эффективности вакансий, воронка подбора, "
+    "список откликов и подходящих кандидатов. По каждой вакансии можно задать тест по умолчанию "
+    "и переводить отклик в кандидата (создаётся кандидат + назначается тест + ссылка уходит в чат HH). "
+    "Все данные изолированы по организации и правам пользователя; demo/seed-данные не используются.\n"
     "• Сотрудники — список с соответствием должности (fit), рисками увольнения, "
     "удовлетворённостью; карточка с результатами по каждому тесту.\n"
     "• Структура — оргструктура: список + граф по отделам, клик по карточке открывает профиль.\n"
@@ -107,10 +126,14 @@ KNOWLEDGE = (
     "• Импорт: кандидаты и сотрудники грузятся из Excel по шаблону; база компетенций/вопросов/"
     "профилей — отдельным Excel из 3 листов.\n"
     "• Перевод кандидата в сотрудники: из меню кандидата, с переносом результата оценки.\n"
+    "• Вакансии и HH: конверсия вакансии = подходящие кандидаты / отклики × 100; «подходит под "
+    "профиль» и «всего откликов» считаются только по реальным данным HeadHunter, а метрики за "
+    "период (7/14/30 дней) и закрытия — по историческим снимкам/событиям синхронизации, а не "
+    "только по текущему состоянию вакансии.\n"
     "Если не знаешь точного ответа — честно скажи и предложи раздел или обратиться в Поддержку."
 )
 
-DATA_TOOLS = {"lookup_person", "suggest_competencies"}
+DATA_TOOLS = {"lookup_person", "suggest_competencies", "lookup_vacancy"}
 MAX_ROUNDS = 3
 _NONE = {"type": "none", "params": {}}
 
@@ -160,6 +183,58 @@ async def _suggest_competencies(session: AsyncSession, role: str | None) -> dict
     return {"role": role or "", "bank": bank}
 
 
+async def _lookup_vacancy(session: AsyncSession, user, query: str | None,
+                          period: str | None) -> dict:
+    """Данные по вакансии для консультации по откликам: метрики за период,
+    воронка подбора и список откликов. Только вакансии, видимые пользователю."""
+    from app.services import vacancies as svc
+
+    days = svc.parse_period(period)
+    rows = await svc.visible_vacancies(session, user)
+    if not rows:
+        return {"found": False, "reason": "у пользователя нет доступных вакансий"}
+
+    q = (query or "").strip().lower()
+    matched = [v for v in rows if q in (v.title or "").lower()] if q else rows
+    if not matched:
+        return {"found": False, "query": query,
+                "available": [v.title for v in rows][:12]}
+
+    if len(matched) > 1:
+        brief = []
+        for v in matched[:8]:
+            m = await svc.vacancy_metrics(session, v, days)
+            brief.append({"title": v.title, "status": v.status,
+                          "responses_period": m.responses_period,
+                          "responses_total": m.responses_total})
+        return {"found": True, "multiple": True, "period": period or svc.DEFAULT_PERIOD,
+                "matches": brief}
+
+    v = matched[0]
+    m = await svc.vacancy_metrics(session, v, days)
+    funnel = await svc.vacancy_funnel(session, v, days)
+    responses = await svc.list_responses(session, v, days)
+    converted = await svc.converted_event_ids(session, v)
+    resp_items = [{
+        "candidate_name": e.candidate_name, "state": e.state,
+        "occurred_at": e.occurred_at.isoformat() if e.occurred_at else None,
+        "converted": e.id in converted,
+    } for e in responses[:15]]
+    return {
+        "found": True, "period": period or svc.DEFAULT_PERIOD,
+        "conversion_low": svc.CONVERSION_LOW, "conversion_good": svc.CONVERSION_GOOD,
+        "vacancy": {
+            "title": v.title, "status": v.status, "city": v.city,
+            "responses_period": m.responses_period, "responses_total": m.responses_total,
+            "suitable": m.suitable, "conversion": m.conversion,
+            "assessments_sent": m.assessments_sent,
+            "hours_to_first_response": m.hours_to_first_response,
+        },
+        "funnel": [{"label": s.label, "count": s.count} for s in funnel.steps],
+        "responses_shown": len(resp_items), "responses": resp_items,
+    }
+
+
 def _parse(raw: str) -> dict:
     try:
         return json.loads(raw)
@@ -173,7 +248,7 @@ def _parse(raw: str) -> dict:
     return {"reply": (raw or "").strip() or "Извините, не понял запрос.", "action": _NONE}
 
 
-async def chat(session: AsyncSession, messages: list[dict]) -> dict:
+async def chat(session: AsyncSession, user, messages: list[dict]) -> dict:
     if not (settings.ai_enabled and settings.openai_api_key):
         return {"reply": "ИИ-ассистент сейчас недоступен.", "action": _NONE}
 
@@ -195,6 +270,8 @@ async def chat(session: AsyncSession, messages: list[dict]) -> dict:
         except Exception as exc:  # noqa: BLE001
             return {"reply": f"Не удалось получить ответ ИИ: {exc}", "action": _NONE}
 
+        from app.observability import metrics
+        metrics.record_ai_usage("assistant", settings.ai_model, getattr(resp, "usage", None))
         raw = resp.choices[0].message.content or "{}"
         data = _parse(raw)
         action = data.get("action") or _NONE
@@ -205,6 +282,9 @@ async def chat(session: AsyncSession, messages: list[dict]) -> dict:
             params = action.get("params") or {}
             if atype == "lookup_person":
                 result = await _lookup_person(session, params.get("query"))
+            elif atype == "lookup_vacancy":
+                result = await _lookup_vacancy(session, user, params.get("query"),
+                                               params.get("period"))
             else:
                 result = await _suggest_competencies(session, params.get("role"))
             convo.append({"role": "assistant", "content": raw})

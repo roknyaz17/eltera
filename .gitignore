@@ -22,3 +22,5 @@ web-app/design-system/node_modules/
 web-app/design-system/dist/
 web-app/design-system/styles.css
 web-app/design-system/fonts/
+.qodo
+.venv
