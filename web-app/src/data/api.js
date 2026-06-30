@@ -110,6 +110,32 @@ export async function authLogout() {
 }
 export function authMe() { return getJSON("/auth/me"); }
 
+// Публичный GET без токена (каталог тарифов, статус регистрационного платежа).
+async function getPublic(path) {
+  const res = await fetch(`${API_BASE}${path}`, { headers: { Accept: "application/json" } });
+  let data = null;
+  try { data = await res.json(); } catch { /* пусто */ }
+  if (!res.ok) {
+    const msg = (data && data.detail) || `Ошибка ${res.status}`;
+    throw new Error(typeof msg === "string" ? msg : "Ошибка запроса");
+  }
+  return data;
+}
+
+// ── Регистрация: шаг 3 — выбор тарифа и оплата ───────────────────────────────
+// Каталог тарифов (публичный): цены и состав берём с сервера.
+export function fetchTariffs() { return getPublic("/auth/tariffs"); }
+// Создать платёж за тариф по registration-токену (выданному на шаге verify).
+export function registerCheckout(payload) { return authRequest("/auth/register/checkout", payload); }
+// Демо/тест: подтвердить оплату тарифа без провайдера.
+export function registerCheckoutSimulate(paymentId) {
+  return authRequest(`/auth/register/checkout/${paymentId}/simulate`, {});
+}
+// Поллинг статуса оплаты тарифа; после оплаты вернёт { paid, tokens: {...} }.
+export function registerCheckoutStatus(paymentId) {
+  return getPublic(`/auth/register/checkout/${paymentId}/status`);
+}
+
 // ── Профиль организации (вкладка «Настройки») ────────────────────────────────
 export function fetchOrganization() { return getJSON("/organization"); }
 export function updateOrganization(payload) { return patchJSON("/organization", payload); }

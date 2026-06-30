@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
+from types import SimpleNamespace
 
 TEST_DB = Path(__file__).resolve().parent / "test_auth_email_verification.db"
 os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{TEST_DB.as_posix()}"
@@ -14,6 +15,7 @@ from app.core.database import AsyncSessionLocal, Base, engine  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models.auth import EmailChallenge  # noqa: E402
+from app.models.billing import Payment, PAYMENT_PAID  # noqa: E402
 from app.models.base import gen_uuid  # noqa: E402
 from app.models.enums import UserRole  # noqa: E402
 from app.models.organization import Organization, User  # noqa: E402
@@ -101,15 +103,9 @@ class AuthEmailVerificationTests(IsolatedAsyncioTestCase):
             )
             self.assertEqual(verify.status_code, 200)
             tokens = verify.json()
-            self.assertIn("access_token", tokens)
-            self.assertIn("refresh_token", tokens)
-
-            me = await self.client.get(
-                "/api/auth/me",
-                headers={"Authorization": f"Bearer {tokens['access_token']}"},
-            )
-            self.assertEqual(me.status_code, 200)
-            self.assertEqual(me.json()["email"], "new.user@example.com")
+            self.assertIn("registration_token", tokens)
+            self.assertNotIn("access_token", tokens)
+            self.assertNotIn("refresh_token", tokens)
 
     async def test_registration_resend_invalidates_previous_code(self):
         with (
@@ -157,6 +153,97 @@ class AuthEmailVerificationTests(IsolatedAsyncioTestCase):
                 },
             )
             self.assertEqual(new_verify.status_code, 200)
+
+    async def test_registration_payment_simulate_provisions_account_and_returns_tokens(self):
+        with (
+            patch("app.services.auth_challenges.new_email_code", return_value="123456"),
+            patch("app.services.auth_challenges.send_auth_code", new=AsyncMock(return_value=True)),
+            patch("app.services.email.send_payment_receipt", new=AsyncMock(return_value=True)),
+        ):
+            start = await self.client.post(
+                "/api/auth/register",
+                json={
+                    "email": "paid.user@example.com",
+                    "password": "secret123",
+                    "full_name": "Paid User",
+                    "company": "Paid Co",
+                },
+            )
+            self.assertEqual(start.status_code, 201)
+
+            verify = await self.client.post(
+                "/api/auth/register/verify",
+                json={
+                    "email": "paid.user@example.com",
+                    "challenge_token": start.json()["challenge_token"],
+                    "code": "123456",
+                },
+            )
+            self.assertEqual(verify.status_code, 200)
+            registration_token = verify.json()["registration_token"]
+
+            checkout = await self.client.post(
+                "/api/auth/register/checkout",
+                json={
+                    "email": "paid.user@example.com",
+                    "registration_token": registration_token,
+                    "tariff": "Starter",
+                },
+            )
+            self.assertEqual(checkout.status_code, 200)
+            payment_id = checkout.json()["payment_id"]
+
+            simulate = await self.client.post(
+                f"/api/auth/register/checkout/{payment_id}/simulate"
+            )
+            self.assertEqual(simulate.status_code, 200)
+            body = simulate.json()
+            self.assertTrue(body["paid"])
+            self.assertEqual(body["status"], PAYMENT_PAID)
+            self.assertIsNotNone(body["tokens"])
+            self.assertEqual(body["tokens"]["user"]["email"], "paid.user@example.com")
+
+            async with AsyncSessionLocal() as session:
+                payment = await session.get(Payment, payment_id)
+                self.assertIsNotNone(payment)
+                assert payment is not None
+                self.assertEqual(payment.status, PAYMENT_PAID)
+                self.assertIsNotNone(payment.organization_id)
+
+                org = await session.get(Organization, payment.organization_id)
+                self.assertIsNotNone(org)
+                assert org is not None
+                self.assertEqual(org.tariff, "Starter")
+
+                user = (
+                    await session.execute(
+                        select(User).where(User.email == "paid.user@example.com")
+                    )
+                ).scalar_one_or_none()
+                self.assertIsNotNone(user)
+                assert user is not None
+                self.assertEqual(user.organization_id, payment.organization_id)
+
+    async def test_registration_returns_debug_code_when_email_send_fails_in_debug(self):
+        with (
+            patch("app.services.auth_challenges.new_email_code", return_value="654321"),
+            patch("app.services.auth_challenges.send_auth_code", new=AsyncMock(return_value=False)),
+            patch("app.services.auth_challenges.get_settings", return_value=SimpleNamespace(debug=True)),
+        ):
+            response = await self.client.post(
+                "/api/auth/register",
+                json={
+                    "email": "debug.fallback@example.com",
+                    "password": "secret123",
+                    "full_name": "Debug Fallback",
+                    "company": "Debug Co",
+                },
+            )
+            self.assertEqual(response.status_code, 201)
+            body = response.json()
+            self.assertEqual(body["email"], "debug.fallback@example.com")
+            self.assertEqual(body["debug_code"], "654321")
+            self.assertIn("challenge_token", body)
 
     async def test_login_requires_valid_credentials_and_verified_code(self):
         await self._create_user()

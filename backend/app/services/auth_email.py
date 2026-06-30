@@ -4,9 +4,7 @@ from __future__ import annotations
 import html
 
 from app.core.config import get_settings
-from app.services.email import send_email
-
-_BRAND = "Eltera"
+from app.services.email import _BRAND, render_email, send_email
 
 
 def _app_url(path: str = "") -> str:
@@ -14,22 +12,21 @@ def _app_url(path: str = "") -> str:
     return f"{base}/{path.lstrip('/')}" if path else base
 
 
-def _wrap(title: str, intro: str, button_label: str, url: str, footer: str) -> str:
+def _code_block(code: str) -> str:
+    """Крупная «карточка» с одноразовым кодом и моноширинными разрядами."""
+    digits = "".join(
+        f'<span style="display:inline-block;color:#EAF2FF;font-family:\'Courier New\',monospace;'
+        f'font-size:30px;font-weight:700;letter-spacing:.06em;padding:0 7px">{html.escape(ch)}</span>'
+        for ch in code
+    )
     return f"""\
-<div style="background:#0A0F1E;padding:32px 0;font-family:Arial,Helvetica,sans-serif">
-  <div style="max-width:520px;margin:0 auto;background:#111A33;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.08)">
-    <div style="padding:22px 28px;border-bottom:1px solid rgba(255,255,255,.08)">
-      <span style="color:#fff;font-size:18px;font-weight:700;letter-spacing:.5px">{_BRAND}</span>
-      <span style="color:#8899BB;font-size:12px;margin-left:8px">Assessment Intelligence</span>
-    </div>
-    <div style="padding:28px">
-      <h1 style="color:#E6F2FF;font-size:20px;margin:0 0 14px">{title}</h1>
-      <p style="color:#C7D2E8;font-size:14px;line-height:1.6;margin:0 0 24px">{intro}</p>
-      <a href="{url}" style="display:inline-block;background:#1E5BFF;color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:12px 26px;border-radius:9px">{button_label}</a>
-    </div>
-    <div style="padding:16px 28px;border-top:1px solid rgba(255,255,255,.08);color:#6C7A99;font-size:11px">{footer}</div>
-  </div>
-</div>"""
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:6px 0 4px">
+              <tr>
+                <td align="center" style="padding:20px 16px;border-radius:14px;background:rgba(47,107,255,.10);border:1px solid rgba(47,107,255,.30)">
+                  {digits}
+                </td>
+              </tr>
+            </table>"""
 
 
 _ACTIONS = {
@@ -49,15 +46,19 @@ async def send_auth_code(*, to: str, code: str, purpose: str, ttl_minutes: int) 
     title = _TITLES.get(purpose, "Подтвердите email")
     subject = f"{_BRAND}: код {action}"
     intro = (
-        f"Ваш одноразовый код для {action}: "
-        f"<b style=\"font-size:28px;letter-spacing:.22em\">{html.escape(code)}</b><br><br>"
-        f"Код действует {ttl_minutes} минут. Если вы не запрашивали его, просто проигнорируйте это письмо."
+        f"Ваш одноразовый код для {action}. Введите его на странице входа — "
+        f"код действует <b style=\"color:#EAF2FF\">{ttl_minutes} минут</b>."
     )
-    body = _wrap(
-        title,
-        intro,
-        "Открыть Eltera",
-        _app_url("#/login"),
-        "Не пересылайте код другим людям. Сотрудники Eltera никогда не запрашивают его в переписке.",
+    body = render_email(
+        title=title,
+        intro=intro,
+        extra_html=_code_block(code) + (
+            '<p style="color:#C2CFE6;font-size:14.5px;line-height:1.65;margin:18px 0 24px">'
+            'Если вы не запрашивали этот код, просто проигнорируйте письмо.</p>'
+        ),
+        button_label="Открыть Eltera",
+        url=_app_url("#/login"),
+        show_link=False,
+        footer="Не пересылайте код другим людям. Сотрудники Eltera никогда не запрашивают его в переписке.",
     )
     return await send_email(to, subject, body, f"Код: {code}. Действует {ttl_minutes} минут.")

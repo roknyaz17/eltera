@@ -57,9 +57,93 @@ function escapeHtml(value) {
 // "Eltera Landing"). Re-exported so existing imports keep working.
 export { renderLanding } from "./landing.js";
 
+function renderTariffStep(challenge) {
+  const fmt = (n) => Number(n || 0).toLocaleString("ru-RU");
+  const tariffs = challenge.tariffs || [];
+  const selected = challenge.selectedTariff;
+  const cards = tariffs.map((t) => {
+    const active = t.key === selected;
+    return `
+      <button type="button" class="regTariffCard${active ? " active" : ""}" data-pick-tariff="${escapeHtml(t.key)}">
+        <div class="regTariffHead">
+          <span class="regTariffName">${escapeHtml(t.name)}</span>
+          <span class="regTariffPrice">${fmt(t.price)} ₽</span>
+        </div>
+        <div class="regTariffAudience">${escapeHtml(t.audience)}</div>
+        <div class="regTariffMeta">
+          <span>${fmt(t.assessments)} оценок</span>
+          <span>${fmt(t.tokens)} токенов</span>
+        </div>
+      </button>`;
+  }).join("");
+  const sel = tariffs.find((t) => t.key === selected);
+  const payLabel = challenge.status === "paying"
+    ? "Готовим оплату…"
+    : (sel ? `Оплатить ${fmt(sel.price)} ₽` : "Выберите тариф");
+  const disabled = !sel || challenge.status === "paying" ? "disabled" : "";
+  return `
+    <div class="modalBackdrop">
+      <div class="modal authChallengeModal regTariffModal">
+        <div class="modal-head">
+          <div class="modal-head-left">
+            <span class="modal-head-icon">💳</span>
+            <h2 class="modal-head-title">Выберите тариф</h2>
+          </div>
+          <button type="button" class="modal-close-btn" data-auth-challenge-close title="Закрыть">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div class="modal-inner">
+          <p class="modal-subtitle">Почта подтверждена. Выберите тариф — после оплаты создадим аккаунт и зачислим токены.</p>
+          <div class="regTariffGrid">${cards}</div>
+          <button class="authSubmitBtn" type="button" data-register-pay ${disabled}>${payLabel}</button>
+          ${challenge.error ? `<div class="authError">${escapeHtml(challenge.error)}</div>` : ""}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderPayingStep(challenge) {
+  const fmt = (n) => Number(n || 0).toLocaleString("ru-RU");
+  const pay = challenge.payment || {};
+  const waiting = !challenge.error;
+  return `
+    <div class="modalBackdrop">
+      <div class="modal authChallengeModal regPayingModal">
+        <div class="modal-head">
+          <div class="modal-head-left">
+            <span class="modal-head-icon">⏳</span>
+            <h2 class="modal-head-title">Ожидаем подтверждение оплаты</h2>
+          </div>
+          <button type="button" class="modal-close-btn" data-auth-challenge-close title="Закрыть">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div class="modal-inner">
+          <p class="modal-subtitle">
+            ${waiting
+              ? `Тариф <b>${escapeHtml(pay.tariff || "")}</b> · ${fmt(pay.amount)} ₽. Как только оплата подтвердится, мы создадим аккаунт и откроем кабинет.`
+              : "Оплата не подтверждена."}
+          </p>
+          ${waiting ? `<div class="regPayingSpinner" aria-hidden="true"></div>` : ""}
+          ${challenge.error
+            ? `<div class="authError">${escapeHtml(challenge.error)}</div>
+               <button class="authSubmitBtn" type="button" data-register-pay>Повторить оплату</button>`
+            : ""}
+          <button type="button" class="authLink authChallengeClose" data-auth-challenge-close>Отменить</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderAuthChallenge(challenge) {
   if (!challenge) return "";
   const isRegister = challenge.mode === "register";
+  // Шаги регистрации после кода: выбор тарифа и ожидание оплаты.
+  if (isRegister && challenge.step === "tariff") return renderTariffStep(challenge);
+  if (isRegister && challenge.step === "paying") return renderPayingStep(challenge);
   const title = isRegister ? "Подтвердите email" : "Введите код из письма";
   const emailPill = `<span class="authChallengeEmail">${escapeHtml(challenge.email)}</span>`;
   const subtitle = isRegister

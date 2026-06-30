@@ -83,3 +83,55 @@ class ChallengeOut(BaseModel):
     email: str
     purpose: str
     expires_in: int
+    debug_code: str | None = None
+
+
+class TariffOut(BaseModel):
+    """Карточка тарифа для шага выбора при регистрации (цены — с сервера)."""
+
+    key: str
+    name: str
+    audience: str
+    assessments: int
+    tokens: int
+    price: float
+
+
+class RegistrationTokenOut(BaseModel):
+    """Результат подтверждения email на регистрации: одноразовый токен для оплаты."""
+
+    registration_token: str
+    email: str
+    expires_in: int
+    tariffs: list[TariffOut]
+
+
+class RegistrationCheckoutIn(BaseModel):
+    email: EmailStr
+    registration_token: str = Field(min_length=16, max_length=255)
+    tariff: str = Field(min_length=1, max_length=40)
+
+
+class RegistrationCheckoutOut(BaseModel):
+    """Куда вести пользователя для оплаты выбранного тарифа."""
+
+    payment_id: str
+    status: str
+    tariff: str
+    amount: float
+    currency: str
+    configured: bool       # подключён ли реальный провайдер (иначе demo/simulate)
+    test_mode: bool
+    redirect_url: str | None = None  # форма Монеты; None в demo-режиме
+
+
+class RegistrationStatusOut(BaseModel):
+    """Статус регистрационного платежа для поллинга на фронте.
+
+    Пока оплата не подтверждена — status=pending и tokens=None. После подтверждения
+    аккаунт создан и зачислены токены: возвращаем готовые токены доступа (TokenOut).
+    """
+
+    status: str
+    paid: bool
+    tokens: TokenOut | None = None

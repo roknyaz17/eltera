@@ -95,27 +95,107 @@ _BRAND = "Eltera"
 _ACCENT = "#1E5BFF"
 
 
-def _wrap(title: str, intro: str, button_label: str, url: str, footer: str) -> str:
-    """Минималистичный брендовый HTML-шаблон письма."""
+def render_email(
+    *,
+    title: str,
+    intro: str,
+    button_label: str | None = None,
+    url: str | None = None,
+    footer: str = "",
+    show_link: bool = True,
+    preheader: str | None = None,
+    extra_html: str = "",
+) -> str:
+    """Брендовый HTML-шаблон письма на табличной вёрстке (для совместимости с почтовыми клиентами).
+
+    Тёмная «карточка» с градиентным хедером, логотипом-маркой, градиентной кнопкой
+    и аккуратным футером. `button_label`/`url` опциональны — без них кнопка не рисуется.
+    """
+    has_button = bool(button_label and url)
+    preheader = preheader or title
+
+    button_html = ""
+    if has_button:
+        button_html = f"""\
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 4px">
+                  <tr>
+                    <td align="center" style="border-radius:11px;background:linear-gradient(135deg,#2F6BFF 0%,#1E5BFF 50%,#6A3DFF 100%);box-shadow:0 8px 22px rgba(30,91,255,.40)">
+                      <a href="{url}" style="display:inline-block;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;line-height:1;padding:15px 34px;border-radius:11px">{button_label}&nbsp;&rarr;</a>
+                    </td>
+                  </tr>
+                </table>"""
+
+    link_html = ""
+    if has_button and show_link:
+        link_html = f"""\
+              <p style="color:#5E6E92;font-size:12px;line-height:1.6;margin:22px 0 0">
+                Если кнопка не открывается, скопируйте ссылку в браузер:<br>
+                <a href="{url}" style="color:#7EB3FF;word-break:break-all;text-decoration:none">{url}</a>
+              </p>"""
+
     return f"""\
-<div style="background:#0A0F1E;padding:32px 0;font-family:Arial,Helvetica,sans-serif">
-  <div style="max-width:520px;margin:0 auto;background:#111A33;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.08)">
-    <div style="padding:22px 28px;border-bottom:1px solid rgba(255,255,255,.08)">
-      <span style="color:#fff;font-size:18px;font-weight:700;letter-spacing:.5px">{_BRAND}</span>
-      <span style="color:#8899BB;font-size:12px;margin-left:8px">Assessment Intelligence</span>
-    </div>
-    <div style="padding:28px">
-      <h1 style="color:#E6F2FF;font-size:20px;margin:0 0 14px">{title}</h1>
-      <p style="color:#C7D2E8;font-size:14px;line-height:1.6;margin:0 0 24px">{intro}</p>
-      <a href="{url}" style="display:inline-block;background:{_ACCENT};color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:12px 26px;border-radius:9px">{button_label}</a>
-      <p style="color:#6C7A99;font-size:12px;line-height:1.6;margin:24px 0 0">
-        Если кнопка не открывается, скопируйте ссылку:<br>
-        <a href="{url}" style="color:#7EB3FF;word-break:break-all">{url}</a>
-      </p>
-    </div>
-    <div style="padding:16px 28px;border-top:1px solid rgba(255,255,255,.08);color:#6C7A99;font-size:11px">{footer}</div>
-  </div>
-</div>"""
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+</head>
+<body style="margin:0;padding:0;background:#070B16;-webkit-text-size-adjust:100%">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#070B16;font-size:1px;line-height:1px">{preheader}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#070B16;background-image:radial-gradient(900px 380px at 50% -120px,#16224A 0%,rgba(7,11,22,0) 70%)">
+  <tr>
+    <td align="center" style="padding:40px 16px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:540px;width:100%;background:#0F1730;border-radius:18px;overflow:hidden;border:1px solid rgba(255,255,255,.07);box-shadow:0 24px 60px rgba(0,0,0,.45)">
+        <tr>
+          <td style="height:4px;padding:0;background:linear-gradient(90deg,#2F6BFF 0%,#6A3DFF 55%,#28D2C8 100%);font-size:0;line-height:0">&nbsp;</td>
+        </tr>
+        <tr>
+          <td style="padding:26px 32px 22px">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="vertical-align:middle">
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+                    <td width="38" height="38" align="center" style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#2F6BFF,#6A3DFF);color:#fff;font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:800;line-height:38px;text-align:center">E</td>
+                    <td style="padding-left:12px;font-family:Arial,Helvetica,sans-serif">
+                      <div style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:.4px;line-height:1.1">{_BRAND}</div>
+                      <div style="color:#7C8BB0;font-size:11px;letter-spacing:.6px;text-transform:uppercase">Assessment Intelligence</div>
+                    </td>
+                  </tr></table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 32px;font-size:0;line-height:0"><div style="height:1px;background:rgba(255,255,255,.07)"></div></td>
+        </tr>
+        <tr>
+          <td style="padding:26px 32px 30px;font-family:Arial,Helvetica,sans-serif">
+            <h1 style="color:#EAF2FF;font-size:21px;font-weight:700;margin:0 0 14px;line-height:1.3">{title}</h1>
+            <p style="color:#C2CFE6;font-size:14.5px;line-height:1.65;margin:0 0 24px">{intro}</p>
+            {extra_html}
+            {button_html}
+            {link_html}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:18px 32px 22px;background:rgba(255,255,255,.02);border-top:1px solid rgba(255,255,255,.06);font-family:Arial,Helvetica,sans-serif">
+            <p style="color:#5E6E92;font-size:11.5px;line-height:1.6;margin:0">{footer}</p>
+            <p style="color:#3E4A66;font-size:11px;line-height:1.6;margin:8px 0 0">© {_BRAND} · Assessment Intelligence</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>"""
+
+
+def _wrap(title: str, intro: str, button_label: str, url: str, footer: str) -> str:
+    """Обратно-совместимая обёртка над :func:`render_email`."""
+    return render_email(title=title, intro=intro, button_label=button_label, url=url, footer=footer)
 
 
 _ROLE_TITLES = {

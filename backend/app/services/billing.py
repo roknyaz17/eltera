@@ -19,6 +19,8 @@ from app.core.config import get_settings
 from app.models.billing import (
     PAYMENT_CANCELED,
     PAYMENT_FAILED,
+    PAYMENT_KIND_REGISTRATION,
+    PAYMENT_KIND_TOPUP,
     PAYMENT_PAID,
     PAYMENT_PENDING,
     BalanceEntry,
@@ -161,6 +163,18 @@ def _redirect_urls(payment_id: str) -> dict[str, str]:
     }
 
 
+def _registration_redirect_urls(payment_id: str) -> dict[str, str]:
+    """Redirect-URL обратно на экран регистрации (поллинг статуса оплаты тарифа)."""
+    base = get_settings().app_public_url.rstrip("/")
+    pay = lambda status: f"{base}/#/register?pay={status}&order={payment_id}"  # noqa: E731
+    return {
+        "success_url": pay("success"),
+        "fail_url": pay("fail"),
+        "return_url": pay("cancel"),
+        "inprogress_url": pay("progress"),
+    }
+
+
 async def create_payment(
     session: AsyncSession, *, org_id: str, user_id: str | None, data: TopupRequest
 ) -> TopupResponse:
@@ -206,6 +220,54 @@ async def create_payment(
     )
 
 
+async def create_registration_payment(
+    session: AsyncSession, *, challenge_id: str, tariff_key: str
+) -> Payment:
+    """Создаёт ожидающий платёж за тариф на 3-м шаге регистрации.
+
+    Организации ещё нет — платёж не привязан к org_id; subscriber_id для Монеты =
+    id challenge регистрации. Сумма и число токенов берутся с сервера (каталог
+    тарифов), клиент их не задаёт.
+    """
+    from app.services import tariffs as tariffs_svc
+
+    tariff = tariffs_svc.resolve(tariff_key)
+    settings = get_settings()
+    payment = Payment(
+        organization_id=None,
+        user_id=None,
+        provider="moneta",
+        kind=PAYMENT_KIND_REGISTRATION,
+        tariff=tariff.key,
+        registration_challenge_id=challenge_id,
+        pack=tariff.tokens,           # зачисляем токены тарифа (колонка B)
+        amount=tariff.price,
+        currency=CURRENCY,
+        status=PAYMENT_PENDING,
+        test_mode=settings.moneta_test_mode,
+    )
+    session.add(payment)
+    await session.commit()
+    await session.refresh(payment)
+    return payment
+
+
+def registration_redirect_url(payment: Payment) -> str | None:
+    """Ссылка на форму Монеты для регистрационного платежа (None в demo-режиме)."""
+    if not moneta.is_configured():
+        return None
+    tariff_name = payment.tariff or "тариф"
+    params = moneta.build_payment_params(
+        transaction_id=payment.id,
+        amount=payment.amount,
+        currency=payment.currency,
+        subscriber_id=payment.registration_challenge_id or payment.id,
+        description=f"Оплата тарифа Eltera: {tariff_name}",
+        **_registration_redirect_urls(payment.id),
+    )
+    return moneta.payment_url(params)
+
+
 async def get_payment(session: AsyncSession, org_id: str, payment_id: str) -> Payment | None:
     payment = await session.get(Payment, payment_id)
     if payment is None or payment.organization_id != org_id:
@@ -214,21 +276,93 @@ async def get_payment(session: AsyncSession, org_id: str, payment_id: str) -> Pa
 
 
 async def _credit_balance(session: AsyncSession, payment: Payment) -> None:
-    """Зачисляет пакет оценок на баланс (одна строка леджера на платёж)."""
+    """Зачисляет токены на баланс (одна строка леджера на платёж)."""
+    is_registration = payment.kind == PAYMENT_KIND_REGISTRATION
+    title = "Тариф · стартовый баланс" if is_registration else "Пополнение баланса"
     session.add(
         BalanceEntry(
             organization_id=payment.organization_id,
             kind="topup",
             amount=payment.pack,
-            title="Пополнение баланса",
-            basis=f"+{payment.pack} оценок · {moneta.fmt_amount(payment.amount)} ₽",
+            title=title,
+            basis=f"+{payment.pack} токенов · {moneta.fmt_amount(payment.amount)} ₽",
             payment_id=payment.id,
         )
     )
 
 
+async def _provision_registration(session: AsyncSession, payment: Payment) -> bool:
+    """Создаёт Organization + User по challenge регистрации после оплаты тарифа.
+
+    Идемпотентна: используем challenge.used_at как флаг — повторный webhook не
+    создаёт второй аккаунт. Привязывает платёж к созданной организации и
+    проставляет выбранный тариф. Возвращает True, если аккаунт создан сейчас.
+    """
+    from app.models.auth import EmailChallenge
+    from app.models.base import gen_uuid, utcnow
+    from app.models.enums import UserRole
+    from app.models.organization import Organization, User
+    from app.services import auth_challenges as ch
+
+    challenge = (
+        await session.get(EmailChallenge, payment.registration_challenge_id)
+        if payment.registration_challenge_id
+        else None
+    )
+    if challenge is None:
+        logger.error("registration payment %s has no challenge", payment.id)
+        return False
+    # Уже провизионировано (повторный webhook) — просто привяжем платёж к орг.
+    if challenge.used_at is not None:
+        if payment.organization_id is None:
+            existing = (await session.execute(
+                select(User).where(User.email == challenge.email).limit(1)
+            )).scalar_one_or_none()
+            if existing is not None:
+                payment.organization_id = existing.organization_id
+        return False
+
+    payload = ch.parse_payload(challenge)
+    email = (payload.get("email") or challenge.email).strip().lower()
+    # Защита от гонки: email мог быть занят другой регистрацией.
+    exists = (await session.execute(
+        select(User).where(User.email == email).limit(1)
+    )).scalar_one_or_none()
+    if exists is not None:
+        logger.warning("registration payment %s: email %s already exists", payment.id, email)
+        payment.organization_id = exists.organization_id
+        challenge.used_at = utcnow()
+        return False
+
+    org = Organization(
+        id=gen_uuid(),
+        name=str(payload.get("company") or "").strip() or email,
+        tariff=payment.tariff or "Starter",
+    )
+    session.add(org)
+    await session.flush()
+    user = User(
+        id=gen_uuid(),
+        organization_id=org.id,
+        email=email,
+        full_name=str(payload.get("full_name") or "").strip() or email,
+        role=UserRole.admin.value,
+        password_hash=payload.get("password_hash"),
+        is_active=True,
+    )
+    session.add(user)
+    challenge.used_at = utcnow()
+    payment.organization_id = org.id
+    await session.flush()
+    # Привязка к рефереру по коду из реферальной ссылки (если был).
+    await referrals_svc.attach_referral(session, ref_code=payload.get("ref_code"), new_org=org)
+    return True
+
+
 async def _accrue_referral(session: AsyncSession, payment: Payment) -> None:
     """Начисляет 10% пригласившему рефереру (если организация — реферал). Без падений."""
+    if payment.organization_id is None:
+        return
     try:
         await referrals_svc.record_payment(
             session, payment.organization_id, int(payment.amount)
@@ -292,7 +426,12 @@ async def _mark_paid(session: AsyncSession, payment: Payment, operation_id: str 
     payment.operation_id = operation_id or payment.operation_id
     payment.paid_at = utcnow()
     payment.error = None
-    await _credit_balance(session, payment)
+    # Регистрационный платёж: сначала создаём аккаунт (org_id появляется здесь),
+    # затем зачисляем токены на него.
+    if payment.kind == PAYMENT_KIND_REGISTRATION:
+        await _provision_registration(session, payment)
+    if payment.organization_id is not None:
+        await _credit_balance(session, payment)
     await session.commit()
     await _accrue_referral(session, payment)
     await _notify_payment(session, payment, paid=True)

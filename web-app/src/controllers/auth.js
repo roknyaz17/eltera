@@ -13,6 +13,9 @@ import {
   authVerifyLogin,
   authVerifyRegister,
   authVerifyReset,
+  registerCheckout,
+  registerCheckoutSimulate,
+  registerCheckoutStatus,
   setTokens,
 } from "../data/api.js";
 
@@ -58,6 +61,54 @@ function setAuthChallenge(setState, render, saveState, resp) {
   render();
 }
 
+// Завершает регистрацию после подтверждённой оплаты: кладёт токены и ведёт в кабинет.
+function finishRegistration({ setState, saveState, setHash }, tokens) {
+  setTokens({ access_token: tokens.access_token, refresh_token: tokens.refresh_token });
+  try { localStorage.removeItem("eltera_ref"); } catch { /* ignore */ }
+  setState((s) => ({
+    ...s,
+    authenticated: true,
+    user: tokens.user,
+    authChallenge: null,
+    refCode: null,
+  }));
+  saveState();
+  setHash("#/app/dashboard");
+}
+
+// Поллинг статуса оплаты тарифа. Останавливается, когда оплата подтверждена и
+// получены токены, либо когда пользователь ушёл с шага оплаты.
+function pollRegistrationStatus(ctx, paymentId) {
+  const { getState, setState, render } = ctx;
+  let attempts = 0;
+  const tick = () => {
+    const ch = getState().authChallenge;
+    // Пользователь закрыл экран или платёж сменился — прекращаем поллинг.
+    if (!ch || ch.step !== "paying" || !ch.payment || ch.payment.paymentId !== paymentId) return;
+    attempts += 1;
+    registerCheckoutStatus(paymentId)
+      .then((resp) => {
+        if (resp && resp.paid && resp.tokens) {
+          finishRegistration(ctx, resp.tokens);
+          return;
+        }
+        // 5 минут поллинга максимум (150 × 2с).
+        if (attempts < 150) setTimeout(tick, 2000);
+        else {
+          setState((s) => ({
+            ...s,
+            authChallenge: s.authChallenge
+              ? { ...s.authChallenge, status: "idle", error: "Оплата не подтверждена. Попробуйте ещё раз." }
+              : s.authChallenge,
+          }));
+          render();
+        }
+      })
+      .catch(() => { if (attempts < 150) setTimeout(tick, 3000); });
+  };
+  setTimeout(tick, 1500);
+}
+
 export function getDevLibrary(professions, questions, commonCompetencies, professionalCompetencies) {
   try {
     const saved = JSON.parse(localStorage.getItem(DEV_LIB_KEY) || "null");
@@ -77,6 +128,18 @@ export function saveDevLibrary(lib) {
 
 export function initAuthController({ getState, setState, render, saveState, setHash, devLibraryDeps }) {
   const { professions, questions, commonCompetencies, professionalCompetencies } = devLibraryDeps;
+
+  // Возобновление поллинга оплаты после возврата с формы Монеты (перезагрузка
+  // страницы на #/register). Состояние authChallenge переживает редирект в
+  // localStorage — подхватываем платёж и продолжаем ждать подтверждение.
+  const ctx = { getState, setState, render, saveState, setHash };
+  const resumeRegistrationPayment = () => {
+    const ch = getState().authChallenge;
+    if (ch && ch.mode === "register" && ch.step === "paying" && ch.payment && ch.payment.paymentId) {
+      pollRegistrationStatus(ctx, ch.payment.paymentId);
+    }
+  };
+  window.addEventListener("eltera-resume-registration", resumeRegistrationPayment);
 
   // ── Submit handlers ────────────────────────────────────────────────────────
   document.addEventListener("submit", (event) => {
@@ -158,8 +221,38 @@ export function initAuthController({ getState, setState, render, saveState, setH
         authChallenge: s.authChallenge ? { ...s.authChallenge, status: "verifying", error: null } : s.authChallenge,
       }));
       render();
-      const verify = challenge.mode === "register" ? authVerifyRegister : authVerifyLogin;
-      verify({ email: challenge.email, challenge_token: challenge.challengeToken, code })
+      if (challenge.mode === "register") {
+        // Шаг 2 → 3: код подтверждён, аккаунт ещё не создан. Получаем registration-токен
+        // и каталог тарифов, переходим к выбору тарифа и оплате.
+        authVerifyRegister({ email: challenge.email, challenge_token: challenge.challengeToken, code })
+          .then((resp) => {
+            setState((s) => ({
+              ...s,
+              authChallenge: {
+                ...s.authChallenge,
+                step: "tariff",
+                status: "idle",
+                error: null,
+                registrationToken: resp.registration_token,
+                tariffs: resp.tariffs || [],
+                selectedTariff: (resp.tariffs && resp.tariffs[0] && resp.tariffs[0].key) || null,
+                payment: null,
+              },
+            }));
+            saveState();
+            render();
+          })
+          .catch((e) => {
+            setState((s) => ({
+              ...s,
+              authChallenge: s.authChallenge ? { ...s.authChallenge, status: "idle" } : s.authChallenge,
+            }));
+            if (btn) { btn.disabled = false; btn.textContent = btn.dataset._t || "Подтвердить"; }
+            authError(form, e.message || "Не удалось подтвердить код");
+          });
+        return;
+      }
+      authVerifyLogin({ email: challenge.email, challenge_token: challenge.challengeToken, code })
         .then((resp) => {
           setTokens({ access_token: resp.access_token, refresh_token: resp.refresh_token });
           // Реферальный код использован при регистрации — больше не нужен.
@@ -329,6 +422,73 @@ export function initAuthController({ getState, setState, render, saveState, setH
           }));
           if (form) authError(form, e.message || "Не удалось отправить код повторно");
           if (btn) { btn.disabled = false; btn.textContent = btn.dataset._t || "Отправить код ещё раз"; }
+        });
+      return;
+    }
+
+    // Выбор тарифа на 3-м шаге регистрации
+    const pickTariff = event.target.closest("[data-pick-tariff]")?.dataset.pickTariff;
+    if (pickTariff) {
+      event.preventDefault();
+      setState((s) => ({
+        ...s,
+        authChallenge: s.authChallenge ? { ...s.authChallenge, selectedTariff: pickTariff } : s.authChallenge,
+      }));
+      render();
+      return;
+    }
+
+    // Оплатить выбранный тариф → создать платёж, увести на Монету или simulate
+    if (event.target.closest("[data-register-pay]")) {
+      event.preventDefault();
+      const challenge = getState().authChallenge;
+      if (!challenge || !challenge.registrationToken || !challenge.selectedTariff) return;
+      const btn = event.target.closest("button");
+      if (btn) { btn.disabled = true; btn.dataset._t = btn.textContent; btn.textContent = "Создаём платёж…"; }
+      setState((s) => ({
+        ...s,
+        authChallenge: s.authChallenge ? { ...s.authChallenge, status: "paying", error: null } : s.authChallenge,
+      }));
+      render();
+      registerCheckout({
+        email: challenge.email,
+        registration_token: challenge.registrationToken,
+        tariff: challenge.selectedTariff,
+      })
+        .then((resp) => {
+          setState((s) => ({
+            ...s,
+            authChallenge: s.authChallenge
+              ? { ...s.authChallenge, step: "paying", status: "idle", error: null,
+                  payment: { paymentId: resp.payment_id, amount: resp.amount, tariff: resp.tariff,
+                             configured: resp.configured, testMode: resp.test_mode } }
+              : s.authChallenge,
+          }));
+          saveState();
+          render();
+          const ctx = { getState, setState, render, saveState, setHash };
+          if (resp.redirect_url) {
+            // Реальная Монета: уводим на платёжную форму, при возврате — поллинг.
+            pollRegistrationStatus(ctx, resp.payment_id);
+            window.location.href = resp.redirect_url;
+          } else {
+            // Demo-режим: подтверждаем оплату через simulate, затем забираем токены.
+            registerCheckoutSimulate(resp.payment_id)
+              .then((st) => {
+                if (st && st.paid && st.tokens) finishRegistration(ctx, st.tokens);
+                else pollRegistrationStatus(ctx, resp.payment_id);
+              })
+              .catch(() => pollRegistrationStatus(ctx, resp.payment_id));
+          }
+        })
+        .catch((e) => {
+          setState((s) => ({
+            ...s,
+            authChallenge: s.authChallenge ? { ...s.authChallenge, status: "idle" } : s.authChallenge,
+          }));
+          if (btn) { btn.disabled = false; btn.textContent = btn.dataset._t || "Оплатить"; }
+          const form = event.target.closest(".authChallengeModal") || event.target.closest("form");
+          if (form) authError(form, e.message || "Не удалось создать платёж");
         });
       return;
     }

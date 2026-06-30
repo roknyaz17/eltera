@@ -834,6 +834,99 @@ p { line-height: 1.6; }
   text-decoration: underline;
 }
 
+/* ── Регистрация: шаг выбора тарифа ── */
+.regTariffModal {
+  width: min(640px, 100%);
+}
+
+.regTariffGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 8px 0 14px;
+}
+
+@media (max-width: 520px) {
+  .regTariffGrid { grid-template-columns: 1fr; }
+}
+
+.regTariffCard {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(120,150,210,0.22);
+  background: rgba(17,26,51,0.6);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s, transform 0.05s;
+}
+
+.regTariffCard:hover {
+  border-color: rgba(30,91,255,0.5);
+  background: rgba(22,34,66,0.8);
+}
+
+.regTariffCard.active {
+  border-color: #1E5BFF;
+  background: rgba(30,91,255,0.16);
+  box-shadow: 0 0 0 1px #1E5BFF inset;
+}
+
+.regTariffHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.regTariffName {
+  font-weight: 800;
+  font-size: 15px;
+  color: #EAF1FF;
+}
+
+.regTariffPrice {
+  font-weight: 800;
+  font-size: 15px;
+  color: #9FC0FF;
+  white-space: nowrap;
+}
+
+.regTariffAudience {
+  font-size: 12px;
+  color: rgba(230,242,255,0.55);
+}
+
+.regTariffMeta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: rgba(230,242,255,0.75);
+  font-variant-numeric: tabular-nums;
+}
+
+.regTariffMeta span {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(120,150,210,0.14);
+}
+
+/* ── Регистрация: ожидание оплаты ── */
+.regPayingSpinner {
+  width: 38px;
+  height: 38px;
+  margin: 14px auto;
+  border-radius: 50%;
+  border: 3px solid rgba(120,150,210,0.25);
+  border-top-color: #1E5BFF;
+  animation: regSpin 0.9s linear infinite;
+}
+
+@keyframes regSpin {
+  to { transform: rotate(360deg); }
+}
+
 /* ── Auth hints & links ── */
 .authHint {
   font-size: 12px;

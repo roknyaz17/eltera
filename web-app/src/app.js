@@ -502,6 +502,11 @@ function currentRoute() {
   if (hash.startsWith("#/assess/")) return { route: "assess", token: hash.replace("#/assess/", "") };
   if (hash.startsWith("#/ref/")) return { route: "ref", refCode: hash.replace("#/ref/", "").split(/[?&/]/)[0] };
   if (hash === "#/login") return { route: "login" };
+  if (hash.startsWith("#/register")) {
+    // Возврат с формы оплаты Монеты: #/register?pay=success&order=<id>
+    const qi = hash.indexOf("?");
+    return { route: "register", query: qi >= 0 ? hash.slice(qi + 1) : "" };
+  }
   if (hash === "#/thanks") return { route: "thanks" };
   if (hash === "#/dev") return { route: "dev" };
   return { route: "landing" };
@@ -1473,6 +1478,12 @@ function render() {
   }
 
   if (route.route === "login") {
+    document.body.className = "landingBody";
+    app.innerHTML = renderLogin(state);
+    return;
+  }
+
+  if (route.route === "register") {
     document.body.className = "landingBody";
     app.innerHTML = renderLogin(state);
     return;
@@ -3661,6 +3672,12 @@ if (state.authenticated) {
 }
 
 render();
+
+// Возврат с формы оплаты Монеты на шаге регистрации: возобновляем поллинг
+// статуса платежа (состояние authChallenge пережило редирект в localStorage).
+if (!state.authenticated && (location.hash || "").startsWith("#/register")) {
+  window.dispatchEvent(new Event("eltera-resume-registration"));
+}
 
 // Лёгкий поллинг уведомлений (раз в 60с), пока пользователь в приложении и
 // панель закрыта (чтобы не дёргать список под рукой у пользователя).

@@ -17,7 +17,6 @@ from app.core.security import (
     verify_password,
 )
 from app.models.auth import EmailChallenge, RefreshToken
-from app.models.base import gen_uuid
 from app.observability import metrics
 from app.models.enums import UserRole
 from app.models.organization import Organization, User
@@ -31,22 +30,31 @@ from app.schemas.auth import (
     PasswordResetTokenOut,
     RefreshIn,
     RegisterIn,
+    RegistrationCheckoutIn,
+    RegistrationCheckoutOut,
+    RegistrationStatusOut,
+    RegistrationTokenOut,
+    TariffOut,
     TokenOut,
     UserOut,
 )
+from app.services import billing as billing_svc
 from app.services import referrals as referrals_svc
+from app.services import tariffs as tariffs_svc
 from app.services.auth_challenges import (
     CHALLENGE_TTL,
     PURPOSE_LOGIN,
     PURPOSE_PASSWORD_RESET,
     PURPOSE_REGISTRATION,
     challenge_response,
+    consume_registration_code,
     consume_verified_code,
     create_email_challenge,
     get_challenge_by_token,
     parse_payload,
     remaining_seconds,
     validate_challenge_state,
+    validate_registration_token,
     validate_reset_token,
 )
 
@@ -107,7 +115,7 @@ async def register(data: RegisterIn, session: AsyncSession = Depends(get_session
     exists = await _get_user_by_email(session, email)
     if exists is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Пользователь с таким email уже существует.")
-    challenge, raw_token = await create_email_challenge(
+    challenge, raw_token, debug_code = await create_email_challenge(
         session,
         email=email,
         purpose=PURPOSE_REGISTRATION,
@@ -119,7 +127,14 @@ async def register(data: RegisterIn, session: AsyncSession = Depends(get_session
             "ref_code": (data.ref_code or "").strip() or None,
         },
     )
-    return ChallengeOut(**challenge_response(email=challenge.email, raw_token=raw_token, purpose=challenge.purpose))
+    return ChallengeOut(
+        **challenge_response(
+            email=challenge.email,
+            raw_token=raw_token,
+            purpose=challenge.purpose,
+            debug_code=debug_code,
+        )
+    )
 
 
 @router.post("/register/resend", response_model=ChallengeOut, summary="Resend registration code")
@@ -131,47 +146,156 @@ async def resend_registration_code(data: ChallengeResendIn, session: AsyncSessio
         purpose=PURPOSE_REGISTRATION,
     )
     payload = parse_payload(current)
-    challenge, raw_token = await create_email_challenge(
+    challenge, raw_token, debug_code = await create_email_challenge(
         session,
         email=current.email,
         purpose=PURPOSE_REGISTRATION,
         payload=payload,
     )
-    return ChallengeOut(**challenge_response(email=challenge.email, raw_token=raw_token, purpose=challenge.purpose))
+    return ChallengeOut(
+        **challenge_response(
+            email=challenge.email,
+            raw_token=raw_token,
+            purpose=challenge.purpose,
+            debug_code=debug_code,
+        )
+    )
 
 
-@router.post("/register/verify", response_model=TokenOut, summary="Verify registration code")
+def _tariff_catalog() -> list[TariffOut]:
+    return [
+        TariffOut(
+            key=t.key,
+            name=t.name,
+            audience=t.audience,
+            assessments=t.assessments,
+            tokens=t.tokens,
+            price=float(t.price),
+        )
+        for t in tariffs_svc.catalog()
+    ]
+
+
+@router.get("/tariffs", response_model=list[TariffOut], summary="Каталог тарифов (публичный)")
+async def list_tariffs():
+    return _tariff_catalog()
+
+
+@router.post("/register/verify", response_model=RegistrationTokenOut, summary="Verify registration code")
 async def verify_registration(data: ChallengeVerifyIn, session: AsyncSession = Depends(get_session)):
     challenge = await get_challenge_by_token(session, data.challenge_token)
-    validate_challenge_state(
-        challenge,
-        email=data.email,
-        purpose=PURPOSE_REGISTRATION,
-        code=data.code,
-    )
-    payload = parse_payload(challenge)
+    # Проверяем код и ротируем challenge в одноразовый registration-токен.
+    # Аккаунт НЕ создаём — он появится после оплаты тарифа (шаг 3).
+    payload = parse_payload(challenge) if challenge else {}
     email = normalize_email(payload.get("email") or data.email)
     exists = await _get_user_by_email(session, email)
     if exists is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Пользователь с таким email уже существует.")
-
-    org = Organization(id=gen_uuid(), name=str(payload["company"]).strip(), tariff="Start")
-    session.add(org)
-    user = User(
-        id=gen_uuid(),
-        organization_id=org.id,
-        email=email,
-        full_name=str(payload["full_name"]).strip(),
-        role=UserRole.admin.value,
-        password_hash=payload["password_hash"],
-        is_active=True,
+    registration_token = consume_registration_code(challenge, email=data.email, code=data.code)
+    await session.commit()
+    assert challenge is not None
+    return RegistrationTokenOut(
+        registration_token=registration_token,
+        email=challenge.email,
+        expires_in=remaining_seconds(challenge),
+        tariffs=_tariff_catalog(),
     )
-    session.add(user)
-    challenge.used_at = datetime.now(timezone.utc)
-    await session.flush()
-    # Привязка к рефереру по коду из реферальной ссылки (если есть).
-    await referrals_svc.attach_referral(session, ref_code=payload.get("ref_code"), new_org=org)
-    return await _issue_tokens(session, user)
+
+
+@router.post(
+    "/register/checkout",
+    response_model=RegistrationCheckoutOut,
+    summary="Create a tariff payment to finish registration",
+)
+async def register_checkout(
+    data: RegistrationCheckoutIn, session: AsyncSession = Depends(get_session)
+):
+    challenge = await get_challenge_by_token(session, data.registration_token)
+    validate_registration_token(challenge, email=data.email)
+    assert challenge is not None
+    try:
+        tariffs_svc.resolve(data.tariff)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+    # Повторно убедимся, что email ещё свободен (между verify и checkout).
+    exists = await _get_user_by_email(session, challenge.email)
+    if exists is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Пользователь с таким email уже существует.")
+
+    payment = await billing_svc.create_registration_payment(
+        session, challenge_id=challenge.id, tariff_key=data.tariff
+    )
+    redirect_url = billing_svc.registration_redirect_url(payment)
+    from app.services import moneta
+
+    return RegistrationCheckoutOut(
+        payment_id=payment.id,
+        status=payment.status,
+        tariff=payment.tariff or data.tariff,
+        amount=float(payment.amount),
+        currency=payment.currency,
+        configured=moneta.is_configured(),
+        test_mode=payment.test_mode,
+        redirect_url=redirect_url,
+    )
+
+
+@router.post(
+    "/register/checkout/{payment_id}/simulate",
+    response_model=RegistrationStatusOut,
+    summary="Demo/test: confirm tariff payment without provider",
+)
+async def register_checkout_simulate(
+    payment_id: str, session: AsyncSession = Depends(get_session)
+):
+    from app.models.billing import PAYMENT_KIND_REGISTRATION, Payment
+
+    payment = await session.get(Payment, payment_id)
+    if payment is None or payment.kind != PAYMENT_KIND_REGISTRATION:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Платёж не найден")
+    try:
+        payment = await billing_svc.simulate_paid(session, payment)
+    except PermissionError as exc:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    return await _registration_status(session, payment)
+
+
+@router.get(
+    "/register/checkout/{payment_id}/status",
+    response_model=RegistrationStatusOut,
+    summary="Poll tariff payment status; returns tokens once the account is provisioned",
+)
+async def register_checkout_status(
+    payment_id: str, session: AsyncSession = Depends(get_session)
+):
+    from app.models.billing import PAYMENT_KIND_REGISTRATION, Payment
+
+    payment = await session.get(Payment, payment_id)
+    if payment is None or payment.kind != PAYMENT_KIND_REGISTRATION:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Платёж не найден")
+    return await _registration_status(session, payment)
+
+
+async def _registration_status(session: AsyncSession, payment) -> RegistrationStatusOut:
+    """Строит ответ поллинга: после оплаты находит созданного пользователя и выдаёт токены."""
+    from app.models.billing import PAYMENT_PAID
+
+    paid = payment.status == PAYMENT_PAID
+    if not paid or payment.organization_id is None:
+        return RegistrationStatusOut(status=payment.status, paid=paid, tokens=None)
+    user = (
+        await session.execute(
+            select(User)
+            .where(User.organization_id == payment.organization_id, User.role == UserRole.admin.value)
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if user is None:
+        return RegistrationStatusOut(status=payment.status, paid=True, tokens=None)
+    tokens = await _issue_tokens(session, user)
+    return RegistrationStatusOut(status=payment.status, paid=True, tokens=tokens)
 
 
 @router.post("/login", response_model=ChallengeOut, summary="Start login by sending an email code")
@@ -185,13 +309,20 @@ async def login(data: LoginIn, session: AsyncSession = Depends(get_session)):
     if not user.is_active:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Пользователь отключён.")
 
-    challenge, raw_token = await create_email_challenge(
+    challenge, raw_token, debug_code = await create_email_challenge(
         session,
         email=email,
         purpose=PURPOSE_LOGIN,
         payload={"user_id": user.id},
     )
-    return ChallengeOut(**challenge_response(email=challenge.email, raw_token=raw_token, purpose=challenge.purpose))
+    return ChallengeOut(
+        **challenge_response(
+            email=challenge.email,
+            raw_token=raw_token,
+            purpose=challenge.purpose,
+            debug_code=debug_code,
+        )
+    )
 
 
 @router.post("/login/resend", response_model=ChallengeOut, summary="Resend login code")
@@ -203,13 +334,20 @@ async def resend_login_code(data: ChallengeResendIn, session: AsyncSession = Dep
         purpose=PURPOSE_LOGIN,
     )
     payload = parse_payload(current)
-    challenge, raw_token = await create_email_challenge(
+    challenge, raw_token, debug_code = await create_email_challenge(
         session,
         email=current.email,
         purpose=PURPOSE_LOGIN,
         payload=payload,
     )
-    return ChallengeOut(**challenge_response(email=challenge.email, raw_token=raw_token, purpose=challenge.purpose))
+    return ChallengeOut(
+        **challenge_response(
+            email=challenge.email,
+            raw_token=raw_token,
+            purpose=challenge.purpose,
+            debug_code=debug_code,
+        )
+    )
 
 
 @router.post("/login/verify", response_model=TokenOut, summary="Verify login code")
@@ -241,14 +379,19 @@ async def password_forgot(data: PasswordForgotIn, session: AsyncSession = Depend
     email = normalize_email(data.email)
     user = await _get_user_by_email(session, email)
     if user is not None and user.is_active:
-        challenge, raw_token = await create_email_challenge(
+        challenge, raw_token, debug_code = await create_email_challenge(
             session,
             email=email,
             purpose=PURPOSE_PASSWORD_RESET,
             payload={"user_id": user.id, "email": email},
         )
         return ChallengeOut(
-            **challenge_response(email=challenge.email, raw_token=raw_token, purpose=challenge.purpose)
+            **challenge_response(
+                email=challenge.email,
+                raw_token=raw_token,
+                purpose=challenge.purpose,
+                debug_code=debug_code,
+            )
         )
     # Не раскрываем, существует ли пользователь: возвращаем такой же ответ с «пустым»
     # токеном, который никуда не ведёт. На шаге verify код просто не подойдёт.
