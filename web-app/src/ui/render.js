@@ -53,58 +53,9 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
-export function renderLanding(tariffs) {
-  return `
-    <div class="landing">
-      <header class="landingHeader">
-        <a class="landingLogo" href="#/"><img src="/assets/eltera_logo_horizontal_on_dark.svg" alt="Eltera Assessment Intelligence"></a>
-        <nav class="landingNav"><a href="#how">Как работает</a><a href="#products">Продукты</a><a href="#reports">Отчеты</a><a href="#tariffs">Тарифы</a></nav>
-        <div class="landingActions"><button class="ghostOnDark" data-route="login">Войти</button><button class="blueButton" data-route="login">Попробовать за 990 ₽</button></div>
-      </header>
-      <main>
-        <section class="hero">
-          <div class="heroCopy">
-            <div class="pill">AI assessment platform</div>
-            <h1>AI-платформа для оценки кандидатов и сотрудников</h1>
-            <p>Эльтера помогает быстрее принимать кадровые решения: готовые профили ролей, оценочные ссылки, HR-отчеты, красные флаги и рекомендации для интервью или развития.</p>
-            <div class="heroButtons"><button class="blueButton large" data-route="login">Попробовать за 990 ₽</button><button class="ghostOnDark large" data-demo-assessment>Пройти демо-оценку</button></div>
-            <span class="underCta">1 месяц доступа · 20 оценок · кандидаты и сотрудники в одном тарифе</span>
-          </div>
-          <div class="heroPanel">
-            <div class="panelGlow"></div>
-            <div class="heroCard glass">
-              <div class="cardLine"><span>Потенциал эффекта</span><b>AI-анализ</b></div>
-              ${metric("Снизить ошибки найма", "до 40%", 82)}
-              ${metric("Меньше ручной работы с опросами", "до x10", 91)}
-              ${metric("Сократить текучесть", "до 20%", 64)}
-              ${metric("Готовность к роли", "76%", 76)}
-              <div class="aiNote">Рекомендация: приглашать дальше, но проверить обработку возражений и дисциплину ведения воронки.</div>
-            </div>
-          </div>
-        </section>
-        <section class="trusted"><span>Для точечного подбора, офисных и IT-ролей</span><div>HRD · рекрутеры · руководители · собственники · кадровые агентства · команды продаж · back office · IT</div></section>
-        <section class="landingSection" id="products">
-          <div class="sectionIntro dark"><span>Продукты</span><h2>Оценка людей в одной системе</h2><p>Не делим кандидатов и сотрудников: все люди проходят оценку через понятный flow, а компания получает отчет для решения.</p></div>
-          <div class="productGrid">
-            ${product("Оценка кандидатов и сотрудников", "Готовые профили профессий, вопросы, кейсы, красные флаги и итоговая рекомендация.")}
-            ${product("Оценка 360", "Только TalentStudio: самооценка, руководитель, коллеги, подчиненные.")}
-            ${product("Пульс-опросы и вовлеченность", "Диагностика настроения, удержания, выгорания и рисков команд.")}
-            ${product("Performance review", "Оценка результативности, потенциала, развития и управленческих решений.")}
-          </div>
-        </section>
-        <section class="landingSection twoCols" id="how">
-          <div class="sectionIntro dark"><span>Как работает</span><h2>От ссылки до управленческого решения</h2><p>HR выбирает профиль, отправляет ссылку, кандидат или сотрудник проходит оценку, отчет появляется в кабинете и скачивается в PDF.</p></div>
-          <div class="stepsGlass">${step("01", "Выбрать профиль", "Офисные, IT, руководители, массовый и точечный подбор.")}${step("02", "Отправить ссылку", "Оценка открывается без регистрации, внутренний отчет скрыт от участника.")}${step("03", "Получить отчет", "HR видит проценты, компетенции, риски, ответы, историю и PDF.")}</div>
-        </section>
-        <section class="landingSection" id="reports">
-          <div class="reportPreview glass"><div><span class="miniLabel">HR-отчет</span><h2>Понятно для HRD, руководителя и собственника</h2><p>Отчет показывает итоговое решение, профиль компетенций, красные флаги, сильные стороны, риски и рекомендации для следующего интервью.</p></div><div class="reportMini"><strong>76%</strong><span>приглашать дальше</span><div class="miniBars"><i style="width:86%"></i><i style="width:72%"></i><i style="width:58%"></i></div></div></div>
-        </section>
-        <section class="landingSection" id="tariffs"><div class="sectionIntro dark"><span>Тарифы</span><h2>AI-рекомендации, отчеты и аналитика по тарифам</h2></div><div class="tariffGrid landingTariffs">${tariffs.map(renderTariffCard).join("")}</div></section>
-      </main>
-      <footer class="landingFooter"><img src="/assets/eltera_logo_horizontal_on_dark.svg" alt="Eltera"><div><a href="#/login">Войти</a><a href="#tariffs">Тарифы</a><a href="#reports">Отчеты</a><a href="#/app/referrals">Реферальная программа</a></div></footer>
-    </div>
-  `;
-}
+// renderLanding lives in ./landing.js (imported from the Claude Design project
+// "Eltera Landing"). Re-exported so existing imports keep working.
+export { renderLanding } from "./landing.js";
 
 function renderAuthChallenge(challenge) {
   if (!challenge) return "";

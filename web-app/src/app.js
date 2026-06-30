@@ -1,4 +1,5 @@
 import { runPageAnimations } from "./ui/animations.js";
+import { initLanding } from "./ui/landing.js";
 import { initWizardController } from "./controllers/wizard.js";
 import { initFiltersController } from "./controllers/filters.js";
 import { initAuthController, getDevLibrary } from "./controllers/auth.js";
@@ -1456,6 +1457,7 @@ function render() {
   if (route.route === "landing") {
     document.body.className = "landingBody";
     app.innerHTML = renderLanding(tariffs);
+    initLanding();
     return;
   }
 
@@ -1672,7 +1674,7 @@ function render() {
     content = renderSettings(state);
   }
 
-  const newHTML = renderAppShell(state, content || renderDashboard(state, dashboardFilters));
+  const newHTML = renderAppShell(state, content || renderDashboardPlaceholder());
 
   // Анимации (count-up, полосы) запускаем только при смене вкладки или когда
   // данные реально изменились (флаг _animateOnce). Обычные перерисовки
