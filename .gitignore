@@ -27,3 +27,7 @@ web-app/design-system/fonts/
 
 # Claude Design reference export (не исходники приложения)
 web-app/_incoming/
+
+# Хелперы деплоя с креденшелами сервера (пароль внутри) — не коммитить
+deploy/_ssh.py
+deploy/_put.py
