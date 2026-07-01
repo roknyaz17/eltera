@@ -20,6 +20,7 @@ from app.models.billing import (
     PAYMENT_CANCELED,
     PAYMENT_FAILED,
     PAYMENT_KIND_REGISTRATION,
+    PAYMENT_KIND_TARIFF,
     PAYMENT_KIND_TOPUP,
     PAYMENT_PAID,
     PAYMENT_PENDING,
@@ -252,6 +253,60 @@ async def create_registration_payment(
     return payment
 
 
+async def create_tariff_payment(
+    session: AsyncSession, *, org_id: str, user_id: str | None, tariff_key: str
+) -> TopupResponse:
+    """Создаёт платёж на оплату/смену тарифа существующей организацией.
+
+    Организация уже есть (org_id) — платёж привязан к ней сразу. Сумма и число
+    токенов берутся с сервера (каталог тарифов), клиент присылает лишь ключ.
+    После проверенного PAY (см. `_mark_paid`) организации выставляется новый
+    тариф и зачисляются его токены.
+    """
+    from app.services import tariffs as tariffs_svc
+
+    tariff = tariffs_svc.resolve(tariff_key)  # ValueError на неизвестный тариф
+    settings = get_settings()
+    payment = Payment(
+        organization_id=org_id,
+        user_id=user_id,
+        provider="moneta",
+        kind=PAYMENT_KIND_TARIFF,
+        tariff=tariff.key,
+        pack=tariff.tokens,           # зачисляем токены тарифа при оплате
+        amount=tariff.price,
+        currency=CURRENCY,
+        status=PAYMENT_PENDING,
+        test_mode=settings.moneta_test_mode,
+    )
+    session.add(payment)
+    await session.commit()
+    await session.refresh(payment)
+
+    redirect_url: str | None = None
+    if moneta.is_configured():
+        params = moneta.build_payment_params(
+            transaction_id=payment.id,
+            amount=tariff.price,
+            currency=CURRENCY,
+            subscriber_id=org_id,
+            description=f"Оплата тарифа Eltera: {tariff.name}",
+            **_redirect_urls(payment.id),
+        )
+        redirect_url = moneta.payment_url(params)
+
+    return TopupResponse(
+        payment_id=payment.id,
+        status=payment.status,
+        pack=payment.pack,
+        amount=float(payment.amount),
+        currency=payment.currency,
+        configured=moneta.is_configured(),
+        test_mode=payment.test_mode,
+        redirect_url=redirect_url,
+    )
+
+
 def registration_redirect_url(payment: Payment) -> str | None:
     """Ссылка на форму Монеты для регистрационного платежа (None в demo-режиме)."""
     if not moneta.is_configured():
@@ -277,8 +332,12 @@ async def get_payment(session: AsyncSession, org_id: str, payment_id: str) -> Pa
 
 async def _credit_balance(session: AsyncSession, payment: Payment) -> None:
     """Зачисляет токены на баланс (одна строка леджера на платёж)."""
-    is_registration = payment.kind == PAYMENT_KIND_REGISTRATION
-    title = "Тариф · стартовый баланс" if is_registration else "Пополнение баланса"
+    if payment.kind == PAYMENT_KIND_REGISTRATION:
+        title = "Тариф · стартовый баланс"
+    elif payment.kind == PAYMENT_KIND_TARIFF:
+        title = "Смена тарифа"
+    else:
+        title = "Пополнение баланса"
     session.add(
         BalanceEntry(
             organization_id=payment.organization_id,
@@ -430,6 +489,13 @@ async def _mark_paid(session: AsyncSession, payment: Payment, operation_id: str 
     # затем зачисляем токены на него.
     if payment.kind == PAYMENT_KIND_REGISTRATION:
         await _provision_registration(session, payment)
+    # Оплата смены тарифа: выставляем организации новый тариф до зачисления токенов.
+    if payment.kind == PAYMENT_KIND_TARIFF and payment.organization_id is not None and payment.tariff:
+        from app.models.organization import Organization
+
+        org = await session.get(Organization, payment.organization_id)
+        if org is not None:
+            org.tariff = payment.tariff
     if payment.organization_id is not None:
         await _credit_balance(session, payment)
     await session.commit()

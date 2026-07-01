@@ -1,4 +1,7 @@
 import { runPageAnimations } from "./ui/animations.js";
+import { renderCostPanel } from "./ui/cost-per-hire.js";
+import { initTeamSlice } from "./ui/team-slice.js";
+import { initStructureChart } from "./ui/structure-chart.js";
 import { initLanding } from "./ui/landing.js";
 import { initWizardController } from "./controllers/wizard.js";
 import { initFiltersController } from "./controllers/filters.js";
@@ -41,6 +44,7 @@ import {
   fetchEmployeeAssessments,
   fetchEmployeeSessionAnswers,
   fetchEmployee360,
+  fetchEmployee360Overview,
   fetchAdaptationCycles,
   fetchAdaptationAlerts,
   runAdaptationDue,
@@ -53,9 +57,9 @@ import {
   fetchReferrals,
   spendReferralBonuses,
   createReferralWithdrawal,
-  recordReferralPayment,
   fetchBilling,
   createTopup,
+  purchaseTariff,
   fetchPaymentStatus,
   cancelPayment,
   simulatePayment,
@@ -1016,6 +1020,51 @@ function finishTopup(status) {
   // Реферальный бонус пригласившему начисляется на бэкенде (в process_pay).
   // Перечитываем баланс/историю платежей, чтобы UI был консистентен.
   loadBilling({ silent: true });
+  // Оплата тарифа меняет Organization.tariff на бэкенде — подхватываем его в UI.
+  loadOrganization();
+}
+
+// Оплата/смена тарифа существующей организацией через Монету (карта/СБП).
+// Сумма и число токенов считаются на сервере; сразу уходим на форму Монеты, а в
+// демо-режиме (провайдер не настроен) подтверждаем оплату имитацией.
+async function startTariffPayment(tariffKey) {
+  state.modal = {
+    type: "topup", purpose: "tariff", tariffKey, tariffName: tariffKey,
+    step: "processing", busy: true,
+  };
+  render();
+  const m = state.modal;
+  try {
+    const res = await purchaseTariff(tariffKey);
+    m.paymentId = res.payment_id;
+    m.amount = res.amount;
+    m.creditedPack = res.pack;
+    if (res.redirect_url) {
+      // Реальный провайдер: уводим на защищённую форму Монеты. Вернёмся по
+      // success/fail/return URL на #/app/settings?pay=...&order=..., где
+      // handlePaymentReturn() опросит статус, а зачисление сделает webhook.
+      m.step = "redirecting";
+      render();
+      window.location.href = res.redirect_url;
+    } else {
+      // Демо-режим: провайдер не настроен — имитируем успешную оплату на бэкенде.
+      m.step = "waiting";
+      m.demo = true;
+      m.busy = false;
+      render();
+      await new Promise((r) => setTimeout(r, 900));
+      try {
+        finishTopup(await simulatePayment(res.payment_id));
+      } catch (e) {
+        m.step = "error"; m.error = (e && e.message) || "Не удалось подтвердить демо-оплату";
+        render();
+      }
+    }
+  } catch (error) {
+    m.busy = false; m.step = "error";
+    m.error = (error && error.message) || "Не удалось создать платёж";
+    render();
+  }
 }
 
 // Возврат с платёжной формы Монеты: #/app/settings?pay=success|fail|cancel&order=ID.
@@ -1640,6 +1689,12 @@ function render() {
       state.adaptationStatus = "idle";
       loadAdaptationCycles();
     }
+    if (state.view === "360" && !state.threeSixtyOverviewStatus) {
+      state.threeSixtyOverviewStatus = "loading";
+      fetchEmployee360Overview()
+        .then((d) => { state.threeSixtyOverview = d; state.threeSixtyOverviewStatus = "ok"; render(); })
+        .catch(() => { state.threeSixtyOverviewStatus = "error"; render(); });
+    }
     content = state.view === "adaptation" ? renderAdaptation(state) : renderThreeSixty(state);
   }
   if (state.view === "performance") {
@@ -1719,6 +1774,19 @@ function render() {
     }
     if (shouldAnimate) {
       requestAnimationFrame(() => runPageAnimations(app));
+    }
+    // Виджет «Стоимость привлечения» на экране кандидатов: morphdom обнуляет
+    // внутренности #caPanel — перерисовываем виджет после каждого патча DOM.
+    if (state.view === "candidates" && document.getElementById("caPanel")) {
+      renderCostPanel();
+    }
+    // Виджет «Срез команды» на экране сотрудников (ротация плиток + drawer'ы).
+    if (state.view === "employees" && document.getElementById("deptTile")) {
+      initTeamSlice();
+    }
+    // Оргчарт «Структура»: SVG-коннекторы + зум + поиск после патча DOM.
+    if (state.view === "structure" && document.getElementById("orgCanvas")) {
+      initStructureChart();
     }
   }
 
@@ -2915,6 +2983,12 @@ document.addEventListener("click", (event) => {
     state.modal = null;
     render();
   }
+  // Клик по затемнённому фону боковой панели закрывает её (как scrim в drawer'е).
+  if (state.modal && event.target.classList && event.target.classList.contains("modalBackdrop")) {
+    state.modal = null;
+    render();
+    return;
+  }
 
   const stageAction = event.target.closest("[data-stage-action]");
   if (stageAction) {
@@ -3092,79 +3166,20 @@ document.addEventListener("click", (event) => {
     render();
   }
 
-  // Открыть модальное окно СБП для тарифа
+  // Кнопка тарифа (карточка/апгрейд) → реальная оплата тарифа через Монету (карта/СБП).
   const openSbpTariff = event.target.closest("[data-open-sbp]")?.dataset.openSbp;
   if (openSbpTariff) {
-    const TARIFF_PRICES = { TalentCheck: 4900, TalentPro: 12900, TalentStudio: 29900 };
-    const price = TARIFF_PRICES[openSbpTariff] || 990;
-    state.modal = { type: "sbp-payment", tariffId: openSbpTariff, tariffName: openSbpTariff, price };
-    render();
+    startTariffPayment(openSbpTariff);
+    return;
   }
 
-  // Открыть модальное окно СБП для пополнения оценок
+  // Кнопка пополнения оценок → реальная модалка пополнения (пакет предвыбран).
   const topupSbp = event.target.closest("[data-topup-sbp]")?.dataset.topupSbp;
   if (topupSbp) {
-    const TOPUP_PRICES = { '20': 990, '100': 3900, '500': 14900 };
-    const count = parseInt(topupSbp);
-    const price = TOPUP_PRICES[topupSbp] || count * 49.5;
-    state.modal = { type: "sbp-payment", assessments: count, price };
-    render();
-  }
-
-  // Мок-подтверждение оплаты СБП
-  const sbpAction = event.target.closest("[data-action]")?.dataset.action;
-  if (sbpAction === "sbp-confirm") {
-    const btn = event.target.closest("[data-action='sbp-confirm']");
-    const tariffId = btn?.dataset.tariffId;
-    const assessments = parseInt(btn?.dataset.assessments || 0);
-    const paidAmount = Number(state.modal?.price || 0);
-    const statusEl = document.querySelector("[data-sbp-status]");
-    if (statusEl) statusEl.textContent = "⏳ Обработка платежа...";
-    setTimeout(() => {
-      // Реальная оплата → начисляем 10% пригласившему рефереру (если есть).
-      if (paidAmount > 0) {
-        recordReferralPayment(paidAmount).catch((e) => console.warn("Начисление реферу не выполнено:", e));
-      }
-      if (tariffId) {
-        state.company.tariff = tariffId;
-        const TARIFF_LIMITS = { TalentCheck: 100, TalentPro: 500, TalentStudio: 2000 };
-        state.company.planLimit = TARIFF_LIMITS[tariffId] || 20;
-      }
-      if (assessments > 0) {
-        state.company.assessmentsLeft = (state.company.assessmentsLeft || 0) + assessments;
-      }
-      state.modal = null;
-      saveState();
-      render();
-      // Показываем toast-уведомление
-      const toast = document.createElement("div");
-      toast.className = "sbp-toast";
-      toast.textContent = tariffId ? `✓ Тариф ${tariffId} активирован` : `✓ +${assessments} оценок добавлено`;
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 3500);
-    }, 1800);
-  }
-
-  if (sbpAction === "sbp-select-pack") {
-    const pack = parseInt(event.target.closest("[data-pack]")?.dataset.pack || 20);
-    state.modal = { ...state.modal, pack, mode: 'topup' };
-    render();
-  }
-
-  if (sbpAction === "apply-sbp-promo") {
-    const input = document.querySelector("[data-sbp-promo-input]");
-    const code = input?.value.trim().toUpperCase();
-    if (code === "ELTERA10" || code === "DEMO") {
-      state.modal = { ...state.modal, promoApplied: true };
-      render();
-    } else if (input) {
-      input.style.borderColor = "#FF6B6B";
-      input.placeholder = "Неверный промокод";
-    }
-  }
-
-  if (sbpAction === "sbp-deeplink") {
-    window.open("https://qr.nspk.ru/", "_blank");
+    const pack = parseInt(topupSbp, 10) || 20;
+    openTopup();
+    if (state.modal?.type === "topup") { state.modal.pack = pack; render(); }
+    return;
   }
 
   const vacancyFit = event.target.closest("[data-open-vacancy-fit]")?.dataset.openVacancyFit;

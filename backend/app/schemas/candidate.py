@@ -239,6 +239,20 @@ class Report360(BaseModel):
     competencies: list[Comp360] = Field(default_factory=list)
 
 
+class Comp360Gap(BaseModel):
+    """Средний разрыв само-/внешняя по компетенции (агрегат по компании)."""
+    competency: str
+    gap: int      # средний |self - external| по всем оцениваемым
+    count: int    # сколько оцениваемых учтено
+
+
+class Overview360(BaseModel):
+    """Сводка 360 по организации: средний разрыв и топ компетенций по расхождению."""
+    avg_gap: int | None = None
+    subjects: int = 0
+    competencies: list[Comp360Gap] = Field(default_factory=list)
+
+
 # --- Статистика для дашборда ---
 
 

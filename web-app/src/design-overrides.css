@@ -1,0 +1,155 @@
+/* ============================================================================
+   Claude Design — override-слой (портирован 1-в-1 из offline .dc.html, sheet #8).
+   Это инлайновый <style>, которым Claude Design перекрывает базовый styles.css:
+   стекло-панели, белый градиент карточек, радиус 18px, свечения, фиолетовые
+   акценты, анимированные орбы фона. Грузится ПОСЛЕ styles.css — поэтому и !important.
+   ============================================================================ */
+
+html, body { margin: 0; padding: 0; background: rgb(10, 15, 30); font-family: Manrope, system-ui, sans-serif; }
+
+[contenteditable="true"] { outline: none; border-radius: 4px; }
+[contenteditable="true"]:hover { box-shadow: rgba(0, 229, 212, 0.35) 0 0 0 1px; }
+[contenteditable="true"]:focus { box-shadow: rgba(0, 229, 212, 0.7) 0 0 0 1px; background: rgba(0, 229, 212, 0.08); }
+
+.ov-empty { padding: 24px; text-align: center; color: rgba(230, 242, 255, 0.4); font-size: 13px; }
+
+.gp-list { display: flex; flex-direction: column; gap: 6px; }
+.gp-row { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 9px; background: rgba(255, 255, 255, 0.02); }
+.gp-row b { color: rgb(230, 242, 255); font-size: 12px; font-weight: 600; }
+.gp-row span { color: rgba(230, 242, 255, 0.5); font-size: 11px; }
+.gp-pill { margin-left: auto; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+
+.elt-search-wrap, .elt-search-wrap:hover, .elt-search-wrap:focus-within { width: 100% !important; border: 1px solid rgba(255, 255, 255, 0.08) !important; box-shadow: none !important; background-image: none !important; transition: none !important; }
+.elt-search-wrap input, .elt-search-wrap input:focus, .elt-search-wrap input:hover { outline: none !important; box-shadow: none !important; }
+
+.appShell { height: auto !important; min-height: 100vh !important; overflow: visible !important; }
+.appShell { background: radial-gradient(900px 560px at 12% -6%, rgba(30, 91, 255, 0.16), transparent 58%), radial-gradient(820px 540px at 97% 6%, rgba(0, 229, 212, 0.1), transparent 55%), radial-gradient(780px 640px at 62% 122%, rgba(128, 106, 240, 0.13), transparent 60%), rgb(7, 11, 22) !important; }
+
+.elt-kpi, .elt-panel { backdrop-filter: blur(18px) saturate(1.1); transition: transform 0.25s cubic-bezier(0.22, 0.61, 0.36, 1), border-color 0.25s, box-shadow 0.25s; background: linear-gradient(165deg, rgba(255, 255, 255, 0.067), rgba(255, 255, 255, 0.02)) !important; border: 1px solid rgba(255, 255, 255, 0.09) !important; border-radius: 18px !important; box-shadow: rgba(2, 6, 16, 0.45) 0 18px 50px !important; }
+.elt-kpi:hover, .elt-panel:hover { transform: translateY(-3px); border-color: rgba(124, 58, 237, 0.6) !important; box-shadow: rgba(124, 58, 237, 0.4) 0 0 0 1px, rgba(124, 58, 237, 0.32) 0 16px 46px, rgba(2, 6, 16, 0.55) 0 26px 64px !important; }
+
+.elt-sidebar { backdrop-filter: blur(22px); background: rgba(11, 16, 32, 0.55) !important; border-right: 1px solid rgba(255, 255, 255, 0.07) !important; }
+.elt-topbar { backdrop-filter: blur(22px); background: rgba(7, 11, 22, 0.5) !important; border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important; }
+.elt-nav-item { border-radius: 10px; transition: background 0.15s, transform 0.15s; }
+.elt-nav-item:hover { transform: translateX(2px); }
+.elt-nav-item.active { box-shadow: rgba(0, 229, 212, 0.22) 0 0 0 1px inset; background: rgba(30, 91, 255, 0.16) !important; }
+
+.ov-att, .ov-event, .ov-up, .gp-row { transition: background 0.15s, border-color 0.15s, transform 0.15s; background: rgba(255, 255, 255, 0.03) !important; border: 1px solid rgba(255, 255, 255, 0.06) !important; border-radius: 11px !important; }
+.ov-att:hover, .ov-event:hover, .ov-up:hover, .gp-row:hover { transform: translateX(2px); background: rgba(124, 58, 237, 0.1) !important; border-color: rgba(124, 58, 237, 0.4) !important; }
+
+.elt-btn-primary { box-shadow: rgba(30, 91, 255, 0.32) 0 12px 28px; }
+.elt-kpi-value { font-size: 21px !important; }
+
+.elt-funnel-step.status-neutral .elt-funnel-fill, .elt-bar-row.status-neutral .elt-bar-fill { background: linear-gradient(90deg, rgb(58, 28, 114), rgb(155, 107, 242)) !important; }
+.elt-funnel-step.status-good .elt-funnel-fill, .elt-bar-row.status-good .elt-bar-fill { background: linear-gradient(90deg, rgb(22, 101, 52), rgb(74, 222, 128)) !important; }
+.elt-funnel-step.status-medium .elt-funnel-fill, .elt-bar-row.status-medium .elt-bar-fill { background: linear-gradient(90deg, rgb(154, 52, 18), rgb(250, 204, 21)) !important; }
+.elt-funnel-step.status-bad .elt-funnel-fill, .elt-bar-row.status-bad .elt-bar-fill { background: linear-gradient(90deg, rgb(127, 29, 29), rgb(248, 113, 113)) !important; }
+
+.elt-kpi.status-neutral::before { background: linear-gradient(90deg, rgb(58, 28, 114), rgb(155, 107, 242)) !important; }
+.elt-kpi.status-good::before { background: linear-gradient(90deg, rgb(22, 101, 52), rgb(74, 222, 128)) !important; }
+.elt-kpi.status-medium::before { background: linear-gradient(90deg, rgb(154, 52, 18), rgb(250, 204, 21)) !important; }
+.elt-kpi.status-bad::before { background: linear-gradient(90deg, rgb(127, 29, 29), rgb(248, 113, 113)) !important; }
+
+.elt-kpi.status-good .elt-kpi-dot { background: rgb(74, 222, 128) !important; box-shadow: rgb(74, 222, 128) 0 0 6px !important; }
+.elt-kpi.status-medium .elt-kpi-dot { background: rgb(250, 204, 21) !important; box-shadow: rgb(250, 204, 21) 0 0 6px !important; }
+.elt-kpi.status-bad .elt-kpi-dot { background: rgb(248, 113, 113) !important; box-shadow: rgba(248, 113, 113, 0.6) 0 0 6px !important; }
+.elt-kpi.status-neutral .elt-kpi-dot { background: rgb(155, 107, 242) !important; box-shadow: rgb(155, 107, 242) 0 0 6px !important; }
+
+.ov-att-dot, .ov-event-icon { background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.18), transparent); }
+
+.appShell { position: relative; overflow-x: hidden; }
+.appShell > div { position: relative; z-index: 1; }
+.appShell::before, .appShell::after { content: ""; position: fixed; z-index: 0; pointer-events: none; border-radius: 50%; filter: blur(90px); }
+.appShell::before { width: 720px; height: 720px; left: -140px; top: -180px; background: radial-gradient(circle, rgba(30, 91, 255, 0.4), transparent 70%); animation: 18s ease-in-out 0s infinite normal none running eltOrbA; }
+.appShell::after { width: 640px; height: 640px; right: -120px; top: 22%; background: radial-gradient(circle, rgba(124, 58, 237, 0.34), transparent 70%); animation: 22s ease-in-out 0s infinite normal none running eltOrbB; }
+@keyframes eltOrbA { 0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.6; } 50% { transform: translate(140px, 90px) scale(1.28); opacity: 1; } }
+@keyframes eltOrbB { 0%, 100% { transform: translate(0, 0) scale(1.12); opacity: 0.5; } 50% { transform: translate(-110px, -70px) scale(0.85); opacity: 0.95; } }
+@media (prefers-reduced-motion: reduce) { .appShell::before, .appShell::after { animation: none !important; } }
+
+.elt-sidebar { background: linear-gradient(rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)) !important; backdrop-filter: blur(26px) saturate(1.2) !important; border-right: 1px solid rgba(255, 255, 255, 0.09) !important; }
+
+@keyframes riskIn { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: none; } }
+@keyframes riskPulse { 0%, 100% { box-shadow: rgba(248, 113, 113, 0.55) 0 0 0 0; } 50% { box-shadow: rgba(248, 113, 113, 0) 0 0 0 6px; } }
+.risk-row { animation: 0.45s cubic-bezier(0.22, 0.61, 0.36, 1) 0s 1 normal both running riskIn; cursor: default !important; }
+.risk-row:hover { border-color: rgba(255, 255, 255, 0.06) !important; background: rgba(255, 255, 255, 0.03) !important; }
+.risk-dot.hi { animation: 1.8s ease 0s infinite normal none running riskPulse; }
+
+.elt-mini-label { font-size: 10.5px !important; letter-spacing: 0.16em !important; font-weight: 800 !important; color: rgb(155, 107, 242) !important; }
+
+.emp-tr { cursor: pointer; transition: background 0.15s; }
+.emp-tr:hover { background: rgba(124, 58, 237, 0.08); }
+.emp-go { opacity: 0; transition: opacity 0.15s, transform 0.15s; color: rgb(155, 107, 242); font-size: 17px; font-weight: 700; display: inline-block; transform: translateX(-3px); }
+.emp-tr:hover .emp-go { opacity: 1; transform: none; }
+
+.elt-funnel-step:hover, .elt-bar-row:hover { background: rgba(124, 58, 237, 0.1) !important; border-color: rgba(124, 58, 237, 0.4) !important; }
+
+.elt-nav-alert { background: rgba(124, 58, 237, 0.16) !important; color: rgb(185, 166, 255) !important; border: 1px solid rgba(124, 58, 237, 0.4) !important; border-radius: 999px !important; font-size: 9.5px !important; font-weight: 800 !important; letter-spacing: 0.04em !important; text-transform: uppercase !important; padding: 2px 8px !important; }
+
+.gp-row b, .ov-att-title, .ov-up-name, .org-emp b, .eltPersonRow b { color: rgba(230, 242, 255, 0.72) !important; font-weight: 600 !important; }
+.gp-row span, .ov-att-sub, .ov-up-stage { color: rgba(230, 242, 255, 0.42) !important; }
+
+@keyframes deptFade { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: none; } }
+
+.elt-btn-primary:not(.elt-btn-keepblue) { background: rgba(255, 255, 255, 0.05) !important; color: rgb(230, 242, 255) !important; border: 1px solid rgba(255, 255, 255, 0.14) !important; box-shadow: none !important; }
+
+/* ============================================================================
+   Модалки → боковые панели (drawer'ы), как в Claude Design.
+   Все .modalBackdrop/.modal рендерятся как правая выезжающая панель на всю высоту.
+   Контент и привязка к бэкенду не меняются — только позиционирование.
+   ============================================================================ */
+.modalBackdrop { place-items: stretch end !important; padding: 0 !important; background: rgba(5, 8, 16, 0.55) !important; backdrop-filter: blur(3px) !important; -webkit-backdrop-filter: blur(3px) !important; }
+.modal {
+  width: 440px !important; max-width: 94vw !important;
+  height: 100vh !important; max-height: 100vh !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  border-radius: 0 !important;
+  border: none !important; border-left: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: -30px 0 90px rgba(0, 0, 0, 0.5), inset 1px 0 0 rgba(255, 255, 255, 0.06) !important;
+  background: linear-gradient(180deg, rgba(20, 30, 58, 0.62), rgba(11, 16, 32, 0.72)) !important;
+  backdrop-filter: blur(34px) saturate(1.4) !important; -webkit-backdrop-filter: blur(34px) saturate(1.4) !important;
+  animation: eltDrIn 0.32s cubic-bezier(0.22, 0.61, 0.36, 1) !important;
+}
+/* Широкие модалки (таблицы, отклики, импорт) — панель пошире. */
+.modal.modalWide, .modal.hh-import-modal { width: 680px !important; }
+/* Тело панели скроллится, шапка закреплена. */
+.modal > .modal-inner, .modal > .topup-inner { overflow-y: auto !important; max-height: none !important; }
+
+/* Шапка панели — в стиле drawer'ов Claude Design: без эмодзи-квадрата,
+   крупный заголовок, светлая ✕, светлый border-bottom. */
+.modal-head { padding: 22px 22px 16px !important; border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important; background: none !important; }
+.modal-head-icon { display: none !important; }
+.modal-head-title { font-size: 18px !important; font-weight: 800 !important; color: #fff !important; }
+.modal-close-btn { width: 32px !important; height: 32px !important; border-radius: 9px !important; border: 1px solid rgba(255, 255, 255, 0.12) !important; background: rgba(255, 255, 255, 0.05) !important; color: #cdd9ee !important; }
+.modal-close-btn:hover { background: rgba(255, 255, 255, 0.1) !important; color: #fff !important; }
+
+/* ============================================================================
+   AI-ассистент → терминал «eltera-ai», как в Claude Design.
+   Кнопка с лого Eltera + пульс, панель — моно-терминал (cyan, стекло).
+   Хуки data-assistant-* и привязка к /assistant/chat не меняются.
+   ============================================================================ */
+.elt-asst-fab { width: 56px !important; height: 56px !important; border-radius: 50% !important; border: 1px solid rgba(6, 215, 245, 0.5) !important; background: radial-gradient(circle at 34% 30%, rgba(6, 215, 245, 0.32), rgba(11, 16, 32, 0.92)) !important; backdrop-filter: blur(8px) !important; box-shadow: none !important; animation: eltAiPulse 1.8s ease-in-out infinite !important; }
+.elt-asst-fab.open { animation: none !important; background: rgba(11, 16, 32, 0.9) !important; color: #5FE6F5 !important; }
+
+.elt-asst-term { width: 444px !important; max-width: 92vw !important; height: 368px !important; border-radius: 16px !important; border: 1px solid rgba(6, 215, 245, 0.38) !important; background: linear-gradient(rgba(8, 24, 32, 0.66), rgba(5, 12, 20, 0.8)) !important; backdrop-filter: blur(32px) saturate(1.3) !important; box-shadow: 0 30px 90px rgba(0, 0, 0, 0.6) !important; animation: eltAiOpen 0.32s cubic-bezier(0.22, 0.61, 0.36, 1) !important; }
+.elt-asst-term .elt-asst-head { border-bottom: 1px solid rgba(6, 215, 245, 0.22) !important; padding: 11px 14px !important; background: none !important; }
+.elt-asst-term-title { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important; font-size: 12px !important; color: #5FE6F5 !important; font-weight: 600 !important; letter-spacing: 0.02em !important; flex: 1 1 0% !important; }
+.elt-asst-term .elt-asst-x { color: #4aa9bd !important; font-family: ui-monospace, monospace !important; border: none !important; background: transparent !important; }
+.elt-asst-term .elt-asst-body { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important; font-size: 13px !important; line-height: 1.7 !important; color: #8BEAF7 !important; padding: 14px !important; }
+.elt-asst-term .elt-asst-msg { font-family: inherit !important; background: none !important; border: none !important; padding: 2px 0 !important; margin: 0 !important; color: #8BEAF7 !important; white-space: pre-wrap !important; max-width: 100% !important; box-shadow: none !important; }
+.elt-asst-term .elt-asst-msg.user { color: #E3D29B !important; }
+.elt-asst-term .elt-asst-chips { padding: 0 12px 8px !important; gap: 6px !important; }
+.elt-asst-term .elt-asst-chip { font-family: ui-monospace, monospace !important; font-size: 11px !important; border: 1px solid rgba(6, 215, 245, 0.28) !important; background: rgba(6, 215, 245, 0.08) !important; color: #5FE6F5 !important; }
+.elt-asst-term .elt-asst-input { border-top: 1px solid rgba(6, 215, 245, 0.22) !important; display: flex !important; align-items: center !important; gap: 8px !important; padding: 10px 12px !important; background: none !important; }
+.elt-asst-prompt { color: #06D7F5 !important; font-family: ui-monospace, monospace !important; font-weight: 700 !important; flex: 0 0 auto !important; }
+.elt-asst-term .elt-asst-input input { font-family: ui-monospace, monospace !important; font-size: 13px !important; color: #8BEAF7 !important; background: transparent !important; border: none !important; text-align: right !important; caret-color: transparent !important; }
+.elt-asst-term .elt-asst-input button { color: #06D7F5 !important; }
+/* Терминал-детали: тусклые boot-строки, префикс "> " у пользователя, кастомный курсор. */
+.elt-asst-term #elt-asst-greeting { color: #4A7E88 !important; white-space: pre-wrap !important; }
+.elt-asst-term .elt-asst-msg.user { color: #BDF3FB !important; }
+.elt-asst-term .elt-asst-msg.user::before { content: "> "; color: #06D7F5; }
+.elt-asst-cur { width: 8px; height: 15px; background: #E3D29B; flex: 0 0 auto; display: inline-block; animation: caBlink 1s step-end infinite; }
+/* Лого на кнопке AI — белым монохромом. */
+.elt-asst-fab-logo { filter: brightness(0) invert(1); }
+
+@keyframes eltAiPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(6, 215, 245, 0.45); } 50% { box-shadow: 0 0 0 9px rgba(6, 215, 245, 0); } }
+@keyframes eltAiOpen { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }

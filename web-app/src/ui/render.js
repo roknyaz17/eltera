@@ -13,8 +13,10 @@ import {
   getFitStatus,
   getRiskStatus,
   getVacancyHealthStatus,
-  employeeAtRisk
+  employeeAtRisk,
+  PremiumDataTable
 } from "./dashboard-components.js";
+import { setTeamData } from "./team-slice.js";
 import { renderPremiumDashboard, kpiCard, funnelChart, barChart, nineBoxGrid } from "./dashboard-premium.js";
 import { professionalCompetencies, commonCompetencies } from "../data/assessment-library.js";
 import { employeeImportTemplateUrl, candidateImportTemplateUrl, libraryImportTemplateUrl } from "../data/api.js";
@@ -453,7 +455,7 @@ export function renderAppShell(state, content) {
 }
 
 // ─── ИИ-ассистент (виджет в правом нижнем углу) ──────────────────────────────
-export const ASSISTANT_GREETING = "Добрый день! Что я могу для вас сделать?";
+export const ASSISTANT_GREETING = "eltera-ai v1.0 — ассистент по людям и оценкам\nготов. спросите, например: кто в зоне риска?";
 const ASST_BOT_SVG = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V4M9 4h6"/><circle cx="9" cy="13" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1.2" fill="currentColor" stroke="none"/><path d="M2 13v2M22 13v2"/></svg>`;
 const ASST_SEND_SVG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>`;
 const ASST_CHIPS = [
@@ -494,10 +496,12 @@ function renderAssistantProposal(m, i) {
   </div>`;
 }
 
+const ELT_AI_LOGO = `<img class="elt-asst-fab-logo" src="/assets/eltera_symbol_on_dark.svg" alt="AI" width="30" height="30">`;
+
 function renderAssistant(state) {
   const a = state.assistant || {};
   const open = a.open;
-  const fab = `<button class="elt-asst-fab${open ? " open" : ""}" data-assistant-toggle aria-label="ИИ-ассистент">${open ? "✕" : ASST_BOT_SVG}</button>`;
+  const fab = `<button class="elt-asst-fab${open ? " open" : ""}" data-assistant-toggle aria-label="AI-ассистент">${open ? "✕" : ELT_AI_LOGO}</button>`;
   if (!open) return `<div class="elt-asst">${fab}</div>`;
 
   const msgs = a.messages || [];
@@ -516,16 +520,17 @@ function renderAssistant(state) {
 
   return `<div class="elt-asst open">
     ${fab}
-    <div class="elt-asst-panel">
+    <div class="elt-asst-panel elt-asst-term">
       <div class="elt-asst-head">
-        <span class="elt-asst-head-icon">${ASST_BOT_SVG}</span>
-        <div class="elt-asst-head-title"><b>Ассистент Eltera</b><span>ИИ-помощник</span></div>
+        <span class="elt-asst-term-title">eltera-ai — терминал</span>
         <button class="elt-asst-x" data-assistant-toggle aria-label="Закрыть">✕</button>
       </div>
       <div class="elt-asst-body" id="elt-asst-body">${greet}${bubbles}${dots}</div>
       ${chips}
       <form class="elt-asst-input" data-assistant-form>
-        <input name="msg" placeholder="Спросите что-нибудь…" autocomplete="off" ${a.busy ? "disabled" : ""}>
+        <span class="elt-asst-prompt">&gt;</span>
+        <input name="msg" placeholder="Спросите AI…" autocomplete="off" ${a.busy ? "disabled" : ""}>
+        <span class="elt-asst-cur"></span>
         <button type="submit" aria-label="Отправить" ${a.busy ? "disabled" : ""}>${ASST_SEND_SVG}</button>
       </form>
     </div>
@@ -906,47 +911,85 @@ export function renderCandidates(state) {
       ].map(([label, value]) => ({ label, value, target: `Кандидаты:${label}` }))
     : dashboardData(state, "Кандидаты").funnel.map(([label, value]) => ({ label, value, target: `Кандидаты:${label}` }));
 
-  const vacancyItems = usingApi && Array.isArray(stats.by_vacancy)
-    ? stats.by_vacancy.map((v) => [v.vacancy, v.fit])
-    : state.vacancies.map((item) => [item.title, item.fit]);
+  // ── Разметка премиум (портирована из Claude Design — candidates.dc.html) ──
+  const panelHead = (svg, title, caption) => `
+    <div class="elt-panel-head">
+      <div class="elt-panel-head-left"><svg width="15" height="15" viewBox="0 0 15 15" fill="none">${svg}</svg><h2>${title}</h2></div>
+      ${caption ? `<span class="elt-panel-caption">${caption}</span>` : ""}
+    </div>`;
+  const fitBadge = (pct) => `<span style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;font-size:11.5px;font-weight:800;color:#4ADE80;"><span style="width:7px;height:7px;border-radius:50%;background:linear-gradient(135deg,#166534,#4ADE80);"></span>fit ${pct}%</span>`;
 
-  const attentionItems = usingApi && Array.isArray(stats.attention) && stats.attention.length
-    ? stats.attention
-    : [
-        { title: "12 кандидатов зависли", text: "Не прошли оценку после отправки ссылки.", status: "medium", target: "Кандидаты:Зависли" },
-        { title: "Оператор call-центра", text: "Только 28% кандидатов подходят под профиль.", status: "bad", target: "Кандидаты:Оператор call-центра" }
-      ];
+  const bestHtml = fit.length
+    ? fit.slice(0, 6).map((item) => {
+        const name = item.person.fullName;
+        const role = (item.person && item.person.position) || item.vacancyTitle || "кандидат";
+        return `<button class="gp-row" data-open-card="${item.id}">
+          <div style="flex:1 1 0%;min-width:0"><b>${escapeHtml(name)}</b><br><span>${escapeHtml(role)}</span></div>
+          ${fitBadge(item.result.percent)}
+        </button>`;
+      }).join("")
+    : `<div class="ov-empty">${ready ? "Сильных кандидатов пока нет." : "Загрузка кандидатов…"}</div>`;
 
-  return DashboardPageLayout({
-    title: "Кандидаты",
-    subtitle,
-    meta: ["точечный подбор", "офис", "IT"],
-    period: state.period,
-    actions: [
-      { label: "Добавить кандидата", attrs: "data-action=\"add-candidate\"" },
-      { label: "Импорт", attrs: "data-action=\"import-candidates\"" },
-      { label: "Создать ссылку", primary: true, attrs: "data-action=\"create-link\"" }
-    ],
-    filters: pageFilterConfig.candidates,
-    activeFiltersMap: (state.activeFilters && state.activeFilters.candidates) || {},
-    kpiCards,
-    charts: [
-      { title: "Воронка кандидатов", caption: "конверсия этапов", type: "funnel", items: funnelItems },
-      { title: "Кандидаты по источникам", caption: "качество входа", items: sourceItems },
-      { title: "Распределение по вакансиям", caption: "подходящие", items: vacancyItems },
-      { title: "Кого взять в работу сейчас", caption: "top fit", wide: true, items: fit.map((item) => [item.person.fullName, item.result.percent, item.id, item.status]), note: state.company.tariff === "TalentStudio" ? "AI рекомендует сначала брать кандидатов с высоким fit и низкими красными флагами." : "AI-рекомендации доступны на тарифе TalentStudio." }
-    ],
-    heatmap: candidateHeatmap(state),
-    attentionItems,
-    table: candidatesTableConfig(applyFilters("candidates", candidates, state.activeFilters?.candidates))
-  });
+  // Воронка/источники — barChart со статусами по строкам (как в макете).
+  const FUNNEL_STATUS = ["neutral", "medium", "good", "good", "good"];
+  const funnelBars = funnelItems.map((f, i) => ({ label: f.label, value: f.value, status: FUNNEL_STATUS[i] || "good" }));
+  const sourceBars = sourceItems
+    .slice()
+    .sort((a, b) => b[1] - a[1])
+    .map(([label, value], i) => ({ label, value, status: i === 0 ? "good" : "neutral" }));
+
+  const kpiCards8 = kpiCards.filter((k) => k.label !== "Приняты");
+
+  return `<section class="elt-dashboard">
+    <header class="elt-dash-header">
+      <div class="elt-dash-header-left">
+        <span class="elt-mini-label">Подбор</span>
+        <h1 class="elt-dash-title">Кандидаты</h1>
+        <p class="elt-dash-subtitle">${escapeHtml(failed ? subtitle : "Воронка подбора, источники и результаты оценки")}</p>
+      </div>
+      <div class="elt-dash-header-actions">
+        <button class="elt-btn-ghost" data-action="add-candidate">+ Кандидат</button>
+        <button class="elt-btn-ghost" data-action="import-candidates">Импорт</button>
+        <button class="elt-btn-ghost" data-open-filters="candidates">⚲ Фильтры</button>
+      </div>
+    </header>
+
+    <section class="elt-kpi-grid">
+      ${kpiCards8.map(kpiCard).join("")}
+    </section>
+
+    <section class="elt-analytics-grid">
+      <article class="elt-panel elt-chart-panel">
+        ${panelHead('<path d="M2 2h11l-4 5v5l-3-2V7L2 2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>', "Воронка кандидатов", "конверсия")}
+        ${barChart(funnelBars)}
+      </article>
+
+      <article class="elt-panel elt-chart-panel">
+        ${panelHead('<rect x="1.5" y="4" width="12" height="9" rx="1.3" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 4V3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1" stroke="currentColor" stroke-width="1.2"/>', "Источники откликов", "30 дней")}
+        ${barChart(sourceBars)}
+      </article>
+
+      <article class="elt-panel elt-chart-panel">
+        ${panelHead('<path d="M7.5 1.5l1.6 3.3 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6L1.3 5.3l3.6-.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>', "Лучшие кандидаты", "по fit-профилю")}
+        <div class="gp-list">${bestHtml}</div>
+      </article>
+    </section>
+
+    <article class="elt-panel" id="caPanel" style="margin-top:16px">
+      <div class="elt-panel-head">
+        <div class="elt-panel-head-left"><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M7.5 4.3v6.4M6 6c0-.8.7-1.2 1.5-1.2S9 5.3 9 6c0 .9-1.5 1-1.5 1.8" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg><h2>Стоимость привлечения</h2></div>
+        <div id="caPeriods" style="display:flex;gap:8px"></div>
+      </div>
+      <div id="caBanner"></div>
+      <div id="caHero"></div>
+    </article>
+  </section>`;
 }
 
 const EMPTY_EMP_STATS = {
   total: 0, high_result: 0, medium_result: 0, low_result: 0, at_risk: 0,
   burnout: 0, avg_satisfaction: 0, avg_fit: 0, by_department: [], by_risk: []
 };
-const RISK_LABELS_RU = { low: "Низкий риск", medium: "Средний риск", high: "Высокий риск" };
 
 export function renderEmployees(state) {
   const ready = Boolean(state.employeeStats && state.employeesApi);
@@ -961,37 +1004,121 @@ export function renderEmployees(state) {
       ? `Данные из API · ${s.total} сотрудников`
       : "Загрузка данных из API…";
 
-  return DashboardPageLayout({
-    title: "Сотрудники",
-    subtitle,
-    meta: ["оценка", "риски", "развитие"],
-    period: state.period,
-    actions: [
-      { label: "Импорт", attrs: "data-action=\"import-employees\"" },
-      { label: "Добавить сотрудника", attrs: "data-action=\"add-structure-member\"" },
-      { label: "Создать оценку", primary: true, attrs: "data-action=\"open-assess-wizard\"" }
-    ],
-    filters: pageFilterConfig.employees,
-    activeFiltersMap: (state.activeFilters && state.activeFilters.employees) || {},
-    kpiCards: [
-      { label: "Всего сотрудников", value: s.total, caption: "в базе", status: "neutral", target: "Сотрудники:Сотрудников всего", iconName: "employees" },
-      { label: "Высокий результат", value: s.high_result, caption: "80%+", status: "good", target: "Сотрудники:Высокий результат", iconName: "fit" },
-      { label: "Средний результат", value: s.medium_result, caption: "60–79%", status: "medium", target: "Сотрудники:Средний результат", iconName: "chart" },
-      { label: "Низкий результат", value: s.low_result, caption: "ниже 60%", status: "bad", target: "Сотрудники:Низкий результат", iconName: "risk" },
-      { label: "В зоне риска", value: s.at_risk, caption: "требуют внимания", status: "bad", target: "Сотрудники:В зоне риска", iconName: "risk" },
-      { label: "Выгорание", value: s.burnout, caption: "признаки", status: "medium", target: "Сотрудники:Выгорание", iconName: "balance" },
-      { label: "Средний балл", value: `${s.avg_fit}%`, caption: "соответствие", status: getFitStatus(s.avg_fit), target: "Сотрудники:Сотрудников всего", iconName: "completed" },
-      { label: "Удовлетворенность", value: `${s.avg_satisfaction}%`, caption: "средняя", status: "medium", target: "Сотрудники:Удовлетворенность", iconName: "completed" }
-    ],
-    charts: [
-      { title: "Распределение по отделам", caption: "срез базы", items: s.by_department.map((d) => [d.department, d.count]) },
-      { title: "Риски сотрудников", caption: "приоритет", items: s.by_risk.map((r) => [RISK_LABELS_RU[r.level] || r.level, r.count]), note: "В первую очередь смотрим сотрудников с высоким риском увольнения." }
-    ],
-    attentionItems: risky.length
-      ? [{ title: `${risky.length} сотрудников в зоне риска`, text: "Нужны разговоры с руководителями и ИПР.", status: "bad", target: "Сотрудники:В зоне риска" }]
-      : [],
-    table: employeesTableConfig(applyFilters("employees", employees, state.activeFilters?.employees))
-  });
+  const kpiCards = [
+    { label: "Всего сотрудников", value: s.total, caption: "в базе", status: "neutral", target: "Сотрудники:Сотрудников всего", iconName: "employees" },
+    { label: "Высокий результат", value: s.high_result, caption: "80%+", status: "good", target: "Сотрудники:Высокий результат", iconName: "fit" },
+    { label: "Средний результат", value: s.medium_result, caption: "60–79%", status: "medium", target: "Сотрудники:Средний результат", iconName: "chart" },
+    { label: "Низкий результат", value: s.low_result, caption: "ниже 60%", status: "bad", target: "Сотрудники:Низкий результат", iconName: "risk" },
+    { label: "В зоне риска", value: s.at_risk, caption: "требуют внимания", status: "bad", target: "Сотрудники:В зоне риска", iconName: "risk" },
+    { label: "Выгорание", value: s.burnout, caption: "признаки", status: "medium", target: "Сотрудники:Выгорание", iconName: "balance" },
+    { label: "Средний балл", value: `${s.avg_fit}%`, caption: "соответствие", status: getFitStatus(s.avg_fit), target: "Сотрудники:Сотрудников всего", iconName: "completed" },
+    { label: "Удовлетворённость", value: `${s.avg_satisfaction}%`, caption: "средняя", status: "medium", target: "Сотрудники:Удовлетворенность", iconName: "completed" }
+  ];
+
+  // ── Данные виджета «Срез команды» (отделы + списки) из реальных сотрудников ──
+  const tup = (e, sub) => [e.fullName, sub !== undefined ? sub : (e.department || ""), e.fit == null ? 0 : e.fit];
+  const assessed = employees.filter((e) => e.fit != null);
+  const byDept = {};
+  employees.forEach((e) => { const d = e.department || "Без отдела"; (byDept[d] = byDept[d] || []).push(e); });
+  const D = Object.entries(byDept).map(([n, list]) => {
+    const fits = list.map((e) => e.fit).filter((v) => v != null);
+    const f = fits.length ? Math.round(fits.reduce((a, b) => a + b, 0) / fits.length) : 0;
+    const r = list.filter(employeeAtRisk).length;
+    return { n, c: list.length, f, r, s: f >= 80 ? "good" : f >= 65 ? "medium" : "bad" };
+  }).sort((a, b) => b.c - a.c);
+  const teamData = {
+    D,
+    RISK: risky.map((e) => tup(e, e.department || "")),
+    BEST: assessed.filter((e) => e.fit >= 80).sort((a, b) => b.fit - a.fit).map((e) => tup(e)),
+    MID: assessed.filter((e) => e.fit >= 65 && e.fit < 80).map((e) => tup(e)),
+    LOW: assessed.filter((e) => e.fit < 65).map((e) => tup(e)),
+    BURN: employees.filter((e) => e.satisfaction > 0 && e.satisfaction < 50).map((e) => tup(e, `${e.department || ""} · признаки выгорания`)),
+    ALL: employees.map((e) => tup(e))
+  };
+  setTeamData(teamData);
+
+  const bestName = teamData.BEST[0] ? teamData.BEST[0][0] : "—";
+  const riskName = teamData.RISK[0] ? teamData.RISK[0][0] : "—";
+
+  // «Срез команды» — три плитки. deptTile заполняет виджет (ротация), risk/best — статикой.
+  const deptTile = `<article id="deptTile" class="elt-kpi status-medium" style="padding:14px;cursor:pointer">
+    <div class="elt-kpi-top"><div class="elt-kpi-icon" id="deptIcon"></div><i class="elt-kpi-dot"></i></div>
+    <strong class="elt-kpi-value" id="deptVal">—</strong>
+    <div class="elt-kpi-footer"><span class="elt-kpi-label" id="deptName">Отдел</span><span class="elt-kpi-trend" id="deptFit" style="font-weight:800"></span></div>
+    <p class="elt-kpi-caption" id="deptCap"></p>
+    <div id="deptDots" style="display:flex;gap:5px;margin-top:10px"></div>
+  </article>`;
+  const riskTile = `<article id="riskTile" class="elt-kpi status-bad" style="padding:14px;cursor:pointer">
+    <div class="elt-kpi-top"><div class="elt-kpi-icon">⚠</div><i class="elt-kpi-dot"></i></div>
+    <strong class="elt-kpi-value">${s.at_risk}</strong>
+    <div class="elt-kpi-footer"><span class="elt-kpi-label">В зоне риска</span><span class="elt-kpi-trend" style="color:#F87171;font-weight:800">срочно</span></div>
+    <p class="elt-kpi-caption">${escapeHtml(riskName)}${teamData.RISK.length > 1 ? ` и ещё ${teamData.RISK.length - 1}` : ""} ›</p>
+  </article>`;
+  const bestTile = `<article id="bestTile" class="elt-kpi status-good" style="padding:14px;cursor:pointer">
+    <div class="elt-kpi-top"><div class="elt-kpi-icon">★</div><i class="elt-kpi-dot"></i></div>
+    <strong class="elt-kpi-value">${s.high_result}</strong>
+    <div class="elt-kpi-footer"><span class="elt-kpi-label">Лучшие сотрудники</span><span class="elt-kpi-trend" style="color:#4ADE80;font-weight:800">80%+</span></div>
+    <p class="elt-kpi-caption">${escapeHtml(bestName)}${teamData.BEST.length > 1 ? ` и ещё ${teamData.BEST.length - 1}` : ""} ›</p>
+  </article>`;
+
+  // «Риски сотрудников» — AI-вывод + список сотрудников в зоне риска.
+  const aiText = riskName !== "—"
+    ? `В первую очередь смотрим сотрудников с высоким риском увольнения — ${escapeHtml(riskName)} и зону риска в отделах.`
+    : "Сотрудников в зоне риска не выявлено.";
+  const riskRows = risky.slice(0, 6).map((e, i) => {
+    const hi = e.turnoverRisk === "повышенный" || (e.fit != null && e.fit < 60);
+    const dot = hi
+      ? `<span class="risk-dot hi" style="width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:linear-gradient(135deg,#7F1D1D,#F87171)"></span>`
+      : `<span class="risk-dot" style="width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:linear-gradient(135deg,#9A3412,#FACC15)"></span>`;
+    return `<button class="risk-row gp-row" data-open-card="${e.id}" style="width:100%;text-align:left;cursor:pointer;animation-delay:${(i * 0.09).toFixed(2)}s">
+      ${dot}
+      <div style="flex:1 1 0%;min-width:0"><b style="display:block;font-size:12.5px;color:#E6F2FF;font-weight:600">${escapeHtml(e.fullName)}</b><span style="font-size:11px;color:rgba(230,242,255,.5)">${escapeHtml(e.department || "—")} · fit ${fitLabel(e.fit)} · риск увольнения</span></div>
+      <span style="color:rgba(230,242,255,.4);font-size:15px;flex:0 0 auto">→</span>
+    </button>`;
+  }).join("") || `<div class="ov-empty">Рисков не выявлено 👌</div>`;
+
+  return `<section class="elt-dashboard">
+    <header class="elt-dash-header">
+      <div class="elt-dash-header-left">
+        <span class="elt-mini-label">Оценка · Риски · Развитие</span>
+        <h1 class="elt-dash-title">Сотрудники</h1>
+        <p class="elt-dash-subtitle">${escapeHtml(failed ? subtitle : `Оценка, риски и развитие команды · ${s.total} сотрудников`)}</p>
+      </div>
+      <div class="elt-dash-header-actions">
+        <button class="elt-btn-ghost" data-action="add-structure-member">+ Сотрудник</button>
+        <button class="elt-btn-ghost" data-action="import-employees">Импорт</button>
+        <button class="elt-btn-ghost" data-open-filters="employees">⚲ Фильтры</button>
+      </div>
+    </header>
+
+    <section class="elt-kpi-grid">
+      ${kpiCards.map(kpiCard).join("")}
+    </section>
+
+    <section class="elt-analytics-grid">
+      <article class="elt-panel elt-chart-panel">
+        <div class="elt-panel-head">
+          <div class="elt-panel-head-left"><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1.5" y="4" width="12" height="9" rx="1.3" stroke="currentColor" stroke-width="1.3"/></svg><h2>Срез команды</h2></div>
+          <span class="elt-panel-caption">отделы · риск · топ</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">${deptTile}${riskTile}${bestTile}</div>
+      </article>
+
+      <article class="elt-panel elt-chart-panel">
+        <div class="elt-panel-head">
+          <div class="elt-panel-head-left"><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M7.5 1.5L14 13.5H1L7.5 1.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg><h2>Риски сотрудников</h2></div>
+          <span class="elt-panel-caption">приоритет</span>
+        </div>
+        <div style="margin-bottom:10px;padding:13px;border-radius:13px;border:1px solid rgba(124,58,237,.28);background:linear-gradient(150deg, rgba(124,58,237,.14), rgba(0,229,212,.05))">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:10px;font-weight:800;padding:3px 7px;border-radius:6px;background:linear-gradient(135deg,#7C5CFF,#00E5D4);color:#02121A">AI</span><b style="font-size:12.5px;color:#fff">AI-вывод</b></div>
+          <p style="margin:0;font-size:12.5px;line-height:1.55;color:#AFC4E4">${aiText}</p>
+        </div>
+        <div class="gp-list">${riskRows}</div>
+      </article>
+    </section>
+
+    ${PremiumDataTable(employeesTableConfig(applyFilters("employees", employees, state.activeFilters?.employees)))}
+  </section>`;
 }
 
 export function renderStructure(state) {
@@ -1195,58 +1322,74 @@ export function renderStructure(state) {
 
   const searchIcon = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>`;
 
-  return `
-    <div class="oc2">
-      <div class="oc2-grid">
-        <!-- LEFT: employee list -->
-        <aside class="oc2-list-panel">
-          <div class="oc2-list-head">
-            <span class="oc2-list-title">👥 Сотрудники</span>
-            <button class="elt-btn-primary oc2-add-btn" data-action="add-structure-member">+ Добавить</button>
-          </div>
-          <div class="oc2-search">${searchIcon}<input class="oc2-search-input" data-structure-search="list" placeholder="Поиск сотрудников..." value="${state.structureSearch || ""}"></div>
-          <div class="oc2-list-allrow"><span>Все сотрудники</span><b>${listSource.length}</b></div>
-          <div class="oc2-list-scroll">${listItems}</div>
-          <button class="oc2-list-foot" data-view="employees">Показать всех сотрудников · ${totalPeople}</button>
-        </aside>
+  // ── Разметка премиум-оргчарта (портирована из Claude Design — structure.dc.html) ──
+  const initG = "linear-gradient(135deg,#1E5BFF,#00E5D4)";
+  const empRow = (n) => `<div class="org-emp" data-oc-select="${n.id}" style="display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:10px;cursor:pointer;transition:background .15s">
+      <span style="width:30px;height:30px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-size:11px;font-weight:800;color:#02121A;background:${initG}">${initials(n.fullName)}</span>
+      <span style="flex:1 1 0%;min-width:0"><b style="display:block;font-size:12.5px;color:#E6F2FF;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(n.fullName)}</b><span style="font-size:11px;color:rgba(230,242,255,.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block">${escapeHtml(n.position || "—")}</span></span>
+    </div>`;
+  const deptCol = ([name, nodes]) => {
+    const color = deptColorFor(name);
+    return `<div class="org-node" style="width:220px;flex:0 0 auto">
+      <article class="elt-panel" style="padding:14px;height:100%">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <span style="width:32px;height:32px;border-radius:9px;flex:0 0 auto;display:grid;place-items:center;background:${color}22;color:${color};font-weight:800">${deptLetter(name)}</span>
+          <div style="flex:1 1 0%;min-width:0"><b style="font-size:13.5px;font-weight:800;color:#fff;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(name)}</b><span style="font-size:11px;color:rgba(230,242,255,.45)">${nodes.length} сотрудников</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px">${nodes.map(empRow).join("")}</div>
+        <button class="org-add" data-action="add-structure-member" style="width:100%;margin-top:8px;padding:8px;border-radius:9px;border:1px dashed rgba(0,229,212,.4);background:transparent;color:#00E5D4;font-family:inherit;font-weight:700;font-size:11.5px;cursor:pointer">+ Добавить сотрудника</button>
+      </article>
+    </div>`;
+  };
 
-        <!-- CENTER: graph -->
-        <section class="oc2-graph">
-          <div class="oc2-toolbar">
-            <div class="oc2-search oc2-search-wide">${searchIcon}<input class="oc2-search-input" data-structure-search="graph" placeholder="Поиск в структуре..." value="${state.structureSearch || ""}"></div>
-            <span class="oc2-chip">Уровни: 3</span>
-            <span class="oc2-chip oc2-chip-active">${totalPeople} сотрудников</span>
-            <div class="oc2-zoom">
-              <span>Масштаб: ${zoom}%</span>
-              <button data-oc-zoom="out" title="Уменьшить">−</button>
-              <button data-oc-zoom="in" title="Увеличить">+</button>
-            </div>
-          </div>
-          <div class="oc2-canvas-wrap">
-            <div class="oc2-canvas" style="transform:scale(${zoom / 100})">
-              <div class="oc2-node oc2-company">
-                <div class="oc2-company-icon">🏢</div>
-                <div><div class="oc2-node-name">Компания</div><div class="oc2-node-sub">Головной офис · ${totalPeople} сотрудников · ${totalDepts} отдела</div></div>
-              </div>
-              <div class="oc2-conn-v"></div>
-              <div class="oc2-node oc2-ceo" data-oc-select="${ceo.id}">
-                ${renderAvatar(ceo, "oc2-ceo-av")}
-                <div><div class="oc2-node-name">${ceo.fullName}</div><div class="oc2-node-sub">${ceo.position || "Генеральный директор"} · ${totalPeople} чел.</div></div>
-                <span class="oc2-li-status ${ceoStatus.cls}">${ceoStatus.label}</span>
-              </div>
-              <div class="oc2-conn-v"></div>
-              <div class="oc2-depts">${deptCols || `<div class="oc2-empty">Нет данных</div>`}</div>
-              ${hiddenDepts > 0
-                ? `<button class="oc2-more-depts" data-action="oc-show-all-depts">Показать ещё отделы (${hiddenDepts})</button>`
-                : showAll && deptEntries.length > VISIBLE_DEPTS
-                  ? `<button class="oc2-more-depts" data-action="oc-show-all-depts">Свернуть отделы</button>`
-                  : ""}
-            </div>
-          </div>
-        </section>
+  return `<section class="elt-dashboard">
+    <header class="elt-dash-header">
+      <div class="elt-dash-header-left">
+        <span class="elt-mini-label">Организация</span>
+        <h1 class="elt-dash-title">Структура</h1>
+        <p class="elt-dash-subtitle">Древовидная структура компании · отделы и подчинённость</p>
+      </div>
+    </header>
+
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+      <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:200px;max-width:270px;padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04)">
+        <svg width="14" height="14" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="rgba(230,242,255,.4)" stroke-width="1.3"/><line x1="10" y1="10" x2="13" y2="13" stroke="rgba(230,242,255,.4)" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <input id="orgSearch" placeholder="Поиск в структуре…" style="flex:1;border:none;background:transparent;color:#E6F2FF;font-family:inherit;font-size:12.5px;outline:none">
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04)">
+        <button id="orgZoomOut" style="width:26px;height:26px;border-radius:7px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#E6F2FF;cursor:pointer;font-size:15px">−</button>
+        <span id="orgZLbl" style="font-size:12px;color:rgba(230,242,255,.6);min-width:42px;text-align:center">100%</span>
+        <button id="orgZoomIn" style="width:26px;height:26px;border-radius:7px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#E6F2FF;cursor:pointer;font-size:15px">+</button>
       </div>
     </div>
-  `;
+
+    <div id="orgCanvas" style="transform-origin:center top;transform:scale(1);transition:transform .2s">
+      <div style="display:flex;justify-content:center">
+        <article class="elt-panel" style="width:380px;max-width:100%;text-align:center;padding:18px">
+          <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:6px">
+            <span style="width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:rgba(30,91,255,.18);color:#7CA0FF"><svg width="17" height="17" viewBox="0 0 18 18" fill="none"><rect x="3" y="2" width="12" height="14" rx="1.5" stroke="currentColor" stroke-width="1.4"/><line x1="6" y1="6" x2="8" y2="6" stroke="currentColor" stroke-width="1.3"/><line x1="10" y1="6" x2="12" y2="6" stroke="currentColor" stroke-width="1.3"/><line x1="6" y1="9" x2="8" y2="9" stroke="currentColor" stroke-width="1.3"/><line x1="10" y1="9" x2="12" y2="9" stroke="currentColor" stroke-width="1.3"/></svg></span>
+            <div style="text-align:left"><b style="font-size:16px;font-weight:800;color:#fff;display:block">${escapeHtml((state.company && state.company.name) || "Компания")}</b><span style="font-size:12px;color:rgba(230,242,255,.5)">Головной офис · ${totalPeople} сотрудников · ${totalDepts} отд.</span></div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:4px 0;margin:6px 0">
+            <span style="width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:800;color:#02121A;background:${initG}">${initials(ceo.fullName)}</span>
+            <div style="text-align:left"><b style="font-size:13.5px;color:#E6F2FF;font-weight:700;display:block">${escapeHtml(ceo.fullName)}</b><span style="font-size:11.5px;color:rgba(230,242,255,.45)">${escapeHtml(ceo.position || "Генеральный директор")}</span></div>
+          </div>
+          <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+            <button class="elt-btn-primary" data-action="add-structure-member" style="font-size:12px;padding:8px 13px">+ Добавить отдел</button>
+            <button data-action="add-structure-member" style="display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border-radius:10px;border:1px solid rgba(0,229,212,.4);background:rgba(0,229,212,.1);color:#00E5D4;font-family:inherit;font-weight:700;font-size:12.5px;cursor:pointer">+ Добавить сотрудника</button>
+          </div>
+        </article>
+      </div>
+      <svg id="orgConnSvg" height="46" style="display:block;width:100%;overflow:visible">
+        <defs><linearGradient id="orgGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00E5D4" stop-opacity="0"/><stop offset="50%" stop-color="#8CF7EF" stop-opacity="1"/><stop offset="100%" stop-color="#00E5D4" stop-opacity="0"/></linearGradient></defs>
+        <path id="orgBaseP" d="" fill="none" stroke="rgba(0,229,212,.22)" stroke-width="1.5"/>
+        <path id="orgGlowP" d="" fill="none" stroke="url(#orgGrad)" stroke-width="2"/>
+      </svg>
+      <div class="org-cols" style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;align-items:stretch">
+        ${deptEntries.length ? deptEntries.map(deptCol).join("") : `<div class="ov-empty">Отделов пока нет.</div>`}
+      </div>
+    </div>
+  </section>`;
 }
 
 const CTR_TYPE_LABEL = { single_choice: "Один вариант", multiple_choice: "Несколько вариантов", open: "Открытый", scale: "Шкала" };
@@ -1378,18 +1521,18 @@ export function renderConstructor(state) {
   const createLabel = isComp ? "+ Создать компетенцию" : "+ Создать профиль";
 
   return `
-    <div class="elt-page-wrap">
-      <div class="elt-page-header">
-        <div class="elt-page-header-left">
-          <span class="elt-mini-label">Конструктор</span>
-          <h1 class="elt-page-title">Конструктор оценок</h1>
-          <p class="elt-page-subtitle">Профиль должности собирается из компетенций; у компетенции — свой банк вопросов, переиспользуемый в профилях.</p>
+    <div class="elt-dashboard">
+      <header class="elt-dash-header">
+        <div class="elt-dash-header-left">
+          <span class="elt-mini-label">Инструмент</span>
+          <h1 class="elt-dash-title">Конструктор оценок</h1>
+          <p class="elt-dash-subtitle">Соберите оценку из компетенций и вопросов</p>
         </div>
-        <div class="elt-page-actions">
+        <div class="elt-dash-header-actions">
           <button class="elt-btn-ghost" data-action="open-import-library">Импорт базы</button>
           <button class="elt-btn-primary" data-action="${createAction}">${createLabel}</button>
         </div>
-      </div>
+      </header>
       <div class="ctr-mode-toggle">
         <button class="ctr-mode-btn${!isComp ? " active" : ""}" data-constructor-mode="profiles">Профили</button>
         <button class="ctr-mode-btn${isComp ? " active" : ""}" data-constructor-mode="competencies">Компетенции</button>
@@ -1497,83 +1640,74 @@ export function renderVacancies(state) {
   const hh = state.hhStatus || null;
   const connected = Boolean(hh && hh.connected);
 
-  // ── Режим: HH не подключён → честное пустое состояние (без демо-данных) ──
-  if (!connected) {
-    const notConfigured = hh && !hh.configured;
-    const banner = notConfigured
-      ? { title: "hh.ru не подключён", text: "Нажмите, чтобы подключить кабинет hh.ru и продолжить.", status: "medium", target: "", action: "hh-connect" }
-      : { title: "Подключите hh.ru", text: "Нажмите, авторизуйте кабинет работодателя — и вакансии с откликами подтянутся автоматически.", status: "medium", target: "", action: "hh-connect" };
-    return DashboardPageLayout({
-      title: "Вакансии",
-      subtitle: "Реальные данные из вашего кабинета HeadHunter. Подключите hh.ru, чтобы начать.",
-      meta: ["HeadHunter API"],
-      actions: [{ label: "Подключить hh.ru", primary: true, attrs: 'data-action="hh-connect"' }],
-      attentionItems: [banner],
-      table: { title: "Вакансии", caption: "нет данных", columns: ["Вакансия", "Отклики", "Конверсия", "Статус"], rows: [] },
-    });
-  }
-
-  // ── Режим: HH подключён → реальные KPI и метрики за период ──
   const kpi = state.vacancyKpi;
   const loading = state.vacancyKpiStatus === "loading" && !kpi;
   const cards = (kpi && kpi.cards) || {};
   const items = (kpi && kpi.items) || [];
-  const dash = (v) => (loading ? "…" : v ?? 0);
+  const dash = (v) => (loading ? "…" : (v ?? 0));
 
-  const kpiHtml = [
-    { card: "active_no_responses", label: "Активные без откликов", value: dash(cards.active_no_responses), caption: "за период", status: cards.active_no_responses > 0 ? "bad" : "good" },
-    { card: "low_conversion", label: "Низкая конверсия", value: dash(cards.low_conversion), caption: `ниже ${kpi ? kpi.conversion_low : 10}%`, status: cards.low_conversion > 0 ? "bad" : "neutral" },
-    { card: "good_conversion", label: "Хорошая конверсия", value: dash(cards.good_conversion), caption: `от ${kpi ? kpi.conversion_good : 30}%`, status: "good" },
-    { card: "total_responses", label: "Всего откликов", value: dash(cards.total_responses), caption: "за период", status: "neutral" },
-    { card: "assessments_sent", label: "Оценок отправлено", value: dash(cards.total_assessments_sent), caption: "за период", status: "neutral" },
-    { card: "fit_profile", label: "Подходит под профиль", value: dash(cards.fit_profile), caption: "кандидатов из HH", status: "good" },
-    { card: "closed_in_period", label: "Закрыто за период", value: dash(cards.closed_in_period), caption: "вакансий", status: "neutral" },
-  ].map(vacancyKpiCard).join("");
+  // ── 4 KPI как в макете (из доступных HH-метрик; без данных — нули) ──
+  const kpiCards = [
+    { label: "Открытых вакансий", value: dash(items.length), caption: "в подборе", status: "neutral", iconName: "vacancy" },
+    { label: "Откликов", value: dash(cards.total_responses), caption: "за период", status: "neutral", iconName: "candidates" },
+    { label: "Подходящих", value: dash(cards.fit_profile), caption: "из HH", status: "good", iconName: "fit" },
+    { label: "Закрыто", value: dash(cards.closed_in_period), caption: "за месяц", status: "good", iconName: "completed" }
+  ];
 
-  const chartItems = items.slice(0, 12).map((v) => [v.title, v.responses_period]);
-  const listPanel = items.length
-    ? `<article class="elt-panel vac-list-panel">
-        <div class="elt-panel-head"><div class="elt-panel-head-left"><h2>Эффективность вакансий</h2></div><span class="elt-panel-caption">метрики и воронка подбора за период</span></div>
-        ${vacancyCards(items, state.assessmentTests)}
-      </article>`
-    : `<article class="elt-panel elt-table-panel">
-        <div class="elt-panel-head"><div class="elt-panel-head-left"><h2>Эффективность вакансий</h2></div><span class="elt-panel-caption">нет импортированных вакансий</span></div>
-        <p class="elt-kpi-caption" style="padding:16px">${loading ? "Загрузка…" : "Нет вакансий. Нажмите «Добавить из HeadHunter»."}</p>
-      </article>`;
+  // ── Интеграции · источники вакансий ──
+  const intCard = ({ name, desc, bg, logo, mode, attrs, label }) => `
+    <div class="vac-int" style="display:flex;flex-direction:column;gap:10px;padding:15px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)">
+      <div style="display:flex;align-items:center;gap:11px">
+        <span style="width:38px;height:38px;border-radius:10px;flex:0 0 auto;display:grid;place-items:center;font-size:13px;font-weight:800;color:#fff;background:${bg}">${logo}</span>
+        <div style="flex:1 1 0%;min-width:0"><b style="display:block;font-size:13.5px;color:#fff;font-weight:700">${name}</b><span style="font-size:11px;color:rgba(230,242,255,.45)">${desc}</span></div>
+      </div>
+      <button class="vac-conn" ${attrs || ""}${mode === "soon" ? " disabled" : ""} style="width:100%;padding:9px;border-radius:9px;border:1px solid ${mode === "on" ? "rgba(74,222,128,.4)" : mode === "soon" ? "rgba(255,255,255,.12)" : "rgba(30,91,255,.4)"};background:${mode === "on" ? "rgba(74,222,128,.12)" : mode === "soon" ? "rgba(255,255,255,.04)" : "rgba(30,91,255,.12)"};color:${mode === "on" ? "#4ADE80" : mode === "soon" ? "rgba(230,242,255,.4)" : "#7CA0FF"};font-family:inherit;font-weight:700;font-size:12px;cursor:${mode === "soon" ? "default" : "pointer"}">${label}</button>
+    </div>`;
+  const integrations = [
+    intCard({ name: "HeadHunter", desc: "hh.ru · вакансии и отклики", bg: "#D6001C", logo: "He", mode: connected ? "on" : "off", attrs: connected ? 'data-action="hh-disconnect"' : 'data-action="hh-connect"', label: connected ? "Подключено ✓" : "Подключить" }),
+    intCard({ name: "SuperJob", desc: "superjob.ru · скоро", bg: "#2A9D3F", logo: "SJ", mode: "soon", label: "Скоро" }),
+    intCard({ name: "Avito Работа", desc: "avito.ru · скоро", bg: "#00AAFF", logo: "Av", mode: "soon", label: "Скоро" })
+  ].join("");
 
-  return `
-    <section class="elt-dashboard">
-      <header class="elt-dash-header">
-        <div class="elt-dash-header-left">
-          <span class="elt-mini-label">HeadHunter API · живые данные</span>
-          <h1 class="elt-dash-title">Вакансии</h1>
-          <p class="elt-dash-subtitle">hh.ru подключён · ${escapeHtml(hh.employer_name || "работодатель")}${hh.account_name ? " · " + escapeHtml(hh.account_name) : ""}</p>
-        </div>
-        <div class="elt-dash-header-actions">
-          <button class="elt-btn-primary" data-action="hh-import-open">Добавить из HeadHunter</button>
-          <button class="elt-btn-ghost" data-action="hh-refresh"${state.hhSyncing ? " disabled" : ""}>${state.hhSyncing ? "Обновляем…" : "Обновить из hh.ru"}</button>
-          <button class="elt-btn-ghost" data-action="hh-disconnect">Отключить hh.ru</button>
-        </div>
-      </header>
-      ${vacancyPeriodSwitcher(state.vacancyPeriod || "7d")}
-      <section class="elt-kpi-grid">${kpiHtml}</section>
-      <section class="elt-analytics-grid">
-        <article class="elt-panel elt-chart-panel elt-wide">
-          <div class="elt-panel-head"><div class="elt-panel-head-left"><h2>Отклики по вакансиям</h2></div><span class="elt-panel-caption">за выбранный период</span></div>
-          <div class="elt-bar-chart">
-            ${chartItems.length
-              ? chartItems.map(([label, value]) => {
-                  const max = Math.max(...chartItems.map((c) => Number(c[1]) || 0), 1);
-                  const w = Math.max(6, Math.round((Number(value) / max) * 100));
-                  return `<div class="elt-bar-row status-neutral"><span class="elt-bar-label">${escapeHtml(label)}</span><div class="elt-bar-track"><div class="elt-bar-fill" style="width:${w}%"></div></div><strong class="elt-bar-value">${value}</strong></div>`;
-                }).join("")
-              : `<p class="elt-kpi-caption" style="padding:12px">${loading ? "Загрузка…" : "Откликов за период нет."}</p>`}
-          </div>
-        </article>
-      </section>
-      ${listPanel}
+  // ── Конверсия по вакансиям (fit% из items) ──
+  const convBars = items.slice(0, 8).map((v) => {
+    const fit = v.fit != null ? v.fit : (v.fit_percent != null ? v.fit_percent : (v.conversion != null ? v.conversion : 0));
+    return { label: v.title, value: fit, status: fit >= 75 ? "good" : fit >= 55 ? "medium" : "bad" };
+  });
+
+  const panelHead = (svg, title, caption) => `
+    <div class="elt-panel-head">
+      <div class="elt-panel-head-left"><svg width="15" height="15" viewBox="0 0 15 15" fill="none">${svg}</svg><h2>${title}</h2></div>
+      ${caption ? `<span class="elt-panel-caption">${caption}</span>` : ""}
+    </div>`;
+
+  return `<section class="elt-dashboard">
+    <header class="elt-dash-header">
+      <div class="elt-dash-header-left">
+        <span class="elt-mini-label">Найм</span>
+        <h1 class="elt-dash-title">Вакансии</h1>
+        <p class="elt-dash-subtitle">Открытые позиции, отклики и конверсия${connected ? ` · hh.ru: ${escapeHtml(hh.employer_name || "работодатель")}` : ""}</p>
+      </div>
+      <div class="elt-dash-header-actions">
+        <button class="elt-btn-primary" data-action="${connected ? "hh-import-open" : "hh-connect"}">${connected ? "+ Вакансия" : "Подключить hh.ru"}</button>
+        <button class="elt-btn-ghost" data-open-filters="vacancies">⚲ Фильтры</button>
+      </div>
+    </header>
+
+    <section class="elt-kpi-grid">${kpiCards.map(kpiCard).join("")}</section>
+
+    <article class="elt-panel elt-wide" style="margin-bottom:16px">
+      ${panelHead('<path d="M5.5 9.5L9.5 5.5M9 4.5l1-1a2.1 2.1 0 0 1 3 3l-1 1M6 10.5l-1 1a2.1 2.1 0 0 1-3-3l1-1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>', "Интеграции · источники вакансий", "подключите площадки к Eltera")}
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:16px">${integrations}</div>
+    </article>
+
+    <section class="elt-analytics-grid">
+      <article class="elt-panel elt-chart-panel elt-wide">
+        ${panelHead('<path d="M2 12l3-4 3 2 5-6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>', "Конверсия по вакансиям", "fit профиля")}
+        ${convBars.length ? barChart(convBars) : `<div class="ov-empty" style="margin:12px">${connected ? "Импортируйте вакансии из HeadHunter." : "Подключите hh.ru, чтобы увидеть конверсию по вакансиям."}</div>`}
+      </article>
     </section>
-  `;
+  </section>`;
 }
 
 const LIB_SECTIONS = [
@@ -1649,18 +1783,18 @@ export function renderAssessments(state) {
     : "";
 
   return `
-    <div class="elt-page-wrap">
-      <div class="elt-page-header">
-        <div class="elt-page-header-left">
-          <span class="elt-mini-label">Библиотека тестов</span>
-          <h1 class="elt-page-title">Профили и тесты</h1>
-          <p class="elt-page-subtitle">Единая структура: секции, профнаправления, универсальные черты и уровни должностей.</p>
+    <div class="elt-dashboard">
+      <header class="elt-dash-header">
+        <div class="elt-dash-header-left">
+          <span class="elt-mini-label">Библиотека</span>
+          <h1 class="elt-dash-title">Профили компетенций</h1>
+          <p class="elt-dash-subtitle">Единая структура: направления, уровни должностей и наборы компетенций</p>
         </div>
-        <div class="elt-page-actions">
+        <div class="elt-dash-header-actions">
           <button class="elt-btn-ghost" data-view="constructor">Конструктор</button>
           <button class="elt-btn-primary" data-action="open-assess-wizard">+ Создать оценку</button>
         </div>
-      </div>
+      </header>
       <div class="ctr-mode-toggle">${sectionTabs}</div>
       ${fitnessNote}
       <div class="lib-search"><input type="search" class="elt-input" data-library-search placeholder="Поиск теста по названию…" value="${escapeHtml(lib.q || "")}" autocomplete="off"></div>
@@ -1712,57 +1846,119 @@ export function renderAdaptation(state) {
   }));
   const funnelHasData = allCheckins.length > 0;
 
-  // Новые сотрудники по отделам (реальный срез).
-  const byDept = {};
-  newEmps.forEach((e) => { const d = e.department || "Без отдела"; byDept[d] = (byDept[d] || 0) + 1; });
-  const deptItems = Object.entries(byDept).map(([d, c]) => [d, c]);
-
   const subtitle = failed
     ? "API недоступен — данные не загружены"
     : ready
       ? `Данные из API · ${newEmps.length} новых сотрудников (до 90 дней) · ${surveysSent} опросов`
       : "Загрузка данных из API…";
 
-  const attentionItems = [];
-  atRisk.slice(0, 2).forEach((e) => attentionItems.push({
-    title: e.fullName,
-    text: `${e.days} дн. в компании · риск ${e.turnoverRisk}${e.satisfaction > 0 ? ` · удовлетворённость ${e.satisfaction}%` : ""}.`,
-    status: "bad", target: "Адаптация:В зоне риска"
-  }));
-  if (surveysSent > surveysDone) attentionItems.push({ title: `${surveysSent - surveysDone} опросов не завершены`, text: "Пульс-опрос адаптации отправлен, но ещё не пройден.", status: "medium", target: "Адаптация:В процессе" });
+  // ── KPI-плитки (премиум-вид, как на «Обзоре») ──
+  const kpiCards = [
+    { label: "Новые сотрудники", value: newEmps.length, caption: "до 90 дней", status: "neutral", iconName: "employees", target: "Адаптация:Новые сотрудники" },
+    { label: "Первые 30 дней", value: newEmps.filter((e) => e.days <= 30).length, caption: "критичный период", status: "medium", iconName: "active", target: "Адаптация:В процессе" },
+    { label: "Опросы отправлены", value: surveysSent, caption: "пульс-опрос", status: "neutral", iconName: "chart", target: "Адаптация:Опросы отправлены" },
+    { label: "Опросы пройдены", value: surveysDone, caption: "ответили", status: "good", iconName: "completed", target: "Адаптация:Опросы пройдены" },
+    { label: "Прошли адаптацию", value: passed, caption: "90+ дней, fit≥70", status: "good", iconName: "fit", target: "Адаптация:Прошли" },
+    { label: "В зоне риска", value: atRisk.length, caption: "срочно смотреть", status: atRisk.length ? "bad" : "good", iconName: "risk", target: "Адаптация:В зоне риска" },
+    { label: "Удовлетворённость", value: `${avgSat}%`, caption: "средняя", status: getFitStatus(avgSat), iconName: "balance", target: "Адаптация:Вовлеченность" }
+  ];
 
-  const content = DashboardPageLayout({
-    title: "Адаптация",
-    subtitle,
-    meta: ["онбординг", "пульс-опросы", "риски"],
-    period: state.period,
-    actions: [{ label: "Запустить опрос адаптации", primary: true, attrs: "data-action=\"open-assess-wizard\"" }],
-    filters: pageFilterConfig.adaptation,
-    activeFiltersMap: (state.activeFilters && state.activeFilters.adaptation) || {},
-    kpiCards: [
-      { label: "Новые сотрудники", value: newEmps.length, caption: "до 90 дней", status: "neutral", target: "Адаптация:Новые сотрудники" },
-      { label: "Первые 30 дней", value: newEmps.filter((e) => e.days <= 30).length, caption: "критичный период", status: "medium", target: "Адаптация:В процессе" },
-      { label: "Опросы отправлены", value: surveysSent, caption: "пульс-опрос", status: "neutral", target: "Адаптация:Опросы отправлены" },
-      { label: "Опросы пройдены", value: surveysDone, caption: "ответили", status: "good", target: "Адаптация:Опросы пройдены" },
-      { label: "Прошли адаптацию", value: passed, caption: "90+ дней, fit≥70", status: "good", target: "Адаптация:Прошли" },
-      { label: "В зоне риска", value: atRisk.length, caption: "срочно смотреть", status: "bad", target: "Адаптация:В зоне риска" },
-      { label: "Удовлетворённость", value: `${avgSat}%`, caption: "средняя", status: getFitStatus(avgSat), target: "Адаптация:Вовлеченность" }
-    ],
-    charts: [
-      { title: "Этапы адаптации", caption: funnelHasData ? "пройдено опросов по этапам" : "циклов адаптации пока нет", type: "funnel", items: funnelHasData ? funnel : [["Нет данных", 0]] },
-      { title: "Новые по отделам", caption: "срез найма", items: deptItems.length ? deptItems : [["Нет новых сотрудников", 0]] }
-    ],
-    heatmap: employeeHeatmap(state),
-    attentionItems,
-    // В таблице — сотрудники с известным стажем (новички сверху). Если стаж
-    // нигде не указан — показываем всех сотрудников.
-    table: employeesTableConfig(applyFilters("adaptation",
-      withTenure.length
-        ? withTenure.slice().sort((a, b) => a.days - b.days)
-        : employees,
-      state.activeFilters?.adaptation
-    ))
-  });
+  // ── Этапы адаптации (бары по пройденным опросам) ──
+  const stageBars = (funnelHasData ? funnel : [{ label: "Циклов пока нет", value: 0 }])
+    .map((f) => ({ label: f.label, value: f.value, status: "neutral" }));
+
+  // ── Ближайшие чек-ины (отправленные и запланированные опросы циклов) ──
+  const upcoming = (state.adaptationCycles || [])
+    .flatMap((c) => (c.checkins || [])
+      .filter((x) => x.status === "sent" || x.status === "scheduled")
+      .map((x) => ({ name: c.full_name, personId: c.person_id, offset: x.offset_days, status: x.status })))
+    .sort((a, b) => a.offset - b.offset)
+    .slice(0, 6);
+
+  // ── «Рекомендуем взять» — сильные кандидаты (если раздел «Оценка» уже загружен) ──
+  const strongCands = (state.candidatesApi || [])
+    .filter((c) => c.assessed && c.result && c.result.percent >= 68)
+    .sort((a, b) => b.result.percent - a.result.percent)
+    .slice(0, 5);
+
+  // ── Хелперы разметки (портированы 1-в-1 из Claude Design) ──
+  const initials = (n) => (n || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0] || "").join("").toUpperCase();
+  const avatar = (n) => `<span style="width:30px;height:30px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-size:11px;font-weight:800;color:#02121A;background:linear-gradient(135deg,#1E5BFF,#00E5D4);">${initials(n)}</span>`;
+  const fitBadge = (pct) => `<span style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;font-size:11.5px;font-weight:800;color:#4ADE80;"><span style="width:7px;height:7px;border-radius:50%;background:linear-gradient(135deg,#166534,#4ADE80);"></span>fit ${pct}%</span>`;
+  const riskBadge = (label) => `<span style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;font-size:11.5px;font-weight:800;color:#F87171;"><span style="width:7px;height:7px;border-radius:50%;background:linear-gradient(135deg,#7F1D1D,#F87171);"></span>${label}</span>`;
+  const timeChip = (label, from, to) => `<span style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;font-size:11px;font-weight:600;color:#CDD9EE;"><span style="width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:linear-gradient(135deg,${from},${to});"></span>${label}</span>`;
+  const panelHead = (svg, title, caption) => `
+    <div class="elt-panel-head">
+      <div class="elt-panel-head-left"><svg width="15" height="15" viewBox="0 0 15 15" fill="none">${svg}</svg><h2>${title}</h2></div>
+      ${caption ? `<span class="elt-panel-caption">${caption}</span>` : ""}
+    </div>`;
+  const gpEmpty = (t) => `<div class="ov-empty">${t}</div>`;
+
+  const candName = (c) => c.fullName || (c.person && c.person.fullName) || "Кандидат";
+  const candRole = (c) => c.vacancyTitle || c.profession || c.position || "кандидат";
+
+  const upcomingHtml = upcoming.length
+    ? upcoming.map((u) => `<button class="gp-row" data-open-card="${u.personId}">
+        <div style="flex:1 1 0%;min-width:0"><b>${escapeHtml(u.name)}</b><br><span>${u.offset}д · ${u.status === "sent" ? "отправлен" : "запланирован"}</span></div>
+        ${u.status === "sent" ? timeChip("отправлен", "#9A3412", "#FACC15") : timeChip("ждёт", "#1E3A8A", "#60A5FA")}
+      </button>`).join("")
+    : gpEmpty("Ближайших чек-инов нет.");
+
+  const strongHtml = strongCands.length
+    ? strongCands.map((c) => `<button class="gp-row" data-open-card="${c.id || ""}">
+        ${avatar(candName(c))}
+        <div style="flex:1 1 0%;min-width:0"><b>${escapeHtml(candName(c))}</b><br><span>${escapeHtml(candRole(c))} · сильный кандидат</span></div>
+        ${fitBadge(Math.round(c.result.percent))}
+      </button>`).join("")
+    : gpEmpty(state.candidatesApi ? "Сильных кандидатов пока нет." : "Кандидаты подгрузятся в разделе «Оценка».");
+
+  const dropHtml = atRisk.length
+    ? atRisk.slice(0, 6).map((e) => `<button class="gp-row" data-open-card="${e.id || ""}">
+        ${avatar(e.fullName)}
+        <div style="flex:1 1 0%;min-width:0"><b>${escapeHtml(e.fullName)}</b><br><span>${e.days} дн · риск ${escapeHtml(e.turnoverRisk || "—")}${e.satisfaction > 0 ? ` · ${e.satisfaction}%` : ""}</span></div>
+        ${riskBadge(e.satisfaction > 0 ? `${e.satisfaction}%` : "риск")}
+      </button>`).join("")
+    : gpEmpty("Рисков ухода не выявлено 👌");
+
+  const content = `<section class="elt-dashboard">
+    <header class="elt-dash-header">
+      <div class="elt-dash-header-left">
+        <span class="elt-mini-label">Onboarding</span>
+        <h1 class="elt-dash-title">Адаптация</h1>
+        <p class="elt-dash-subtitle">${escapeHtml(failed ? subtitle : "Циклы адаптации, чек-ины и риски")}</p>
+      </div>
+      <div class="elt-dash-header-actions">
+        <button class="elt-btn-primary" data-action="open-assess-wizard">Новый цикл</button>
+        <button class="elt-btn-ghost" data-open-filters="adaptation">⚲ Фильтры</button>
+      </div>
+    </header>
+
+    <section class="elt-kpi-grid">
+      ${kpiCards.map(kpiCard).join("")}
+    </section>
+
+    <section class="elt-analytics-grid">
+      <article class="elt-panel elt-chart-panel">
+        ${panelHead('<circle cx="7.5" cy="7.5" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M7.5 4v3.5l2.5 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>', "Этапы адаптации", funnelHasData ? "пройдено опросов" : "циклов пока нет")}
+        ${barChart(stageBars)}
+      </article>
+
+      <article class="elt-panel elt-chart-panel">
+        ${panelHead('<rect x="1.5" y="2.5" width="12" height="11" rx="1.5" stroke="currentColor" stroke-width="1.3"/><line x1="1.5" y1="5.5" x2="13.5" y2="5.5" stroke="currentColor" stroke-width="1"/><line x1="4.5" y1="1" x2="4.5" y2="4" stroke="currentColor" stroke-width="1.2"/><line x1="10.5" y1="1" x2="10.5" y2="4" stroke="currentColor" stroke-width="1.2"/>', "Ближайшие чек-ины", "опросы циклов")}
+        <div class="gp-list">${upcomingHtml}</div>
+      </article>
+
+      <article class="elt-panel elt-chart-panel">
+        ${panelHead('<circle cx="7.5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M2.5 13c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M11 2.5v3M9.5 4h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>', "Рекомендуем взять", "AI · подбор")}
+        <div class="gp-list">${strongHtml}</div>
+      </article>
+
+      <article class="elt-panel elt-chart-panel">
+        ${panelHead('<path d="M7.5 1.5l1.8 3.7 4 .6-2.9 2.8.7 4-3.6-1.9-3.6 1.9.7-4L2.7 5.8l4-.6z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>', "Возможно расстаться", "зона риска")}
+        <div class="gp-list">${dropHtml}</div>
+      </article>
+    </section>
+  </section>`;
 
   return content + renderAdaptationTimeline(state);
 }
@@ -1892,24 +2088,27 @@ function renderAdaptationStageList(state, metricName) {
     ${avg != null ? `<span>средний балл <b>${avg}%</b></span>` : ""}
   </div>`;
 
+  const stColor = { completed: "#4ADE80", sent: "#7CA0FF", missed: "#F87171", scheduled: "#CDD9EE", skipped: "#CDD9EE" };
+  const stGrad = { completed: "#166534,#4ADE80", sent: "#1E3A8A,#7CA0FF", missed: "#7F1D1D,#F87171", scheduled: "#1E3A8A,#60A5FA", skipped: "#334155,#94A3B8" };
   const list = rows.map((r) => {
-    const val = r.result_percent != null ? `${r.result_percent}%` : "—";
-    const open = (r.status === "completed" && r.session_id)
-      ? ` data-open-stage-answers="${r.person_id}|${r.session_id}"`
-      : (r.status === "sent" && r.token ? ` data-open-assess="${r.token}"` : "");
-    const action = (r.status === "completed" && r.session_id)
-      ? `<span class="adapt-stage-link">Смотреть ответы →</span>`
-      : (r.status === "sent" && r.token ? `<span class="adapt-stage-link">Открыть опрос →</span>` : "");
-    const clickable = open ? " clickable" : "";
-    return `<button type="button" class="adapt-stage-li st-${r.status}${r.risk_flag ? " risk" : ""}${clickable}"${open}>
-      <span class="adapt-stage-li-name">${r.name}</span>
-      <span class="adapt-stage-li-status">${statusLabel[r.status] || r.status}${r.risk_flag ? " ⚠" : ""}</span>
-      <span class="adapt-stage-li-val">${val}</span>
-      <span class="adapt-stage-li-action">${action}</span>
+    const open = r.person_id
+      ? ` data-open-card="${r.person_id}"`
+      : ((r.status === "completed" && r.session_id)
+        ? ` data-open-stage-answers="${r.person_id}|${r.session_id}"`
+        : (r.status === "sent" && r.token ? ` data-open-assess="${r.token}"` : ""));
+    const c = stColor[r.status] || "#CDD9EE";
+    const gr = stGrad[r.status] || stGrad.skipped;
+    const right = r.result_percent != null
+      ? `<span style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;flex:0 0 auto;font-size:11.5px;font-weight:800;color:${c}"><span style="width:7px;height:7px;border-radius:50%;background:linear-gradient(135deg,${gr})"></span>${r.result_percent}%</span>`
+      : `<span style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;flex:0 0 auto;font-size:11px;font-weight:600;color:#CDD9EE"><span style="width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,${gr})"></span>${statusLabel[r.status] || r.status}${r.risk_flag ? " ⚠" : ""}</span>`;
+    return `<button class="gp-row"${open}>
+      <span style="width:34px;height:34px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-size:12px;font-weight:800;color:#02121a;background:linear-gradient(135deg,#1E5BFF,#00E5D4)">${cardInitials(r.name)}</span>
+      <span style="flex:1 1 0%;min-width:0"><b style="display:block;font-size:13px;color:#E6F2FF;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(r.name)}</b><span style="font-size:11.5px;color:rgba(230,242,255,.45)">${statusLabel[r.status] || r.status}</span></span>
+      ${right}
     </button>`;
   }).join("");
 
-  return `${summary}<div class="adapt-stage-list">${list}</div>`;
+  return `${summary}<div class="gp-list">${list}</div>`;
 }
 
 export function renderThreeSixty(state) {
@@ -1961,90 +2160,49 @@ export function renderThreeSixty(state) {
   if (active > 0) attentionItems.push({ title: `${active} активных 360`, text: "Оценки отправлены, ждём прохождения участниками.", status: "medium", target: "Оценка 360:Активные" });
   if (devZones > 0) attentionItems.push({ title: `${devZones} сотрудников с зонами развития`, text: "Соответствие ниже 70% — сформируйте планы развития.", status: "medium", target: "Оценка 360:Зоны развития" });
 
-  const content = DashboardPageLayout({
-    title: "Оценка 360",
-    subtitle,
-    meta: ["TalentStudio", "1 раз в год", "обратная связь"],
-    period: state.period,
-    actions: [{ label: "Запустить 360", primary: true, attrs: locked ? "data-open-locked=\"Оценка 360 доступна на тарифе TalentStudio.\"" : "data-action=\"open-assess-wizard\"" }],
-    filters: pageFilterConfig["360"],
-    activeFiltersMap: (state.activeFilters && state.activeFilters["360"]) || {},
-    kpiCards: [
-      { label: "Активные 360", value: active, caption: "в процессе", status: locked ? "noData" : "neutral", target: "Оценка 360:Активные" },
-      { label: "Завершены", value: completedLinks.length, caption: "пройдено", status: "medium", target: "Оценка 360:Завершены" },
-      { label: "Средний балл", value: avgScore5, caption: "из 5", status: avgPct ? getFitStatus(avgPct) : "neutral", target: "Оценка 360:Средний балл" },
-      { label: "Участники", value: participants, caption: "сотрудников", status: "neutral", target: "Оценка 360:Участники" },
-      { label: "Зоны развития", value: devZones, caption: "fit ниже 70%", status: "medium", target: "Оценка 360:Зоны развития" }
-    ],
-    charts: [
-      { title: "Прохождение 360", caption: "статусы ссылок", items: statusItems },
-      { title: "Соответствие по отделам", caption: "средний fit, %", items: deptItems.length ? deptItems : [["Нет данных", 0]], note: "Оценку 360 рекомендуется проводить не чаще одного раза в год, чтобы избежать усталости участников." }
-    ],
-    heatmap: employeeHeatmap(state),
-    attentionItems,
-    table: employeesTableConfig(applyFilters("360", employees, state.activeFilters?.["360"]))
-  });
+  // ── Разметка премиум (портирована из Claude Design — review-360.dc.html) ──
+  const ov = state.threeSixtyOverview;
+  const gapBars = ov && ov.competencies && ov.competencies.length
+    ? ov.competencies.slice(0, 8).map((c, i) => ({ label: c.competency, value: c.gap, status: i === 0 ? "bad" : i === 1 ? "medium" : "good" }))
+    : null;
+  const avgGap = ov && ov.avg_gap != null ? `${ov.avg_gap}%` : "—";
+  const startAttr = locked ? 'data-open-locked="Оценка 360 доступна на тарифе TalentStudio."' : 'data-action="open-assess-wizard"';
 
-  // ── Сводный 360-отчёт по оцениваемому ──
-  const subjMap = {};
-  links.forEach((l) => { if (l.subjectPersonId) subjMap[l.subjectPersonId] = true; });
-  const subjects = Object.keys(subjMap).map((id) => ({
-    id,
-    name: (employees.find((e) => e.id === id) || {}).fullName
-      || (links.find((l) => l.subjectPersonId === id && l.fullName) || {}).fullName
-      || "Сотрудник",
-  }));
-  const selected = state.threeSixtySubject;
-  const rep = state.threeSixtyReport;
-  const roleRu = { manager: "Руководитель", peer: "Коллеги", report: "Подчинённые" };
+  const kpiCards = [
+    { label: "Активные 360", value: active, caption: "в процессе", status: "neutral", target: "Оценка 360:Активные" },
+    { label: "Завершены", value: completedLinks.length, caption: "пройдено", status: "good", target: "Оценка 360:Завершены" },
+    { label: "Средний разрыв", value: avgGap, caption: "само vs команда", status: "medium", target: "Оценка 360:Средний разрыв" }
+  ];
 
-  let reportBody;
-  if (!subjects.length) {
-    reportBody = `<p class="elt-card-caption" style="padding:8px">Пока нет запущенных 360-оценок. Запустите через «Запустить 360».</p>`;
-  } else if (!selected) {
-    reportBody = `<p class="elt-card-caption" style="padding:8px">Выберите сотрудника, чтобы увидеть сводку.</p>`;
-  } else if (!rep) {
-    reportBody = `<p class="elt-card-caption" style="padding:8px">Загрузка…</p>`;
-  } else if (rep.error) {
-    reportBody = `<p class="elt-card-caption" style="padding:8px">Не удалось загрузить отчёт.</p>`;
-  } else {
-    const raterLine = [
-      rep.has_self ? "Самооценка ✓" : null,
-      ...Object.entries(rep.rater_counts || {}).map(([r, c]) => `${roleRu[r] || r}: ${c}`),
-    ].filter(Boolean).join(" · ");
-    const gapTxt = rep.gap_overall != null ? `${rep.gap_overall > 0 ? "+" : ""}${rep.gap_overall}` : "—";
-    const gapCls = rep.gap_overall == null ? "" : rep.gap_overall > 10 ? "high" : rep.gap_overall < -10 ? "low" : "";
-    reportBody = `
-      <div class="ts360-summary">
-        <div class="ts360-overall"><span>Самооценка</span><b>${rep.self_overall ?? "—"}${rep.self_overall != null ? "%" : ""}</b></div>
-        <div class="ts360-overall"><span>Внешняя</span><b>${rep.external_overall ?? "—"}${rep.external_overall != null ? "%" : ""}</b></div>
-        <div class="ts360-overall ts360-gap ${gapCls}"><span>Расхождение</span><b>${gapTxt}</b></div>
+  const content = `<section class="elt-dashboard">
+    <header class="elt-dash-header">
+      <div class="elt-dash-header-left">
+        <span class="elt-mini-label">Круговая оценка</span>
+        <h1 class="elt-dash-title">Оценка 360</h1>
+        <p class="elt-dash-subtitle">${escapeHtml(failed ? "API недоступен — данные не загружены" : "Опросы по команде и расхождения самооценки")}</p>
       </div>
-      <div class="ts360-raters">${raterLine || "нет оценщиков"}</div>
-      <div class="ts360-comps">
-        ${rep.competencies.map((c) => `<div class="ts360-comp">
-          <span class="ts360-comp-name">${c.competency}</span>
-          <div class="ts360-bars">
-            <div class="ts360-bar"><i style="width:${c.self_percent || 0}%;background:#1E5BFF"></i></div>
-            <div class="ts360-bar"><i style="width:${c.external_percent || 0}%;background:#00B89C"></i></div>
-          </div>
-          <span class="ts360-comp-vals">я ${c.self_percent ?? "—"} / внеш ${c.external_percent ?? "—"}${c.gap != null ? ` · <b class="${c.gap > 10 ? "ts360-h" : c.gap < -10 ? "ts360-l" : ""}">${c.gap > 0 ? "+" : ""}${c.gap}</b>` : ""}</span>
-        </div>`).join("")}
-      </div>`;
-  }
-
-  const report360 = `<section class="elt-dashboard ts360-section">
-    <article class="elt-panel ts360-panel">
-      <div class="elt-panel-head"><div class="elt-panel-head-left"><h2>Сводный 360-отчёт</h2></div><span class="elt-panel-badge">самооценка vs внешняя</span></div>
-      <div class="ts360-subjects">
-        ${subjects.map((s) => `<button type="button" class="ts360-subj ${selected === s.id ? "active" : ""}" data-open360="${s.id}">${s.name}</button>`).join("")}
+      <div class="elt-dash-header-actions">
+        <button class="elt-btn-primary" ${startAttr}>Запустить 360</button>
+        <button class="elt-btn-ghost" data-open-filters="360">⚲ Фильтры</button>
       </div>
-      ${reportBody}
-    </article>
+    </header>
+
+    <section class="elt-kpi-grid">
+      ${kpiCards.map(kpiCard).join("")}
+    </section>
+
+    <section class="elt-analytics-grid">
+      <article class="elt-panel elt-chart-panel">
+        <div class="elt-panel-head">
+          <div class="elt-panel-head-left"><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1.5" y="4" width="12" height="9" rx="1.3" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 4V3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1" stroke="currentColor" stroke-width="1.2"/></svg><h2>Расхождение по компетенциям</h2></div>
+          <span class="elt-panel-caption">само-/внешняя</span>
+        </div>
+        ${gapBars ? barChart(gapBars) : `<div class="ov-empty">Пока нет завершённых 360 с самооценкой и внешней оценкой.</div>`}
+      </article>
+    </section>
   </section>`;
 
-  const full = content + report360;
-  return locked ? `<div class="guardedFeature">${full}<div class="lockedOverlay"><b>Оценка 360 доступна на TalentStudio</b><p>Раздел виден как будущий модуль, но запуск оценок пока заблокирован.</p><button class="blueButton" data-open-tariff-picker>Изменить тариф</button></div></div>` : full;
+  return content;
 }
 
 export function renderPerformance(state) {
@@ -2090,83 +2248,142 @@ export function renderPerformance(state) {
       ? `Данные из API · оценено ${assessed.length} из ${employees.length} · ${inCycle} в цикле review`
       : "Загрузка данных из API…";
 
-  const attentionItems = [];
-  if (lowPerf > 0) attentionItems.push({ title: `${lowPerf} с низкой результативностью`, text: "Нужен разбор причин и план улучшения.", status: "bad", target: "Performance Review:Низкий performance" });
-  if (hipo > 0) attentionItems.push({ title: `${hipo} HiPo-сотрудников`, text: "Высокий performance и потенциал — спланируйте развитие и удержание.", status: "good", target: "Performance Review:HiPo" });
-  if (inCycle > completed) attentionItems.push({ title: `${inCycle - completed} review не завершены`, text: "Ссылки отправлены, но оценка ещё не пройдена.", status: "medium", target: "Performance Review:Завершили" });
+  // ── Сегменты 9-box (Звёзды / Ядро / Перспективные / Зона риска) ──
+  const stars = hipo;                                   // hi perf & hi pot
+  const risk = lowPerf;                                 // lo perf
+  const perspective = assessed.filter((e) => hi(pot(e)) && !hi(perf(e)) && !lo(perf(e))).length;
+  const core = Math.max(0, assessed.length - stars - risk - perspective);
+  const segBars = [
+    { label: "Звёзды", value: stars, status: "good" },
+    { label: "Ядро команды", value: core, status: "neutral" },
+    { label: "Перспективные", value: perspective, status: "medium" },
+    { label: "Зона риска", value: risk, status: "bad" }
+  ];
 
-  return DashboardPageLayout({
-    title: "Performance Review",
-    subtitle,
-    meta: ["performance", "potential", "кадровый резерв"],
-    period: state.period,
-    actions: [{ label: "Запустить review", primary: true, attrs: "data-action=\"open-assess-wizard\"" }],
-    filters: pageFilterConfig.performance,
-    activeFiltersMap: (state.activeFilters && state.activeFilters.performance) || {},
-    kpiCards: [
-      { label: "В цикле", value: inCycle, caption: "review отправлено", status: "neutral", target: "Performance Review:В цикле" },
-      { label: "Завершили", value: completed, caption: "review пройдено", status: "medium", target: "Performance Review:Завершили" },
-      { label: "Высокий performance", value: highPerf, caption: "80%+", status: "good", target: "Performance Review:Высокий performance" },
-      { label: "Низкий performance", value: lowPerf, caption: "ниже 60%", status: "bad", target: "Performance Review:Низкий performance" },
-      { label: "Высокий потенциал", value: hipo, caption: "HiPo", status: "good", target: "Performance Review:HiPo" },
-      { label: "Кадровый резерв", value: reserve, caption: "готовить", status: "good", target: "Performance Review:Кадровый резерв" },
-      { label: "Не оценён", value: notAssessed, caption: "нет профильной оценки", status: "neutral", target: "Performance Review:Не оценён" }
-    ],
-    matrixHtml: assessed.length
-      ? `<article class="elt-panel elt-chart-panel elt-wide">
-          <div class="elt-panel-head"><div class="elt-panel-head-left"><h2>9-box: Performance × Potential</h2></div><span class="elt-panel-caption">по ${assessed.length} оценённым</span></div>
-          ${nineBoxGrid(assessed, perf, pot)}
-        </article>`
-      : "",
-    charts: [
-      { title: "Performance / Potential", caption: "средние и сегменты", items: [["Ср. результативность", avgPerf], ["Ср. потенциал", avgPot], ["HiPo", hipo], ["Резерв", reserve]] }
-    ],
-    heatmap: employeeHeatmap(state),
-    attentionItems,
-    table: employeesTableConfig(applyFilters("performance", employees, state.activeFilters?.performance))
-  });
+  const kpiCards = [
+    { label: "В цикле", value: inCycle, caption: "review отправлено", status: "neutral", target: "Performance Review:В цикле" },
+    { label: "Завершили", value: completed, caption: "review пройдено", status: "good", target: "Performance Review:Завершили" },
+    { label: "Звёзды", value: stars, caption: "high perf / high pot", status: "good", target: "Performance Review:HiPo" },
+    { label: "Зона риска", value: risk, caption: "требуют решения", status: "bad", target: "Performance Review:Низкий performance" }
+  ];
+
+  return `<section class="elt-dashboard">
+    <header class="elt-dash-header">
+      <div class="elt-dash-header-left">
+        <span class="elt-mini-label">Цикл оценки</span>
+        <h1 class="elt-dash-title">Performance Review</h1>
+        <p class="elt-dash-subtitle">${escapeHtml(failed ? "API недоступен — данные не загружены" : "9-box, цели и обратная связь")}</p>
+      </div>
+      <div class="elt-dash-header-actions">
+        <button class="elt-btn-primary" data-action="open-assess-wizard">Новый цикл</button>
+        <button class="elt-btn-ghost" data-open-filters="performance">⚲ Фильтры</button>
+      </div>
+    </header>
+
+    <section class="elt-kpi-grid">
+      ${kpiCards.map(kpiCard).join("")}
+    </section>
+
+    <section class="elt-analytics-grid">
+      <article class="elt-panel elt-chart-panel">
+        <div class="elt-panel-head">
+          <div class="elt-panel-head-left"><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1.5" y="4" width="12" height="9" rx="1.3" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 4V3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1" stroke="currentColor" stroke-width="1.2"/></svg><h2>Сегменты 9-box</h2></div>
+          <span class="elt-panel-caption">распределение</span>
+        </div>
+        ${barChart(segBars)}
+      </article>
+    </section>
+  </section>`;
 }
 
 export function renderLinks(state, professions) {
-  return `
-    <div class="elt-page-wrap">
-      <div class="elt-page-header">
-        <div class="elt-page-header-left">
-          <span class="elt-mini-label">Оценки</span>
-          <h1 class="elt-page-title">Оценки кандидатов и сотрудников</h1>
-          <p class="elt-page-subtitle">Создайте оценку, отправьте ссылку участнику, отслеживайте статус и результат прохождения.</p>
-        </div>
-        <div class="elt-page-actions"></div>
+  // ── Разметка премиум (портирована из Claude Design — links.dc.html) ──
+  const apiReady = state.linksStatus === "ready" && Array.isArray(state.linksApi);
+  const links = apiReady ? state.linksApi : (state.links || []);
+  const isDone = (l) => l.status === "completed";
+  const isExpired = (l) => l.status === "expired" || l.status === "cancelled";
+  const isActive = (l) => !isDone(l) && !isExpired(l);
+  const passed = links.filter(isDone);
+  const active = links.filter(isActive).length;
+  const expired = links.filter(isExpired).length;
+  const conversion = links.length ? Math.round((passed.length / links.length) * 100) : 0;
+
+  const kpiCards = [
+    { label: "Активные ссылки", value: active, caption: "ожидают", status: "medium", iconName: "link" },
+    { label: "Пройдено", value: passed.length, caption: "завершено", status: "good", iconName: "completed" },
+    { label: "Истекли", value: expired, caption: "не открыли", status: "bad", iconName: "risk" },
+    { label: "Конверсия", value: `${conversion}%`, caption: "прошли / всего", status: getConversionStatus(conversion), iconName: "chart" }
+  ];
+
+  const initials = (n) => (n || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0] || "").join("").toUpperCase();
+  const avatar = (n) => `<span style="width:30px;height:30px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-size:11px;font-weight:800;color:#02121A;background:linear-gradient(135deg,#1E5BFF,#00E5D4)">${initials(n)}</span>`;
+  const pctBadge = (pct, good) => `<span style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;font-size:12px;font-weight:800;color:${good ? "#4ADE80" : "#F87171"}"><span style="width:7px;height:7px;border-radius:50%;background:linear-gradient(135deg,${good ? "#166534,#4ADE80" : "#7F1D1D,#F87171"})"></span>${pct}%</span>`;
+  const statusPill = (l) => {
+    const [label, from, to] = isDone(l) ? ["пройдено", "#0E7490", "#00E5D4"]
+      : isExpired(l) ? ["истекла", "#7F1D1D", "#F87171"]
+        : (l.status === "opened" || l.status === "started") ? ["открыта", "#1E3A8A", "#7CA0FF"]
+          : ["ожидает", "#1E3A8A", "#60A5FA"];
+    return `<span style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;font-size:11px;font-weight:600;color:#CDD9EE"><span style="width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:linear-gradient(135deg,${from},${to})"></span>${label}</span>`;
+  };
+
+  const lastHtml = links.length
+    ? links.slice(0, 7).map((l) => `<button class="gp-row" ${l.token ? `data-open-assess="${l.token}"` : ""}>
+        <div style="flex:1 1 0%;min-width:0"><b>${escapeHtml(l.fullName || "Участник")}</b><br><span>${escapeHtml(l.professionTitle || "оценка")}</span></div>
+        ${statusPill(l)}
+      </button>`).join("")
+    : `<div class="ov-empty">Ссылок пока нет.</div>`;
+
+  const scored = passed.filter((l) => typeof l.percent === "number");
+  const bestList = scored.slice().sort((a, b) => b.percent - a.percent).slice(0, 5);
+  const worstList = scored.slice().sort((a, b) => a.percent - b.percent).slice(0, 5);
+  const scoreRow = (l, good) => `<button class="gp-row" data-open-card="${l.subjectPersonId || l.personId || ""}">
+      ${avatar(l.fullName)}
+      <div style="flex:1 1 0%;min-width:0"><b>${escapeHtml(l.fullName || "Участник")}</b><br><span>${escapeHtml(l.professionTitle || "")} · fit</span></div>
+      ${pctBadge(l.percent, good)}
+    </button>`;
+  const bestHtml = bestList.length ? bestList.map((l) => scoreRow(l, true)).join("") : `<div class="ov-empty">Нет пройденных оценок.</div>`;
+  const worstHtml = worstList.length ? worstList.map((l) => scoreRow(l, false)).join("") : `<div class="ov-empty">Нет пройденных оценок.</div>`;
+
+  const panelHead = (svg, title, caption) => `
+    <div class="elt-panel-head">
+      <div class="elt-panel-head-left"><svg width="15" height="15" viewBox="0 0 15 15" fill="none">${svg}</svg><h2>${title}</h2></div>
+      ${caption ? `<span class="elt-panel-caption">${caption}</span>` : ""}
+    </div>`;
+
+  return `<section class="elt-dashboard">
+    <header class="elt-dash-header">
+      <div class="elt-dash-header-left">
+        <span class="elt-mini-label">Рассылка</span>
+        <h1 class="elt-dash-title">Оценки</h1>
+        <p class="elt-dash-subtitle">Отправленные ссылки и их статусы</p>
       </div>
-      <div class="elt-links-grid">
-        <div class="elt-table-panel">
-          ${(() => {
-            const apiReady = state.linksStatus === "ready" && Array.isArray(state.linksApi);
-            const allRows = apiReady ? state.linksApi : state.links;
-            const loading = state.linksStatus === "loading" && !state.linksApi;
-            const filter = state.linksFilter || "all";
-            // Тип получателя нормализуем: API отдаёт «Сотрудник/Кандидат», локальные
-            // ссылки мастера могут использовать английский "employee".
-            const typeOf = (link) => (link.recipientType === "Сотрудник" || link.recipientType === "employee") ? "Сотрудник" : "Кандидат";
-            const rows = filter === "all" ? allRows : allRows.filter((link) => typeOf(link) === filter);
-            const caption = loading ? "загрузка…" : `${rows.length} ссылок`;
-            const filterBtn = (value, label) => `<button class="${filter === value ? "active" : ""}" data-links-filter="${value}">${label}</button>`;
-            const filterBar = `<div class="filterBar compact" style="padding-top:12px;padding-left:16px">${filterBtn("all", "Все")}${filterBtn("Кандидат", "Кандидаты")}${filterBtn("Сотрудник", "Сотрудники")}</div>`;
-            const body = rows.length
-              ? rows.map((link) => `<tr><td>${link.fullName || typeOf(link)}</td><td><span class="elt-status-badge ${typeOf(link) === "Сотрудник" ? "status-medium" : "status-neutral"}">${typeOf(link)}</span></td><td>${link.professionTitle}${link.percent != null ? ` · <b>${link.percent}%</b>` : ""}</td><td>${link.email || link.phone || "<span class='elt-warn-text'>нет контакта</span>"}</td><td><code class="elt-code">${location.origin}${location.pathname}#/assess/${link.token}</code>${link.warning ? `<small class="elt-warn-text">${link.warning}</small>` : ''}</td><td><span class="elt-status-badge elt-status-${link.status}">${statusText(link.status)}</span></td><td><div class="elt-row-actions">${link.status === "completed" ? "" : `<button class="elt-btn-ghost" data-open-assess="${link.token}">Открыть</button>`}<button class="elt-btn-ghost">Скопировать</button>${!link.fromApi && canCancel(link) ? `<button class="elt-btn-danger" data-cancel-link="${link.token}">Отменить</button>` : ''}</div></td></tr>`).join('')
-              : `<tr><td colspan="7" style="text-align:center;color:#94A3B8;padding:24px">${loading ? "Загрузка оценок…" : allRows.length ? "Нет оценок для выбранного фильтра." : "Оценок пока нет. Создайте оценку кнопкой «Создать оценку»."}</td></tr>`;
-            return `<div class="elt-table-head"><h2>Оценочные ссылки</h2><span class="elt-card-caption">${caption}</span></div>
-          ${filterBar}
-          <div class="elt-table-wrap">
-            <table class="elt-table"><thead><tr><th>Получатель</th><th>Тип</th><th>Профиль</th><th>Контакт</th><th>Ссылка</th><th>Статус</th><th></th></tr></thead><tbody>
-              ${body}
-            </tbody></table>
-          </div>`;
-          })()}
-        </div>
+      <div class="elt-dash-header-actions">
+        <button class="elt-btn-primary" data-action="create-link">+ Ссылка</button>
+        <button class="elt-btn-ghost" data-open-filters="links">⚲ Фильтры</button>
       </div>
-    </div>
-  `;
+    </header>
+
+    <section class="elt-kpi-grid">
+      ${kpiCards.map(kpiCard).join("")}
+    </section>
+
+    <section class="elt-analytics-grid">
+      <article class="elt-panel elt-chart-panel elt-wide">
+        ${panelHead('<path d="M5.5 9.5L9.5 5.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M9.5 5.5l1.5-1.5a2.1 2.1 0 0 1 3 3L12.5 8.5" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M5.5 9.5L4 11a2.1 2.1 0 0 1-3-3L2.5 6.5" stroke="currentColor" stroke-width="1.3" fill="none"/>', "Последние ссылки", `${links.length} всего`)}
+        <div class="gp-list">${lastHtml}</div>
+      </article>
+
+      <article class="elt-panel elt-chart-panel">
+        ${panelHead('<path d="M7.5 1.5l1.6 3.3 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6L1.3 5.3l3.6-.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>', "Лучшие оценки", "топ fit")}
+        <div class="gp-list">${bestHtml}</div>
+      </article>
+
+      <article class="elt-panel elt-chart-panel">
+        ${panelHead('<path d="M7.5 13.5L14 1.5H1L7.5 13.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>', "Худшие оценки", "зона внимания")}
+        <div class="gp-list">${worstHtml}</div>
+      </article>
+    </section>
+  </section>`;
 }
 
 export function renderReports(state) {
@@ -2176,56 +2393,60 @@ export function renderReports(state) {
 
   const candidates = reports.filter((r) => r.respondent_type === "candidate");
   const employees = reports.filter((r) => r.respondent_type === "employee");
-  const avg = reports.length
-    ? Math.round(reports.reduce((s, r) => s + (r.percent || 0), 0) / reports.length)
-    : 0;
-
-  // Структура по тестам (реально).
-  const byTest = {};
-  reports.forEach((r) => {
-    const k = r.test_title || r.category || "Без названия";
-    byTest[k] = (byTest[k] || 0) + 1;
-  });
-  const byTestItems = Object.entries(byTest).sort((a, b) => b[1] - a[1]).map(([k, v]) => [k, v]);
-
-  // Динамика завершённых отчётов по датам (последние дни с данными).
-  const byDate = {};
-  reports.forEach((r) => {
-    if (!r.submitted_at) return;
-    byDate[r.submitted_at.slice(0, 10)] = (byDate[r.submitted_at.slice(0, 10)] || 0) + 1;
-  });
-  const byDateItems = Object.entries(byDate)
-    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
-    .slice(-7)
-    .map(([d, v]) => [new Date(d).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }), v]);
 
   const subtitle = failed
     ? "API недоступен — отчёты не загружены"
-    : ready
-      ? `Данные из API · ${reports.length} готовых отчётов`
-      : "Загрузка отчётов…";
+    : "Готовые отчёты по оценкам и команде";
 
-  return DashboardPageLayout({
-    title: "Отчеты",
-    subtitle,
-    meta: ["кандидаты", "сотрудники", "360", "адаптация", "review"],
-    period: state.period,
-    actions: [{ label: "Создать оценку", primary: true, attrs: "data-action=\"open-assess-wizard\"" }],
-    filters: pageFilterConfig.reports,
-    activeFiltersMap: (state.activeFilters && state.activeFilters.reports) || {},
-    kpiCards: [
-      { label: "Готовые отчёты", value: reports.length, caption: "завершённые оценки", status: "neutral" },
-      { label: "Кандидаты", value: candidates.length, caption: "отчётов", status: "neutral" },
-      { label: "Сотрудники", value: employees.length, caption: "отчётов", status: "neutral" },
-      { label: "Средний балл", value: `${avg}%`, caption: "по всем отчётам", status: getFitStatus(avg) }
-    ],
-    charts: [
-      { title: "Отчёты по тестам", caption: "структура", items: byTestItems.length ? byTestItems : [["Нет отчётов", 0]] },
-      { title: "Динамика по датам", caption: "когда завершали оценку", items: byDateItems.length ? byDateItems : [["—", 0]] }
-    ],
-    attentionItems: [],
-    table: reportsTableConfig(applyFilters("reports", reports, state.activeFilters?.reports))
-  });
+  const kpiCards = [
+    { label: "Готовых отчётов", value: reports.length, caption: "завершённые оценки", status: "neutral", iconName: "chart" },
+    { label: "Кандидаты", value: candidates.length, caption: "отчётов", status: "good", iconName: "candidates" },
+    { label: "Сотрудники", value: employees.length, caption: "отчётов", status: "neutral", iconName: "employees" }
+  ];
+
+  // «Последние отчёты» — список готовых отчётов (имя — тест / балл · дата / PDF).
+  const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ru-RU", { day: "numeric", month: "long" }) : "—";
+  const pdfBadge = `<span style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;font-size:11px;font-weight:600;color:#CDD9EE"><span style="width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:linear-gradient(135deg,#1E3A8A,#7CA0FF)"></span>PDF</span>`;
+  const reportRows = reports.length
+    ? reports.slice(0, 12).map((r) => {
+        const test = r.test_title || r.category || "оценка";
+        const openAttr = r.respondent_type === "candidate" && r.person_id
+          ? `data-pdf-id="${r.person_id}"`
+          : `data-open-card="${r.person_id}"`;
+        return `<button class="gp-row" ${openAttr}>
+          <div style="flex:1 1 0%;min-width:0"><b>${escapeHtml(r.full_name || "—")} — ${escapeHtml(test)}</b><br><span>${r.percent}% · ${fmtDate(r.submitted_at)}</span></div>
+          ${pdfBadge}
+        </button>`;
+      }).join("")
+    : `<div class="ov-empty">${ready ? "Готовых отчётов пока нет." : "Загрузка отчётов…"}</div>`;
+
+  return `<section class="elt-dashboard">
+    <header class="elt-dash-header">
+      <div class="elt-dash-header-left">
+        <span class="elt-mini-label">Аналитика</span>
+        <h1 class="elt-dash-title">Отчёты</h1>
+        <p class="elt-dash-subtitle">${escapeHtml(subtitle)}</p>
+      </div>
+      <div class="elt-dash-header-actions">
+        <button class="elt-btn-ghost" data-action="import-reports">Экспорт</button>
+        <button class="elt-btn-ghost" data-open-filters="reports">⚲ Фильтры</button>
+      </div>
+    </header>
+
+    <section class="elt-kpi-grid">
+      ${kpiCards.map(kpiCard).join("")}
+    </section>
+
+    <section class="elt-analytics-grid">
+      <article class="elt-panel elt-chart-panel elt-wide">
+        <div class="elt-panel-head">
+          <div class="elt-panel-head-left"><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1.5" y="2.5" width="12" height="11" rx="1.5" stroke="currentColor" stroke-width="1.3"/><line x1="4" y1="6" x2="11" y2="6" stroke="currentColor" stroke-width="1.2"/><line x1="4" y1="9" x2="11" y2="9" stroke="currentColor" stroke-width="1.2"/></svg><h2>Последние отчёты</h2></div>
+          <span class="elt-panel-caption">готовы к выгрузке</span>
+        </div>
+        <div class="gp-list" id="repList">${reportRows}</div>
+      </article>
+    </section>
+  </section>`;
 }
 
 export function renderSupport(state = {}) {
@@ -2234,14 +2455,14 @@ export function renderSupport(state = {}) {
   // Отправитель — email из регистрации (аккаунт пользователя), с фолбэком на контакт компании.
   const contactEmail = (state.user && state.user.email) || company.contactEmail || "";
   return `
-    <div class="elt-page-wrap">
-      <div class="elt-page-header">
-        <div class="elt-page-header-left">
+    <div class="elt-dashboard">
+      <header class="elt-dash-header">
+        <div class="elt-dash-header-left">
           <span class="elt-mini-label">Поддержка</span>
-          <h1 class="elt-page-title">Помощь и заявки</h1>
-          <p class="elt-page-subtitle">Срочные заявки рассматриваются быстрее, предложения по улучшению попадают в продуктовый backlog. Обращение уходит в Telegram команде поддержки.</p>
+          <h1 class="elt-dash-title">Помощь и заявки</h1>
+          <p class="elt-dash-subtitle">Срочные заявки рассматриваются быстрее, предложения по улучшению попадают в продуктовый backlog. Обращение уходит в Telegram команде поддержки.</p>
         </div>
-      </div>
+      </header>
       <div class="elt-support-grid">
         <div class="elt-support-cards">
           <div class="elt-card elt-support-card elt-support-urgent">
@@ -2323,17 +2544,17 @@ export function renderGratitude() {
   ];
   const statusColor = { 'в работе': '#D9A441', 'внедрено': '#22C55E' };
   return `
-    <div class="elt-page-wrap">
-      <div class="elt-page-header">
-        <div class="elt-page-header-left">
-          <span class="elt-mini-label">Благодарности</span>
-          <h1 class="elt-page-title">Люди и компании, которые помогают развивать Эльтеру</h1>
-          <p class="elt-page-subtitle">Идеи клиентов, HR-экспертов и собственников, которые стали частью продукта или находятся в разработке.</p>
+    <div class="elt-dashboard">
+      <header class="elt-dash-header">
+        <div class="elt-dash-header-left">
+          <span class="elt-mini-label">Команда</span>
+          <h1 class="elt-dash-title">Благодарности</h1>
+          <p class="elt-dash-subtitle">Отмечайте коллег за помощь и результат</p>
         </div>
-        <div class="elt-page-actions">
+        <div class="elt-dash-header-actions">
           <button class="elt-btn-primary" data-view="support">Предложить улучшение</button>
         </div>
-      </div>
+      </header>
       <div class="elt-card elt-gratitude-hero">
         <div>
           <span class="elt-mini-label">Product community</span>
@@ -2395,14 +2616,14 @@ export function renderReport(state, session) {
 
 export function renderTariffs(state, tariffs) {
   return `
-    <div class="elt-page-wrap">
-      <div class="elt-page-header">
-        <div class="elt-page-header-left">
-          <span class="elt-mini-label">Тарифы</span>
-          <h1 class="elt-page-title">Функции по тарифам</h1>
-          <p class="elt-page-subtitle">Start — текущий базовый доступ за 990 ₽ / 20 оценок. Для смены доступны TalentCheck, TalentPro и TalentStudio.</p>
+    <div class="elt-dashboard">
+      <header class="elt-dash-header">
+        <div class="elt-dash-header-left">
+          <span class="elt-mini-label">Биллинг</span>
+          <h1 class="elt-dash-title">Тарифы</h1>
+          <p class="elt-dash-subtitle">Текущий план и пакеты токенов · 1 оценка = 1 токен</p>
         </div>
-      </div>
+      </header>
       <div class="elt-tariff-grid">${tariffs.map((tariff) => renderTariffCard(tariff, true)).join('')}</div>
     </div>
   `;
@@ -2418,68 +2639,92 @@ export function renderReferrals(state) {
     ? '<span class="elt-status-badge elt-status-completed">платит</span>'
     : '<span class="elt-status-badge elt-status-pending">новая</span>');
   const invites = state.referrals.invites || [];
-  const operations = state.referrals.operations || [];
-  return `
-    <div class="elt-page-wrap">
-      <div class="elt-page-header">
-        <div class="elt-page-header-left">
-          <span class="elt-mini-label">Реферальная программа</span>
-          <h1 class="elt-page-title">10% от каждой оплаты приглашенной компании</h1>
-          <p class="elt-page-subtitle">1 бонус = 1 ₽. Бонусы можно потратить внутри платформы или вывести на карту через заявку.</p>
-        </div>
+  const paying = invites.filter((i) => i.status === "paying");
+  const waiting = invites.filter((i) => i.status !== "paying");
+  const refUrl = `${location.origin}${location.pathname}#/ref/${state.referrals.code || "…"}`;
+
+  const kpiCards = [
+    { label: "Приглашено", value: state.referrals.invited, caption: "компаний", status: "neutral", iconName: "referral" },
+    { label: "Активны", value: state.referrals.paid, caption: "оплачивают", status: "good", iconName: "fit" },
+    { label: "Начислено токенов", value: fmt(state.referrals.accrued), caption: "ELT", status: "good", iconName: "balance" }
+  ];
+
+  const inviteRow = (i, good) => `<div class="gp-row">
+      <span style="width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:linear-gradient(135deg,${good ? "#166534,#4ADE80" : "#9A3412,#FACC15"})"></span>
+      <div style="flex:1 1 0%;min-width:0"><b>${escapeHtml(i.company_name || "Компания")}</b><br><span>${good ? `оплаты · ${fmt(i.total_payments)} ₽` : "ожидаем первую оплату"}</span></div>
+      <span style="flex:0 0 auto;font-size:11.5px;font-weight:700;color:rgba(230,242,255,.62)">${i.accrued_bonus ? `+${fmt(i.accrued_bonus)} ELT` : "—"}</span>
+    </div>`;
+  const payHtml = paying.length ? paying.map((i) => inviteRow(i, true)).join("") : `<div class="ov-empty">Пока никто не платит.</div>`;
+  const waitHtml = waiting.length ? waiting.map((i) => inviteRow(i, false)).join("") : `<div class="ov-empty">Нет приглашённых в ожидании.</div>`;
+
+  const cd = [["Дней", "128"], ["Часов", "14"], ["Минут", "37"], ["Секунд", "52"]];
+  const cdBox = ([label, val]) => `<div style="flex:1 1 0%;min-width:64px;text-align:center;padding:14px 8px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)"><div style="font-size:24px;font-weight:800;color:#06D7F5;letter-spacing:-.02em">${val}</div><div style="font-size:10.5px;color:rgba(230,242,255,.45);text-transform:uppercase;letter-spacing:.08em;margin-top:4px">${label}</div></div>`;
+
+  const panelHead = (svg, title, caption) => `
+    <div class="elt-panel-head">
+      <div class="elt-panel-head-left"><svg width="15" height="15" viewBox="0 0 15 15" fill="none">${svg}</svg><h2>${title}</h2></div>
+      ${caption ? `<span class="elt-panel-caption">${caption}</span>` : ""}
+    </div>`;
+
+  return `<section class="elt-dashboard">
+    <header class="elt-dash-header">
+      <div class="elt-dash-header-left">
+        <span class="elt-mini-label">Программа</span>
+        <h1 class="elt-dash-title">Реферальная программа</h1>
+        <p class="elt-dash-subtitle">Приглашайте коллег и получайте токены</p>
       </div>
-      <div class="elt-referral-top">
-        <div class="elt-card elt-referral-link-card">
-          <div class="elt-card-head"><h2>Моя реферальная ссылка</h2></div>
-          <code class="elt-code elt-code-block">${location.origin}${location.pathname}#/ref/${state.referrals.code || '…'}</code>
-          <div class="elt-row-actions">
-            <button class="elt-btn-secondary" data-action="copy-ref">Скопировать</button>
-            <button class="elt-btn-ghost">Поделиться</button>
-            <button class="elt-btn-ghost" data-action="open-bonus-modal">Потратить бонусы</button>
-            <button class="elt-btn-ghost" data-action="open-withdraw-modal">Вывести на карту</button>
-          </div>
-        </div>
-        <div class="elt-kpi-row">
-          <div class="elt-kpi"><div class="elt-kpi-val">${state.referrals.available.toLocaleString('ru-RU')} ₽</div><div class="elt-kpi-label">Доступно бонусов</div><div class="elt-kpi-caption">${maxAssessments} оценок</div></div>
-          <div class="elt-kpi"><div class="elt-kpi-val">${state.referrals.accrued.toLocaleString('ru-RU')} ₽</div><div class="elt-kpi-label">Начислено всего</div><div class="elt-kpi-caption">10% от оплат</div></div>
-          <div class="elt-kpi"><div class="elt-kpi-val">${state.referrals.spent.toLocaleString('ru-RU')} ₽</div><div class="elt-kpi-label">Потрачено</div><div class="elt-kpi-caption">на оценки</div></div>
-          <div class="elt-kpi"><div class="elt-kpi-val">${state.referrals.withdrawn.toLocaleString('ru-RU')} ₽</div><div class="elt-kpi-label">Выведено</div><div class="elt-kpi-caption">на карту</div></div>
-          <div class="elt-kpi"><div class="elt-kpi-val">${state.referrals.invited}</div><div class="elt-kpi-label">Приглашено</div><div class="elt-kpi-caption">компании</div></div>
-          <div class="elt-kpi"><div class="elt-kpi-val">${state.referrals.paid}</div><div class="elt-kpi-label">Оплачивают</div><div class="elt-kpi-caption">компании</div></div>
-        </div>
+    </header>
+
+    <section class="elt-kpi-grid">
+      ${kpiCards.map(kpiCard).join("")}
+    </section>
+
+    <article class="elt-panel elt-wide" style="margin-bottom:16px">
+      ${panelHead('<path d="M6 9.5L3.8 11.7a2.1 2.1 0 0 1-3-3L3 6.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M9 5.5l2.2-2.2a2.1 2.1 0 0 1 3 3L12 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="5.6" y1="9.4" x2="9.4" y2="5.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>', "Ваша реферальная ссылка", "поделитесь с коллегой")}
+      <div style="font-family:'JetBrains Mono',ui-monospace,Menlo,monospace;background:rgba(6,16,22,.66);border:1px solid rgba(6,215,245,.32);border-radius:12px;padding:14px 16px;margin:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span style="color:#06D7F5;font-weight:700">&gt;</span>
+        <span id="refLink" style="color:#8BEAF7;font-size:13.5px;flex:1 1 0%;min-width:0;overflow:hidden;text-overflow:ellipsis">${escapeHtml(refUrl)}</span>
+        <span style="width:8px;height:15px;background:#E3D29B;animation:caBlink 1s step-end infinite;flex:0 0 auto"></span>
+        <button class="elt-btn-ghost" data-action="copy-ref" style="flex:0 0 auto">Скопировать</button>
       </div>
-      <div class="elt-referral-tables">
-        <div class="elt-table-panel">
-          <div class="elt-table-head"><h2>Приглашенные компании</h2><span class="elt-card-caption">начисление с каждой оплаты</span></div>
-          <div class="elt-table-wrap"><table class="elt-table"><thead><tr><th>Компания</th><th>Дата</th><th>Сумма оплат</th><th>Бонусы</th><th>Статус</th></tr></thead><tbody>${invites.map((i) => `<tr><td>${i.company_name}</td><td>${opDate(i.joined_on)}</td><td>${fmt(i.total_payments)} ₽</td><td>${fmt(i.accrued_bonus)} ₽</td><td>${inviteStatus(i.status)}</td></tr>`).join('') || `<tr><td colspan="5" style="color:#8899BB">Нет данных</td></tr>`}</tbody></table></div>
-        </div>
-        <div class="elt-table-panel">
-          <div class="elt-table-head"><h2>История операций</h2><span class="elt-card-caption">бонусы</span></div>
-          <div class="elt-table-wrap"><table class="elt-table"><thead><tr><th>Дата</th><th>Операция</th><th>Основание</th><th>Сумма</th><th>Статус</th></tr></thead><tbody>${operations.map((op) => `<tr><td>${opDate(op.created_at)}</td><td>${op.title}</td><td>${op.basis}</td><td>${opAmount(op.amount)}</td><td><span class="elt-status-badge ${op.kind === 'accrual' ? 'elt-status-completed' : 'elt-status-pending'}">${op.status}</span></td></tr>`).join('') || `<tr><td colspan="5" style="color:#8899BB">Нет данных</td></tr>`}</tbody></table></div>
-        </div>
-        <div class="elt-table-panel">
-          <div class="elt-table-head"><h2>Заявки на вывод</h2><span class="elt-card-caption">резерв бонусов</span></div>
-          <div class="elt-table-wrap"><table class="elt-table"><thead><tr><th>Сумма</th><th>Карта</th><th>Получатель</th><th>Статус</th></tr></thead><tbody>${state.referrals.withdrawals.map((item) => `<tr><td>${item.amount.toLocaleString('ru-RU')} ₽</td><td>${item.card}</td><td>${item.name}</td><td><span class="elt-status-badge elt-status-pending">${item.status}</span></td></tr>`).join('') || `<tr><td colspan="4" style="color:#8899BB">Нет данных</td></tr>`}</tbody></table></div>
-        </div>
+    </article>
+
+    <section class="elt-analytics-grid">
+      <article class="elt-panel elt-chart-panel">
+        ${panelHead('<circle cx="7.5" cy="7.5" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M5 7.5l1.8 1.8L10 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>', "На оплате", "активные рефералы")}
+        <div class="gp-list">${payHtml}</div>
+      </article>
+
+      <article class="elt-panel elt-chart-panel">
+        ${panelHead('<circle cx="7.5" cy="7.5" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M7.5 4v3.5l2.4 1.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>', "Ожидаем оплату", "приглашены")}
+        <div class="gp-list">${waitHtml}</div>
+      </article>
+    </section>
+
+    <article class="elt-panel elt-wide" style="margin-top:16px;text-align:center">
+      <div class="elt-panel-head" style="justify-content:center">
+        <div class="elt-panel-head-left"><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M7.5 4v3.5l2.4 1.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><h2>До запуска токена ELT</h2></div>
       </div>
-    </div>
-  `;
+      <p style="margin:2px 16px 16px;font-size:12.5px;color:rgba(230,242,255,.5)">Накопленные реферальные токены будут конвертированы в криптовалюту <b style="color:#06D7F5">ELT</b> в момент листинга</p>
+      <div style="display:flex;gap:10px;max-width:460px;margin:0 auto 20px;padding:0 16px">${cd.map(cdBox).join("")}</div>
+    </article>
+  </section>`;
 }
 
 export function renderApiKeys(state) {
   const apiKeyId = `elt_live_${state.company.inn || 'demo'}_01`;
   return `
-    <div class="elt-page-wrap">
-      <div class="elt-page-header">
-        <div class="elt-page-header-left">
+    <div class="elt-dashboard">
+      <header class="elt-dash-header">
+        <div class="elt-dash-header-left">
           <span class="elt-mini-label">Интеграции</span>
-          <h1 class="elt-page-title">API-ключи, webhooks и JSON-файлы</h1>
-          <p class="elt-page-subtitle">Подключение сайта, CRM, ATS, HRM и внешних форм оценки. В MVP показана структура для backend-интеграции.</p>
+          <h1 class="elt-dash-title">API-ключи</h1>
+          <p class="elt-dash-subtitle">Доступ к платформе по API · раздел в разработке</p>
         </div>
-        <div class="elt-page-actions">
+        <div class="elt-dash-header-actions">
           <button class="elt-btn-primary">Создать API-ключ</button>
         </div>
-      </div>
+      </header>
       <div class="elt-api-grid">
         <div class="elt-card elt-api-card elt-api-primary">
           <span class="elt-api-label">ID ключа</span>
@@ -2531,14 +2776,14 @@ export function renderSettings(state) {
   const saveBtn = (card) => `<div><button class="elt-btn-primary" data-org-save="${card}">Сохранить</button></div>`;
   const isLight = state.theme === "light";
   return `
-    <div class="elt-page-wrap">
-      <div class="elt-page-header">
-        <div class="elt-page-header-left">
-          <span class="elt-mini-label">Настройки</span>
-          <h1 class="elt-page-title">Настройки компании</h1>
-          <p class="elt-page-subtitle">Юридические данные, контактное лицо и оформление. Изменения сохраняются на сервере.</p>
+    <div class="elt-dashboard">
+      <header class="elt-dash-header">
+        <div class="elt-dash-header-left">
+          <span class="elt-mini-label">Аккаунт</span>
+          <h1 class="elt-dash-title">Настройки</h1>
+          <p class="elt-dash-subtitle">Компания, уведомления и доступы</p>
         </div>
-      </div>
+      </header>
       <div class="elt-settings-grid">
         <div class="elt-card" data-org-card="company">
           <div class="elt-card-head"><h2>Компания</h2></div>
@@ -2767,7 +3012,8 @@ function renderTopupModal(state, mHead) {
   const discount = m.promoApplied ? 0.10 : 0;
   const amount = selected ? Math.round(selected.amount * (1 - discount) * 100) / 100 : 0;
 
-  const head = mHead("Пополнение баланса", "💳");
+  const isTariff = m.purpose === "tariff";
+  const head = mHead(isTariff ? `Оплата тарифа ${m.tariffName || ""}`.trim() : "Пополнение баланса", "💳");
   const wrap = (inner, cls = "") => `<div class="modalBackdrop"><div class="modal topup-modal ${cls}">${head}<div class="modal-inner topup-inner">${inner}</div></div></div>`;
 
   // ── Промежуточные/финальные состояния ──
@@ -2789,10 +3035,11 @@ function renderTopupModal(state, mHead) {
 
   if (step === "success") {
     const credited = m.creditedPack || selected?.pack || 0;
+    const title = isTariff ? `Тариф ${m.tariffName || ""} подключён`.trim() : "Баланс пополнен";
     return wrap(`<div class="topup-state topup-state-success">
       <div class="topup-badge-ok" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.2 4.2L19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-      <div class="topup-state-title">Баланс пополнен</div>
-      <div class="topup-state-sub">Зачислено <strong>+${credited} оценок</strong>. Текущий баланс: <strong>${balance}</strong>.</div>
+      <div class="topup-state-title">${title}</div>
+      <div class="topup-state-sub">Зачислено <strong>+${credited} токенов</strong>. Текущий баланс: <strong>${balance}</strong>.</div>
       <div class="topup-state-actions"><button class="elt-btn-primary" data-action="topup-done">Готово</button></div>
     </div>`, "topup-modal-narrow");
   }
@@ -3046,7 +3293,7 @@ function renderModal(state) {
     // Этап адаптации (клик по воронке) — отдельная модалка с чек-инами этапа.
     // Отдельный scope, чтобы не пересекаться с дрилл-дауном KPI-карточек («Адаптация»).
     if (scope === "Этап адаптации") {
-      return `<div class="modalBackdrop"><div class="modal modalWide">${mHead(`Этап адаптации: ${metricName}`, '🧭')}<div class="modal-inner">${renderAdaptationStageList(state, metricName)}</div></div></div>`;
+      return `<div class="modalBackdrop"><div class="modal">${mHead(`Этап адаптации: ${metricName}`, '🧭')}<div class="modal-inner">${renderAdaptationStageList(state, metricName)}</div></div></div>`;
     }
     // «Оценка отправлена / Отправлено ссылок» — это метрика по числу ССЫЛОК,
     // поэтому показываем список ссылок, а не кандидатов.
@@ -3054,7 +3301,7 @@ function renderModal(state) {
       const links = (state.linksApi || []).filter((l) => l.recipientType === "Кандидат");
       const loading = state.linksApi == null;
       const body = loading ? `<p class="elt-card-caption" style="padding:12px">Загрузка ссылок…</p>` : renderLinksTable(links);
-      return `<div class="modalBackdrop"><div class="modal modalWide">${mHead(`${scope}: ${metricName}`, '🔗')}<div class="modal-inner">${body}</div></div></div>`;
+      return `<div class="modalBackdrop"><div class="modal">${mHead(`${scope}: ${metricName}`, '🔗')}<div class="modal-inner">${body}</div></div></div>`;
     }
     // Адаптация «Опросы отправлены/пройдены» — это число опросов (ссылок), а не
     // людей: показываем список пульс-опросов адаптации (вкл. ADAPT-DAY).
@@ -3064,11 +3311,11 @@ function renderModal(state) {
         (l.professionTitle || "").startsWith("Адаптация") && l.recipientType === "Сотрудник" && (!done || l.status === "completed"));
       const loading = state.linksApi == null;
       const body = loading ? `<p class="elt-card-caption" style="padding:12px">Загрузка опросов…</p>` : renderLinksTable(links);
-      return `<div class="modalBackdrop"><div class="modal modalWide">${mHead(`${scope}: ${metricName}`, '🔗')}<div class="modal-inner">${body}</div></div></div>`;
+      return `<div class="modalBackdrop"><div class="modal">${mHead(`${scope}: ${metricName}`, '🔗')}<div class="modal-inner">${body}</div></div></div>`;
     }
     const people = peopleForModal(state, scope, metricName);
     const icons = { 'Кандидаты': '👤', 'Сотрудники': '🏢', 'Вакансии': '📋', 'Отчеты': '📊' };
-    return `<div class="modalBackdrop"><div class="modal modalWide">${mHead(`${scope}: ${metricName}`, icons[scope] || '📊')}<div class="modal-inner">${renderPeopleTable(people, scope)}</div></div></div>`;
+    return `<div class="modalBackdrop"><div class="modal">${mHead(`${scope}: ${metricName}`, icons[scope] || '📊')}<div class="modal-inner">${renderPeopleTable(people, scope)}</div></div></div>`;
   }
   if (state.modal?.type === "add-structure-member") {
     const people = [];
@@ -3198,8 +3445,8 @@ function renderModal(state) {
     let cardTitle = "Карточка кандидата";
     if (!state.cardData) body = `<p class="modal-subtitle">Загрузка карточки…</p>`;
     else if (state.cardData.error) body = `<p class="modal-subtitle">Не удалось загрузить карточку (бэкенд недоступен).</p>`;
-    else if (state.cardData._kind === "employee") { body = employeeCardApi(state.cardData); cardTitle = "Карточка сотрудника"; }
-    else body = candidateCard(state.cardData);
+    else if (state.cardData._kind === "employee") { body = employeeCardApi(state.cardData); cardTitle = state.cardData.full_name || "Карточка сотрудника"; }
+    else { body = candidateCard(state.cardData); cardTitle = state.cardData.full_name || "Карточка кандидата"; }
     return `<div class="modalBackdrop"><div class="modal">${mHead(cardTitle, '👤')}<div class="modal-inner">${body}</div></div></div>`;
   }
   if (state.modal?.type === "answers") {
@@ -3473,50 +3720,6 @@ function renderModal(state) {
     return renderTopupModal(state, mHead);
   }
 
-  if (state.modal?.type === "sbp-payment") {
-    const { tariffId, tariffName, price, assessments, promoApplied, mode, pack } = state.modal;
-    const isTopup = mode === 'topup' || !!assessments;
-    const selectedPack = pack || assessments || 20;
-    const packPrices = { 20: 990, 100: 3900, 500: 14900 };
-    const packPrice = packPrices[selectedPack] || 990;
-    const basePrice = isTopup ? packPrice : price;
-    const amount = promoApplied ? Math.round(basePrice * 0.9) : basePrice;
-    const title = isTopup ? `Пополнение оценок` : `Подключение ${tariffName}`;
-    const packSelector = isTopup ? `<div class="sbp-pack-selector">
-      <div class="sbp-pack-label">Выберите пакет оценок</div>
-      <div class="sbp-pack-options">
-        ${[20,100,500].map(p => `<button class="sbp-pack-btn${selectedPack===p?' active':''}" data-action="sbp-select-pack" data-pack="${p}">+${p} оценок<span>${packPrices[p].toLocaleString('ru-RU')} ₽</span></button>`).join('')}
-      </div>
-    </div>` : '';
-    const qrSvg = `<svg width="140" height="140" viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="140" height="140" rx="8" fill="#fff"/><rect x="10" y="10" width="40" height="40" rx="3" fill="#0A0F1E"/><rect x="16" y="16" width="28" height="28" rx="1" fill="#fff"/><rect x="20" y="20" width="20" height="20" rx="1" fill="#0A0F1E"/><rect x="90" y="10" width="40" height="40" rx="3" fill="#0A0F1E"/><rect x="96" y="16" width="28" height="28" rx="1" fill="#fff"/><rect x="100" y="20" width="20" height="20" rx="1" fill="#0A0F1E"/><rect x="10" y="90" width="40" height="40" rx="3" fill="#0A0F1E"/><rect x="16" y="96" width="28" height="28" rx="1" fill="#fff"/><rect x="20" y="100" width="20" height="20" rx="1" fill="#0A0F1E"/><rect x="56" y="10" width="8" height="8" fill="#0A0F1E"/><rect x="68" y="10" width="8" height="8" fill="#0A0F1E"/><rect x="56" y="22" width="8" height="8" fill="#0A0F1E"/><rect x="68" y="22" width="8" height="8" fill="#0A0F1E"/><rect x="56" y="34" width="8" height="8" fill="#0A0F1E"/><rect x="56" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="68" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="80" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="56" y="68" width="8" height="8" fill="#0A0F1E"/><rect x="80" y="68" width="8" height="8" fill="#0A0F1E"/><rect x="56" y="80" width="8" height="8" fill="#0A0F1E"/><rect x="68" y="80" width="8" height="8" fill="#0A0F1E"/><rect x="80" y="80" width="8" height="8" fill="#0A0F1E"/><rect x="56" y="92" width="8" height="8" fill="#0A0F1E"/><rect x="80" y="92" width="8" height="8" fill="#0A0F1E"/><rect x="56" y="104" width="8" height="8" fill="#0A0F1E"/><rect x="68" y="104" width="8" height="8" fill="#0A0F1E"/><rect x="80" y="104" width="8" height="8" fill="#0A0F1E"/><rect x="56" y="116" width="8" height="8" fill="#0A0F1E"/><rect x="80" y="116" width="8" height="8" fill="#0A0F1E"/><rect x="92" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="104" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="116" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="92" y="68" width="8" height="8" fill="#0A0F1E"/><rect x="116" y="68" width="8" height="8" fill="#0A0F1E"/><rect x="92" y="80" width="8" height="8" fill="#0A0F1E"/><rect x="104" y="80" width="8" height="8" fill="#0A0F1E"/><rect x="116" y="80" width="8" height="8" fill="#0A0F1E"/><rect x="92" y="92" width="8" height="8" fill="#0A0F1E"/><rect x="116" y="92" width="8" height="8" fill="#0A0F1E"/><rect x="92" y="104" width="8" height="8" fill="#0A0F1E"/><rect x="104" y="104" width="8" height="8" fill="#0A0F1E"/><rect x="116" y="104" width="8" height="8" fill="#0A0F1E"/><rect x="92" y="116" width="8" height="8" fill="#0A0F1E"/><rect x="104" y="116" width="8" height="8" fill="#0A0F1E"/><rect x="116" y="116" width="8" height="8" fill="#0A0F1E"/><rect x="10" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="22" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="34" y="56" width="8" height="8" fill="#0A0F1E"/><rect x="10" y="68" width="8" height="8" fill="#0A0F1E"/><rect x="34" y="68" width="8" height="8" fill="#0A0F1E"/><rect x="10" y="80" width="8" height="8" fill="#0A0F1E"/><rect x="22" y="80" width="8" height="8" fill="#0A0F1E"/><rect x="34" y="80" width="8" height="8" fill="#0A0F1E"/></svg>`;
-    const promoHtml = promoApplied
-      ? `<div class="sbp-promo-applied">✓ Промокод применён — скидка 10%</div>`
-      : `<div class="sbp-promo-row"><input class="elt-input sbp-promo-input" placeholder="Промокод" data-sbp-promo-input><button class="elt-btn-ghost" data-action="apply-sbp-promo">Применить</button></div>`;
-    return `<div class="modalBackdrop"><div class="modal sbp-modal">
-      ${mHead(title, '💳')}
-      <div class="modal-inner sbp-modal-inner">
-        <div class="sbp-qr-block">
-          <div class="sbp-qr-wrap">${qrSvg}</div>
-          <div class="sbp-qr-hint">Отсканируйте QR-код в приложении банка</div>
-          <button class="sbp-deeplink-btn" data-action="sbp-deeplink">Открыть СБП в приложении</button>
-        </div>
-        <div class="sbp-details">
-          ${packSelector}
-          <div class="sbp-detail-row"><span>Сумма</span><strong>${amount.toLocaleString('ru-RU')} ₽</strong></div>
-          <div class="sbp-detail-row"><span>Получатель</span><span>ООО «Элтера»</span></div>
-          <div class="sbp-detail-row"><span>Назначение</span><span>${isTopup ? `Пополнение +${selectedPack} оценок` : `${tariffName}, 1 мес.`}</span></div>
-          <div class="sbp-detail-row sbp-detail-status"><span>Статус</span><span class="sbp-status-waiting" data-sbp-status>⏱ Ожидание оплаты...</span></div>
-          <div class="sbp-promo-section">${promoHtml}</div>
-          <div class="sbp-actions">
-            <button class="elt-btn-ghost" data-action="close-modal">Отмена</button>
-            <button class="elt-btn-primary" data-action="sbp-confirm" data-tariff-id="${tariffId || ''}" data-assessments="${isTopup ? selectedPack : 0}">Подтвердить оплату</button>
-          </div>
-          <div class="sbp-footer">Платёж защищён СБП · ЦБ РФ · ЮKassa</div>
-        </div>
-      </div>
-    </div></div>`;
-  }
-
   if (state.modal === "spendBonuses") {
     const max = Math.floor(state.referrals.available / state.company.assessmentPrice);
     return `<div class="modalBackdrop"><div class="modal">${mHead('Потратить бонусы', '🎁')}<div class="modal-inner"><p class="modal-subtitle">Доступно: ${state.referrals.available.toLocaleString('ru-RU')} бонусов. 1 оценка = ${state.company.assessmentPrice} ₽.</p><div class="bonusOptions"><button class="blueButton" data-buy-bonus-assessments="${max}">Докупить ${max} оценок</button><button class="button subtle">Компенсировать часть тарифа</button><button class="button subtle">Оплатить тариф бонусами</button></div></div></div></div>`;
@@ -3599,18 +3802,25 @@ function renderPeopleTable(people, scope = "Кандидаты") {
     if (sl.includes('интервью') || sl.includes('отправлен') || sl.includes('работе')) return 'neutral';
     return 'neutral';
   };
-  const empScope = ["Сотрудники", "Адаптация", "Оценка 360", "Performance Review"].includes(scope);
-  return `<table><thead><tr><th>ФИО</th><th>Вакансия / должность</th><th>Балл</th><th>Соответствие</th><th>Дата</th><th>Действия</th></tr></thead><tbody>${people.map((item) => {
-    const score = item.result?.percent || item.fit || 0;
-    const stage = item.stage || item.recommendation || '';
+  const grad = { good: "#166534,#4ADE80", medium: "#9A3412,#FACC15", bad: "#7F1D1D,#F87171", neutral: "#1E3A8A,#7CA0FF" };
+  const col = { good: "#4ADE80", medium: "#FACC15", bad: "#F87171", neutral: "#CDD9EE" };
+  if (!people.length) return `<div class="ov-empty">Нет данных для выбранного фильтра.</div>`;
+  return `<div class="gp-list">${people.map((item) => {
+    const scoreRaw = item.result?.percent ?? item.fit;
+    const score = (scoreRaw === null || scoreRaw === undefined) ? null : scoreRaw;
+    const stage = item.stage || item.recommendation || "";
     const cat = stageStatus(stage);
-    const date = item.completedAt ? new Date(item.completedAt).toLocaleDateString('ru-RU') : (item.startDate || '—');
-    const isEmp = item.id?.startsWith('emp-');
-    const actions = empScope
-      ? `<button class="button subtle" data-open-card="${item.id}">Карточка</button>${!isEmp ? `<button class="button subtle" data-open-answers="${item.id}">Ответы</button>` : ""}`
-      : `${item.status === "completed" ? `<button class="button subtle" data-pdf-id="${item.id}">PDF</button>` : ""}<button class="button subtle" data-open-card="${item.id}">Карточка</button><button class="button subtle" data-open-answers="${item.id}">Ответы</button>${!isEmp ? CandidateKebab(item.id) : ''}`;
-    return `<tr><td class="modal-td-name">${personName(item)}</td><td class="modal-td-role">${item.vacancy || item.position || item.professionTitle || '—'}</td><td><span class="modal-score modal-score-${cat}">${score}%</span></td><td><span class="modal-badge modal-badge-${cat}">${stage}</span></td><td class="modal-td-date">${date}</td><td><div class="rowActions">${actions}</div></td></tr>`;
-  }).join('') || `<tr><td colspan="6" style="text-align:center;padding:24px;color:rgba(230,242,255,.35)">Нет данных для выбранного фильтра.</td></tr>`}</tbody></table>`;
+    const role = item.vacancy || item.position || item.professionTitle || "";
+    const sub = [role, stage].filter(Boolean).join(" · ");
+    const badge = score != null
+      ? `<span style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;flex:0 0 auto;font-size:11.5px;font-weight:800;color:${col[cat] || "#CDD9EE"}"><span style="width:7px;height:7px;border-radius:50%;background:linear-gradient(135deg,${grad[cat] || grad.neutral})"></span>${score}%</span>`
+      : (stage ? `<span style="margin-left:auto;flex:0 0 auto;font-size:11px;font-weight:700;color:${col[cat] || "#CDD9EE"}">${escapeHtml(stage)}</span>` : "");
+    return `<button class="gp-row" data-open-card="${item.id}">
+      <span style="width:34px;height:34px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-size:12px;font-weight:800;color:#02121a;background:linear-gradient(135deg,#1E5BFF,#00E5D4)">${cardInitials(personName(item))}</span>
+      <span style="flex:1 1 0%;min-width:0"><b style="display:block;font-size:13px;color:#E6F2FF;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(personName(item))}</b><span style="font-size:11.5px;color:rgba(230,242,255,.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block">${escapeHtml(sub || "—")}</span></span>
+      ${badge}
+    </button>`;
+  }).join("")}</div>`;
 }
 
 // Таблица оценочных ссылок (для дрилл-дауна «Оценка отправлена / Отправлено ссылок»).
@@ -3620,18 +3830,23 @@ function renderLinksTable(links) {
     const t = Date.parse(d);
     return Number.isNaN(t) ? "—" : new Date(t).toLocaleDateString("ru-RU");
   };
-  const rows = (links || []).map((l) => {
+  if (!(links && links.length)) return `<div class="ov-empty">Ссылок пока нет.</div>`;
+  const stLabel = { sent: "отправлена", opened: "открыта", started: "в процессе", completed: "пройдено", expired: "истекла", cancelled: "отменена", pending: "ожидает" };
+  return `<div class="gp-list">${links.map((l) => {
     const done = (l.status || "").toLowerCase().includes("пройд") || l.status === "completed";
-    const cat = done ? "good" : "neutral";
-    return `<tr>
-      <td class="modal-td-name">${escapeHtml(l.fullName || l.email || "—")}</td>
-      <td class="modal-td-role">${escapeHtml(l.professionTitle || "—")}</td>
-      <td><span class="modal-badge modal-badge-${cat}">${escapeHtml(l.status || "—")}</span></td>
-      <td>${l.percent != null ? `<span class="modal-score modal-score-${cat}">${l.percent}%</span>` : "—"}</td>
-      <td class="modal-td-date">${fmtDate(l.createdAt)}</td>
-    </tr>`;
-  }).join("");
-  return `<table><thead><tr><th>Получатель</th><th>Профиль оценки</th><th>Статус</th><th>Результат</th><th>Отправлена</th></tr></thead><tbody>${rows || `<tr><td colspan="5" style="text-align:center;padding:24px;color:rgba(230,242,255,.35)">Ссылок пока нет.</td></tr>`}</tbody></table>`;
+    const c = done ? "#4ADE80" : "#7CA0FF";
+    const gr = done ? "#166534,#4ADE80" : "#1E3A8A,#7CA0FF";
+    const name = l.fullName || l.email || "—";
+    const sub = [l.professionTitle || "", fmtDate(l.createdAt)].filter(Boolean).join(" · ");
+    const right = l.percent != null
+      ? `<span style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;flex:0 0 auto;font-size:11.5px;font-weight:800;color:${c}"><span style="width:7px;height:7px;border-radius:50%;background:linear-gradient(135deg,${gr})"></span>${l.percent}%</span>`
+      : `<span style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;flex:0 0 auto;font-size:11px;font-weight:600;color:#CDD9EE"><span style="width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,${gr})"></span>${escapeHtml(stLabel[l.status] || l.status || "—")}</span>`;
+    return `<button class="gp-row" ${l.token ? `data-open-assess="${l.token}"` : ""}>
+      <span style="width:34px;height:34px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-size:12px;font-weight:800;color:#02121a;background:linear-gradient(135deg,#1E5BFF,#00E5D4)">${cardInitials(name)}</span>
+      <span style="flex:1 1 0%;min-width:0"><b style="display:block;font-size:13px;color:#E6F2FF;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(name)}</b><span style="font-size:11.5px;color:rgba(230,242,255,.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block">${escapeHtml(sub || "—")}</span></span>
+      ${right}
+    </button>`;
+  }).join("")}</div>`;
 }
 
 function renderEmployeeTable(employees) {
@@ -4150,72 +4365,68 @@ function fitLabel(fit) {
   return (fit === null || fit === undefined) ? "не оценён" : `${fit}%`;
 }
 
+// ── Карточка человека в стиле Claude Design: hero + тесты + детали ──
+const CARD_FC = (v) => v == null ? "#6E7C97" : v >= 80 ? "#4ADE80" : v >= 60 ? "#FACC15" : "#F87171";
+const cardInitials = (n) => (n || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0] || "").join("").toUpperCase();
+const cardSecLabel = (t) => `<div style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#9B6BF2;margin:20px 0 10px">${t}</div>`;
+function cardHero(name, role, fit) {
+  const c = CARD_FC(fit);
+  return `<div style="display:flex;align-items:center;gap:14px;padding:14px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04)">
+    <span style="width:46px;height:46px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:16px;font-weight:800;color:#02121a;background:linear-gradient(135deg,#1E5BFF,#00E5D4)">${cardInitials(name)}</span>
+    <div style="flex:1 1 0%;min-width:0"><div style="font-size:12px;color:rgba(230,242,255,.5)">Соответствие профилю</div><div style="font-size:13px;color:#E6F2FF;font-weight:600">${escapeHtml(role || "—")}</div></div>
+    <div style="font-size:30px;font-weight:800;color:${c};letter-spacing:-.02em">${fit == null ? "—" : fit + "%"}</div>
+  </div>`;
+}
+function cardDetails(rows) {
+  return `<div>${rows.map(([k, v]) => `<div style="display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05)"><span style="font-size:12.5px;color:rgba(230,242,255,.5)">${k}</span><b style="font-size:12.5px;color:#E6F2FF;font-weight:600;text-align:right">${escapeHtml(String(v))}</b></div>`).join("")}</div>`;
+}
+
 function employeeCardApi(d) {
   const riskRu = { none: "—", low: "низкий", medium: "средний", high: "повышенный" };
-  const noFit = d.fit === null || d.fit === undefined;
-  const fitColor = noFit ? "#6E7C97" : d.fit >= 80 ? "#16A34A" : d.fit >= 60 ? "#F59E0B" : "#DC2626";
-  const statusWord = (p) => (p >= 80 ? "высокий" : p >= 60 ? "средний" : "низкий");
-
-  // Блок оценок по каждому тесту + средняя оценка и статус.
+  const role = `${d.position || "Сотрудник"}${d.department ? " · " + d.department : ""}`;
   const a = d.assessments;
-  let assessHtml;
-  if (a === undefined) {
-    assessHtml = `<p class="modal-subtitle" style="margin-top:12px">Загрузка оценок…</p>`;
-  } else if (!a || !a.count) {
-    assessHtml = `<div class="emp-assess"><div class="emp-assess-head"><span>Оценки по тестам</span></div><p class="emp-assess-empty">Сотрудник пока не проходил тесты.</p></div>`;
-  } else {
-    assessHtml = `<div class="emp-assess">
-      <div class="emp-assess-head">
-        <span>Средняя оценка <em>· ${a.count} ${a.count === 1 ? "тест" : a.count < 5 ? "теста" : "тестов"}</em></span>
-        <span class="emp-assess-avg">${a.average_percent}% ${StatusBadge(statusWord(a.average_percent), getFitStatus(a.average_percent))}</span>
-      </div>
-      <div class="emp-assess-list">
-        ${a.items.map((it) => `<div class="emp-assess-row">
-          <span class="emp-assess-test">${it.test_title || it.category || "Тест"}</span>
-          <span class="emp-assess-pct">${StatusBadge(`${it.percent}%`, getFitStatus(it.percent))}</span>
-        </div>`).join("")}
-      </div>
-      <button class="button subtle emp-assess-answers" data-open-answers="${d.id}">Посмотреть ответы по тесту →</button>
-    </div>`;
-  }
-
-  return `<div class="personCard">
-    <b>${d.full_name}</b>
-    <span>${d.position || "Сотрудник"}${d.department ? " · " + d.department : ""}</span>
-    <dl>
-      <dt>Соответствие должности</dt><dd style="color:${fitColor};font-weight:600">${fitLabel(d.fit)}</dd>
-      <dt>Руководитель</dt><dd>${d.manager || "—"}</dd>
-      <dt>Проект</dt><dd>${d.project || "—"}</dd>
-      <dt>Риск увольнения</dt><dd>${riskRu[d.turnover_risk] || d.turnover_risk || "—"}</dd>
-      <dt>Выгорание</dt><dd>${d.burnout || "—"}</dd>
-      <dt>Удовлетворённость</dt><dd>${d.satisfaction != null ? d.satisfaction + "%" : "—"}</dd>
-      <dt>Рекомендация</dt><dd>${d.recommendation || "—"}</dd>
-    </dl>
-    ${assessHtml}
+  const testRows = (a === undefined)
+    ? `<p class="modal-subtitle">Загрузка оценок…</p>`
+    : (a && a.count)
+      ? a.items.map((it) => { const c = CARD_FC(it.percent); return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:11px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03)"><span style="flex:1 1 0%;min-width:0"><b style="display:block;font-size:13px;color:#E6F2FF;font-weight:600">${escapeHtml(it.test_title || it.category || "Тест")}</b></span><span style="font-size:12px;font-weight:800;padding:3px 9px;border-radius:999px;background:${c}22;color:${c}">${it.percent}%</span></div>`; }).join("")
+      : `<div class="ov-empty">Сотрудник пока не проходил тесты.</div>`;
+  return `<div>
+    ${cardHero(d.full_name, role, d.fit)}
+    ${cardSecLabel("Тесты и оценки")}
+    <div style="display:flex;flex-direction:column;gap:8px">${testRows}</div>
+    ${a && a.count ? `<button class="elt-btn-ghost" data-open-answers="${d.id}" style="margin-top:12px;width:100%">Посмотреть ответы по тесту →</button>` : ""}
+    ${cardSecLabel("Детали")}
+    ${cardDetails([
+      ["Руководитель", d.manager || "—"],
+      ["Риск увольнения", riskRu[d.turnover_risk] || d.turnover_risk || "—"],
+      ["Выгорание", d.burnout || "—"],
+      ["Удовлетворённость", d.satisfaction != null ? d.satisfaction + "%" : "—"],
+      ["Рекомендация", d.recommendation || "—"]
+    ])}
   </div>`;
 }
 
 function candidateCard(d) {
   const a = d.assessment;
-  const percent = a ? a.percent : 0;
-  const risk = Math.max(0, 100 - percent);
+  const percent = a ? a.percent : null;
   const passed = a && (a.status === "scored" || a.status === "reviewed" || a.status === "submitted");
-  const recommend = passed ? percent >= 55 : null;
-  const recColor = recommend === null ? "#64748B" : recommend ? "#16A34A" : "#DC2626";
-  const recText = recommend === null
-    ? "Тест ещё не пройден"
-    : recommend ? "Рекомендуем рассмотреть" : "Не рекомендуем рассмотреть";
-  const fitColor = percent >= 68 ? "#16A34A" : percent >= 55 ? "#F59E0B" : "#DC2626";
-  return `<div class="personCard">
-    <b>${d.full_name}</b>
-    <span>${d.vacancy_title || "Кандидат"}</span>
-    <dl>
-      <dt>Соответствие</dt><dd style="color:${fitColor};font-weight:600">${percent}%</dd>
-      <dt>Риск (не справится)</dt><dd>${risk}%</dd>
-      <dt>Город</dt><dd>${d.city || "—"}</dd>
-      <dt>Источник</dt><dd>${d.source || "—"}</dd>
-      <dt>Рекомендация</dt><dd style="color:${recColor};font-weight:600">${recText}</dd>
-    </dl>
+  const recText = !passed ? "Тест ещё не пройден" : percent >= 55 ? "Рекомендуем рассмотреть" : "Не рекомендуем рассмотреть";
+  const testRows = passed
+    ? `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:11px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03)"><span style="flex:1 1 0%;min-width:0"><b style="display:block;font-size:13px;color:#E6F2FF;font-weight:600">${escapeHtml(a.test_title || a.category || "Оценка")}</b></span><span style="font-size:12px;font-weight:800;padding:3px 9px;border-radius:999px;background:${CARD_FC(percent)}22;color:${CARD_FC(percent)}">${percent}%</span></div>`
+    : `<div class="ov-empty">Тест ещё не пройден.</div>`;
+  return `<div>
+    ${cardHero(d.full_name, d.vacancy_title || "Кандидат", percent)}
+    ${cardSecLabel("Тесты и оценки")}
+    <div style="display:flex;flex-direction:column;gap:8px">${testRows}</div>
+    ${passed ? `<button class="elt-btn-ghost" data-open-answers="${d.id}" style="margin-top:12px;width:100%">Посмотреть ответы →</button>` : ""}
+    ${d.id ? `<button class="elt-btn-ghost" data-pdf-id="${d.id}" style="margin-top:8px;width:100%">Скачать PDF-отчёт ⤓</button>` : ""}
+    ${cardSecLabel("Детали")}
+    ${cardDetails([
+      ["Риск (не справится)", percent != null ? Math.max(0, 100 - percent) + "%" : "—"],
+      ["Город", d.city || "—"],
+      ["Источник", d.source || "—"],
+      ["Рекомендация", recText]
+    ])}
   </div>`;
 }
 

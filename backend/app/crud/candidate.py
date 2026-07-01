@@ -40,9 +40,11 @@ from app.schemas.candidate import (
     CandidateResultIn,
     CandidateStats,
     Comp360,
+    Comp360Gap,
     CompetencyScoreRead,
     HeatmapCell,
     HeatmapRow,
+    Overview360,
     Report360,
     PersonAssessmentItem,
     PersonAssessments,
@@ -840,6 +842,46 @@ async def get_360_report(session: AsyncSession, subject_id: str) -> Report360 | 
         subject_person_id=subject_id, full_name=person.full_name,
         has_self=has_self, rater_counts=rater_counts,
         self_overall=self_overall, external_overall=ext_overall, gap_overall=gap_overall,
+        competencies=comps,
+    )
+
+
+async def get_360_overview(session: AsyncSession) -> "Overview360":
+    """Агрегат 360 по организации: средний разрыв само-/внешняя по компетенциям."""
+    org = get_current_org()
+    q = (
+        select(AssessmentLink.subject_person_id)
+        .join(Person, Person.id == AssessmentLink.subject_person_id)
+        .where(AssessmentLink.subject_person_id.is_not(None))
+        .distinct()
+    )
+    if org:
+        q = q.where(Person.organization_id == org)
+    subj_ids = (await session.execute(q)).scalars().all()
+
+    by_comp: dict[str, list[int]] = {}
+    all_gaps: list[int] = []
+    counted = 0
+    for sid in subj_ids:
+        rep = await get_360_report(session, sid)
+        if rep is None:
+            continue
+        used = False
+        for c in rep.competencies:
+            if c.gap is not None:
+                by_comp.setdefault(c.competency, []).append(abs(c.gap))
+                all_gaps.append(abs(c.gap))
+                used = True
+        if used:
+            counted += 1
+    comps = [
+        Comp360Gap(competency=k, gap=round(sum(v) / len(v)), count=len(v))
+        for k, v in by_comp.items()
+    ]
+    comps.sort(key=lambda x: -x.gap)
+    return Overview360(
+        avg_gap=round(sum(all_gaps) / len(all_gaps)) if all_gaps else None,
+        subjects=counted,
         competencies=comps,
     )
 

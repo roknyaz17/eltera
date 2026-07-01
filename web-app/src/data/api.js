@@ -306,6 +306,11 @@ export function fetchEmployee360(personId) {
   return getJSON(`/employees/${personId}/360`);
 }
 
+// Агрегат 360 по организации: средний разрыв и разрыв по компетенциям.
+export function fetchEmployee360Overview() {
+  return getJSON(`/employees/360/overview`);
+}
+
 // Адаптация: таймлайн циклов и ручной запуск рассылки дозревших опросов.
 export function fetchAdaptationCycles() {
   return getJSON(`/adaptation/cycles`);
@@ -416,6 +421,11 @@ export function fetchBilling() {
 // Возвращает { payment_id, redirect_url, configured, ... }.
 export function createTopup(pack, promoCode) {
   return postJSON(`/billing/topup`, { pack, promo_code: promoCode || null });
+}
+// Создать платёж на оплату/смену тарифа существующей организацией.
+// Сумма и число токенов считаются на сервере по каталогу тарифов.
+export function purchaseTariff(tariff) {
+  return postJSON(`/billing/tariff`, { tariff });
 }
 // Статус платежа (для поллинга после возврата с формы Монеты).
 export function fetchPaymentStatus(paymentId) {

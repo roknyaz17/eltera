@@ -59,6 +59,12 @@ class TopupResponse(BaseModel):
     redirect_url: str | None = None
 
 
+class TariffPaymentRequest(BaseModel):
+    """Запрос на оплату/смену тарифа существующей организацией."""
+
+    tariff: str = Field(min_length=1, max_length=40)
+
+
 class DebitRequest(BaseModel):
     """Списание оценок с баланса (отправка приглашения на оценку)."""
 

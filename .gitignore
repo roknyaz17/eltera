@@ -24,3 +24,6 @@ web-app/design-system/styles.css
 web-app/design-system/fonts/
 .qodo
 .venv
+
+# Claude Design reference export (не исходники приложения)
+web-app/_incoming/

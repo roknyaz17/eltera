@@ -8790,6 +8790,21 @@ body.light .ov { --ov-text: #0A0F1E; --ov-muted: #5A6B85; --ov-border: rgba(10,1
 .ov-event-sub { font-size: 11px; color: var(--ov-muted); margin-top: 1px; }
 .ov-event-time { font-size: 11px; color: var(--ov-muted); white-space: nowrap; }
 
+/* Анимации из Claude Design: мигающая точка напоминания (Стоимость привлечения)
+   и въезд правого drawer-а (фильтры/визарды). */
+@keyframes caBlink { 0% { opacity: 1; } 50% { opacity: .2; } 100% { opacity: 1; } }
+@keyframes eltDrIn { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes deptFade { from { opacity: .3; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Списки людей на экране адаптации (карточки «Рекомендуем взять» / «Возможно
+   расстаться» / «Ближайшие чек-ины»). Портировано из Claude Design (класс gp-row). */
+.gp-list { display: flex; flex-direction: column; gap: 6px; }
+.gp-row { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border: 1px solid rgba(255,255,255,.06); border-radius: 11px; background: rgba(255,255,255,.03); transition: background .15s, border-color .15s, transform .15s; text-align: left; width: 100%; }
+button.gp-row { cursor: pointer; font: inherit; }
+.gp-row:hover { transform: translateX(2px); background: rgba(124,58,237,.1); border-color: rgba(124,58,237,.4); }
+.gp-row b { color: rgba(230,242,255,.72); font-size: 12px; font-weight: 600; }
+.gp-row > div span { color: rgba(230,242,255,.42); font-size: 11px; }
+
 .ov-up-list { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
 @media (max-width: 980px) { .ov-up-list { grid-template-columns: 1fr; } }
 .ov-up { display: grid; grid-template-columns: 38px minmax(0,1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; background: var(--ov-soft); border: 1px solid var(--ov-border); border-radius: 10px; cursor: pointer; text-align: left; transition: border-color .12s, transform .12s; }

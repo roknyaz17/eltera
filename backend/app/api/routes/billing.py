@@ -19,6 +19,7 @@ from app.schemas.billing import (
     DebitRequest,
     PaymentOut,
     PaymentStatusOut,
+    TariffPaymentRequest,
     TopupRequest,
     TopupResponse,
 )
@@ -46,6 +47,20 @@ async def create_topup(
     try:
         return await svc.create_payment(
             session, org_id=user.organization_id, user_id=user.id, data=payload
+        )
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+
+
+@router.post("/tariff", response_model=TopupResponse, summary="Оплатить/сменить тариф")
+async def purchase_tariff(
+    payload: TariffPaymentRequest,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> TopupResponse:
+    try:
+        return await svc.create_tariff_payment(
+            session, org_id=user.organization_id, user_id=user.id, tariff_key=payload.tariff
         )
     except ValueError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc

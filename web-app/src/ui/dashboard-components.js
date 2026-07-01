@@ -290,7 +290,7 @@ function PremiumAttentionPanel(items) {
   `;
 }
 
-function PremiumDataTable(table) {
+export function PremiumDataTable(table) {
   if (!table) return "";
   return `
     <article class="elt-panel elt-table-panel">

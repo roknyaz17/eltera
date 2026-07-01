@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_session
 from app.crud import candidate as candidate_crud
 from app.crud import employee as crud
-from app.schemas.candidate import CandidateAnswers, PersonAssessments, Report360
+from app.schemas.candidate import CandidateAnswers, Overview360, PersonAssessments, Report360
 from app.schemas.employee import (
     EmployeeCreate,
     EmployeeList,
@@ -21,6 +21,11 @@ from app.services.adaptation import ensure_cycles
 router = APIRouter(prefix="/employees", tags=["employees"])
 
 _XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+@router.get("/360/overview", response_model=Overview360, summary="Агрегат 360 по компании: разрыв само-/внешняя по компетенциям")
+async def read_360_overview(session: AsyncSession = Depends(get_session)):
+    return await candidate_crud.get_360_overview(session)
 
 
 @router.get("/import/template", summary="Скачать Excel-шаблон импорта сотрудников")
