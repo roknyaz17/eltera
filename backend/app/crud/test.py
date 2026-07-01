@@ -701,9 +701,20 @@ async def delete_question(session: AsyncSession, test_id: str, question_version_
     return True
 
 
-async def import_library_developer(session: AsyncSession, parsed: dict) -> dict:
-    """Import the new workbook where competencies/questions are profile-specific."""
-    org_id = await _org(session)
+async def import_library_developer(session: AsyncSession, parsed: dict, *, shared: bool = False) -> dict:
+    """Import the new workbook where competencies/questions are profile-specific.
+
+    shared=True кладёт всё в общий каталог (organization_id IS NULL), видимый всем
+    организациям (как оператор call-центра и сервисные тесты). Так грузится сид
+    библиотеки. shared=False (по умолчанию) — в текущую/дефолтную организацию.
+    """
+    org_id = None if shared else await _org(session)
+    org_clause = (
+        Test.organization_id.is_(None) if shared else Test.organization_id == org_id
+    )
+    comp_org_clause = (
+        Competency.organization_id.is_(None) if shared else Competency.organization_id == org_id
+    )
     result = {
         "competencies_created": 0,
         "competencies_updated": 0,
@@ -721,12 +732,12 @@ async def import_library_developer(session: AsyncSession, parsed: dict) -> dict:
 
     test_by_key: dict[str, Test] = {
         t.key: t for t in (await session.execute(
-            select(Test).where(Test.organization_id == org_id)
+            select(Test).where(org_clause)
         )).scalars().all() if t.key
     }
     comp_by_ext: dict[str, Competency] = {
         c.key: c for c in (await session.execute(
-            select(Competency).where(Competency.organization_id == org_id)
+            select(Competency).where(comp_org_clause)
         )).scalars().all() if c.key
     }
 

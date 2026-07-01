@@ -41,7 +41,8 @@ async def seed_library() -> None:
             print(f"! пропуск (нет профилей): {name}")
             continue
         async with AsyncSessionLocal() as session:
-            res = await crud.import_library_developer(session, parsed)
+            # shared=True → общий каталог (organization_id IS NULL), виден всем организациям.
+            res = await crud.import_library_developer(session, parsed, shared=True)
         created = res.get("profiles_created", 0)
         updated = res.get("profiles_updated", 0)
         total_created += created
