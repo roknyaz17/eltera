@@ -155,3 +155,96 @@ html, body { margin: 0; padding: 0; background: rgb(10, 15, 30); font-family: Ma
 
 @keyframes eltAiPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(6, 215, 245, 0.45); } 50% { box-shadow: 0 0 0 9px rgba(6, 215, 245, 0); } }
 @keyframes eltAiOpen { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }
+
+/* ============================================================================
+   Светлая тема — контр-слой к тёмному «стеклу» выше.
+   Правила выше жёстко задают тёмные поверхности через !important и не знают про
+   .lightTheme. Здесь тот же набор поверхностей переопределяется под светлую тему:
+   каждый селектор с префиксом .lightTheme имеет более высокую специфичность
+   (0,2,0 против 0,1,0), поэтому побеждает даже при равном !important.
+   Класс темы (lightTheme) висит на .appShell.
+   ============================================================================ */
+
+/* Фон приложения: светлая база с едва заметными брендовыми подсветками. */
+.lightTheme.appShell {
+  background:
+    radial-gradient(900px 560px at 12% -6%, rgba(30, 91, 255, 0.06), transparent 58%),
+    radial-gradient(820px 540px at 97% 6%, rgba(0, 229, 212, 0.05), transparent 55%),
+    radial-gradient(780px 640px at 62% 122%, rgba(128, 106, 240, 0.05), transparent 60%),
+    rgb(240, 244, 255) !important;
+}
+/* Плавающие орбы — приглушаем, чтобы не «жгли» по белому фону. */
+.lightTheme.appShell::before { background: radial-gradient(circle, rgba(30, 91, 255, 0.12), transparent 70%) !important; }
+.lightTheme.appShell::after  { background: radial-gradient(circle, rgba(124, 58, 237, 0.10), transparent 70%) !important; }
+
+/* Карточки и панели: белое «стекло», мягкая тень, светлые границы. */
+.lightTheme .elt-kpi,
+.lightTheme .elt-panel {
+  background: linear-gradient(165deg, #ffffff, #f6f8ff) !important;
+  border: 1px solid rgba(10, 15, 30, 0.08) !important;
+  box-shadow: rgba(10, 15, 30, 0.06) 0 12px 34px !important;
+}
+.lightTheme .elt-kpi:hover,
+.lightTheme .elt-panel:hover {
+  border-color: rgba(124, 58, 237, 0.4) !important;
+  box-shadow: rgba(124, 58, 237, 0.16) 0 0 0 1px, rgba(10, 15, 30, 0.10) 0 16px 40px !important;
+}
+
+/* Сайдбар и топбар. */
+.lightTheme .elt-sidebar {
+  background: linear-gradient(#ffffff, #f7f9fc) !important;
+  border-right: 1px solid rgba(10, 15, 30, 0.08) !important;
+}
+.lightTheme .elt-topbar {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border-bottom: 1px solid rgba(10, 15, 30, 0.08) !important;
+}
+.lightTheme .elt-nav-item.active {
+  background: rgba(30, 91, 255, 0.10) !important;
+  box-shadow: rgba(30, 91, 255, 0.28) 0 0 0 1px inset !important;
+}
+
+/* Поле поиска. */
+.lightTheme .elt-search-wrap,
+.lightTheme .elt-search-wrap:hover,
+.lightTheme .elt-search-wrap:focus-within {
+  border: 1px solid rgba(10, 15, 30, 0.10) !important;
+  background: rgba(10, 15, 30, 0.03) !important;
+}
+
+/* Мягкие карточки лент (внимание/события/чек-ины/адаптация). */
+.lightTheme .ov-att,
+.lightTheme .ov-event,
+.lightTheme .ov-up,
+.lightTheme .gp-row {
+  background: rgba(10, 15, 30, 0.02) !important;
+  border: 1px solid rgba(10, 15, 30, 0.08) !important;
+}
+.lightTheme .ov-att:hover,
+.lightTheme .ov-event:hover,
+.lightTheme .ov-up:hover,
+.lightTheme .gp-row:hover,
+.lightTheme .elt-funnel-step:hover,
+.lightTheme .elt-bar-row:hover {
+  background: rgba(30, 91, 255, 0.06) !important;
+  border-color: rgba(30, 91, 255, 0.30) !important;
+}
+
+/* Текст на тёмном был светлым — возвращаем читаемый тёмный. */
+.lightTheme .gp-row b,
+.lightTheme .ov-att-title,
+.lightTheme .ov-up-name,
+.lightTheme .org-emp b,
+.lightTheme .eltPersonRow b { color: #0A0F1E !important; }
+.lightTheme .gp-row span,
+.lightTheme .gp-row > div span,
+.lightTheme .ov-att-sub,
+.lightTheme .ov-up-stage { color: #5A6B85 !important; }
+.lightTheme .ov-empty { color: rgba(10, 15, 30, 0.4) !important; }
+
+/* Вторичная кнопка (была светлой на тёмном → невидима на белом). */
+.lightTheme .elt-btn-primary:not(.elt-btn-keepblue) {
+  background: rgba(10, 15, 30, 0.04) !important;
+  color: #0A0F1E !important;
+  border: 1px solid rgba(10, 15, 30, 0.14) !important;
+}
