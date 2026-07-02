@@ -2086,6 +2086,11 @@ async function addEmployeeFromForm(formEl) {
     alert("Укажите имя и фамилию сотрудника.");
     return;
   }
+  const email = String(fd.get("email") || "").trim();
+  if (!email) {
+    alert("Укажите email сотрудника.");
+    return;
+  }
   const startDate = String(fd.get("start_date") || "").trim();
   const sendAdaptation = fd.get("sendAdaptation") != null;
   try {
@@ -2093,6 +2098,7 @@ async function addEmployeeFromForm(formEl) {
       first_name: firstName || null,
       last_name: lastName || null,
       full_name: fullName,
+      email,
       position: String(fd.get("position") || "").trim() || null,
       department_name: String(fd.get("department") || "").trim() || null,
       manager_name: String(fd.get("manager") || "").trim() || null,
@@ -2339,16 +2345,22 @@ async function selectAnswerSession(personId, sessionId) {
   render();
 }
 
-// Смена этапа воронки кандидата через меню «три точки».
+// Смена этапа воронки кандидата (меню «три точки» и карточка кандидата).
 async function changeCandidateStage(personId, stage) {
   state.kebabMenu = null; // закрываем меню сразу
   render();
   if (!personId || !stage) return;
   try {
     await updateCandidate(personId, { stage });
+    // Если открыта карточка этого кандидата — обновим её, чтобы подсветить новый статус.
+    if (state.modal?.type === "card" && state.modal.id === personId) {
+      await loadCandidateCard(personId);
+    }
     await loadCandidatesFromApi(); // перечитываем список + KPI и перерисовываем
+    showToast("Статус кандидата обновлён");
   } catch (error) {
     console.warn("Не удалось изменить этап кандидата:", error);
+    showToast("Не удалось изменить статус", "error");
   }
 }
 
@@ -3029,8 +3041,11 @@ document.addEventListener("click", (event) => {
   if (convertBtn) {
     const id = convertBtn.dataset.convertId;
     const cand = (state.candidatesApi || []).find((c) => c.id === id);
+    // Имя: из списка кандидатов, иначе из открытой карточки (перевод прямо из карточки).
+    const fullName = cand ? (cand.person?.fullName || cand.full_name)
+      : (state.cardData && state.cardData.id === id ? state.cardData.full_name : "");
     state.kebabMenu = null;
-    state.modal = { type: "convert-employee", personId: id, fullName: cand ? (cand.person?.fullName || cand.full_name) : "" };
+    state.modal = { type: "convert-employee", personId: id, fullName: fullName || "" };
     // Подгружаем список сотрудников, чтобы выбрать руководителя из выпадающего списка.
     if (!state.employeesApi && state.employeesStatus !== "loading") {
       loadEmployeesFromApi().then(render);

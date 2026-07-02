@@ -479,7 +479,7 @@ const ASST_CHIPS = [
 
 const ASST_PROP_LABELS = {
   candidate: { head: "Добавить кандидата", fields: { full_name: "ФИО", email: "Email", phone: "Телефон", vacancy_title: "Вакансия" } },
-  employee: { head: "Добавить сотрудника", fields: { full_name: "ФИО", position: "Должность", department_name: "Отдел", manager_name: "Руководитель", project: "Проект", start_date: "Дата выхода" } },
+  employee: { head: "Добавить сотрудника", fields: { full_name: "ФИО", email: "Email", position: "Должность", department_name: "Отдел", manager_name: "Руководитель", project: "Проект", start_date: "Дата выхода" } },
 };
 
 function renderAssistantProposal(m, i) {
@@ -944,7 +944,7 @@ export function renderCandidates(state) {
 
   // Воронка/источники — barChart со статусами по строкам (как в макете).
   const FUNNEL_STATUS = ["neutral", "medium", "good", "good", "good"];
-  const funnelBars = funnelItems.map((f, i) => ({ label: f.label, value: f.value, status: FUNNEL_STATUS[i] || "good" }));
+  const funnelBars = funnelItems.map((f, i) => ({ label: f.label, value: f.value, status: FUNNEL_STATUS[i] || "good", target: f.target }));
   const sourceBars = sourceItems
     .slice()
     .sort((a, b) => b[1] - a[1])
@@ -3527,6 +3527,7 @@ function renderModal(state) {
         <div class="elt-form-grid">
           <label class="elt-label">Имя<input class="elt-input" name="firstName" placeholder="Иван" required></label>
           <label class="elt-label">Фамилия<input class="elt-input" name="lastName" placeholder="Иванов" required></label>
+          <label class="elt-label">Email<input class="elt-input" type="email" name="email" placeholder="ivan@company.ru" required></label>
           <label class="elt-label">Должность<input class="elt-input" name="position" placeholder="Менеджер по продажам" required></label>
           <label class="elt-label">Отдел<select class="elt-select" name="department">${deptOptions}</select></label>
           <label class="elt-label">Руководитель<select class="elt-select" name="manager">${managerOptions}</select></label>
@@ -4353,7 +4354,7 @@ function peopleForModal(state, scope, metricName) {
   if (metricName.includes("всего") || metricName.includes("Всего")) return candidates;
   // «Оценка отправлена» = всем кандидатам отправлена оценка (по числу ссылок).
   if (metricName.includes("отправлен")) return candidates;
-  if (metricName.includes("пройден")) return candidates.filter(passed);
+  if (metricName.includes("пройден") || metricName.includes("прошл")) return candidates.filter(passed);
   if (metricName.includes("Условно")) return candidates.filter((x) => passed(x) && pct(x) >= 55 && pct(x) < 68);
   if (metricName.includes("Не подход")) return candidates.filter((x) => passed(x) && pct(x) < 55);
   if (metricName.includes("Подход")) return candidates.filter((x) => passed(x) && pct(x) >= 68);
@@ -4426,8 +4427,21 @@ function candidateCard(d) {
   const testRows = passed
     ? `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:11px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03)"><span style="flex:1 1 0%;min-width:0"><b style="display:block;font-size:13px;color:#E6F2FF;font-weight:600">${escapeHtml(a.test_title || a.category || "Оценка")}</b></span><span style="font-size:12px;font-weight:800;padding:3px 9px;border-radius:999px;background:${CARD_FC(percent)}22;color:${CARD_FC(percent)}">${percent}%</span></div>`
     : `<div class="ov-empty">Тест ещё не пройден.</div>`;
+  // Решение по кандидату: смена статуса (этапа воронки) и перевод в сотрудники.
+  // Кнопки переиспользуют существующие обработчики data-stage-action / data-convert-id.
+  const stageBtns = [
+    ["interview", "На интервью"],
+    ["fit", "Подходит"],
+    ["conditional", "Условно"],
+    ["not_fit", "Отклонить"],
+  ].map(([val, label]) =>
+    `<button type="button" class="cardStageBtn${d.stage === val ? " active" : ""}" data-stage-id="${d.id}" data-stage-action="${val}">${label}</button>`
+  ).join("");
   return `<div>
     ${cardHero(d.full_name, d.vacancy_title || "Кандидат", percent)}
+    ${cardSecLabel("Решение по кандидату")}
+    <div class="cardStageRow">${stageBtns}</div>
+    <button class="elt-btn-primary" data-convert-id="${d.id}" style="margin-top:10px;width:100%">Перевести в сотрудники →</button>
     ${cardSecLabel("Тесты и оценки")}
     <div style="display:flex;flex-direction:column;gap:8px">${testRows}</div>
     ${passed ? `<button class="elt-btn-ghost" data-open-answers="${d.id}" style="margin-top:12px;width:100%">Посмотреть ответы →</button>` : ""}

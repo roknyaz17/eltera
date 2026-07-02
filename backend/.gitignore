@@ -11,3 +11,4 @@ env/
 .ruff_cache/
 uvi.err.log
 uvi.out.log
+_tok.txt
