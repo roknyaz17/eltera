@@ -2888,7 +2888,10 @@ document.addEventListener("click", (event) => {
     state.modal = { type: "hh-import" };
     state.hhImportSearch = "";
     state.hhImportStatus = null;
-    if (!state.hhVacancies && state.hhVacanciesStatus !== "loading") loadHhVacancies();
+    // Всегда перезапрашиваем список при открытии модалки: закешированный пустой
+    // массив (вакансий не было на момент подключения) — «истинный», поэтому
+    // прошлое условие !state.hhVacancies навсегда блокировало рефетч.
+    if (state.hhVacanciesStatus !== "loading") { state.hhVacancies = null; loadHhVacancies(); }
     render();
     return;
   }
