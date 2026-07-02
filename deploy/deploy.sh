@@ -15,7 +15,7 @@
 set -euo pipefail
 
 REPO_DIR="${REPO_DIR:-/opt/eltera-assessment}"
-DOMAIN="${DOMAIN:-assestment.eltera-company.ru}"
+DOMAIN="${DOMAIN:-eltera-ai.ru}"
 COMPOSE="docker compose -f deploy/docker-compose.yml"
 
 cd "$REPO_DIR"

@@ -1,14 +1,24 @@
-# Продакшн-стек Eltera Assessment (assestment.eltera-company.ru).
+# Продакшн-стек Eltera Assessment (eltera-ai.ru).
 # Запускается из корня чекаута: docker compose -f deploy/docker-compose.yml ...
 # Пути относительно этого файла (deploy/), поэтому ../backend и ../web-app.
 #
 # db + api живут в Docker. Статику web-app и TLS отдаёт host-nginx
 # (см. deploy/nginx-eltera.conf), поэтому web-контейнера здесь нет.
+
+# Ротация логов контейнеров: драйвер json-file по умолчанию растёт безгранично
+# и со временем забивает диск. Ограничиваем: до 5 файлов по 10 МБ на контейнер.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   db:
     image: postgres:16-alpine
     container_name: eltera-assess-db
     restart: unless-stopped
+    logging: *default-logging
     environment:
       POSTGRES_USER: eltera
       POSTGRES_PASSWORD: eltera
@@ -26,6 +36,7 @@ services:
     image: eltera-assess-api:latest
     container_name: eltera-assess-api
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - ../backend/.env
     environment:

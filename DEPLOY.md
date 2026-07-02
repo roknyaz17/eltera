@@ -1,6 +1,6 @@
 # Деплой Eltera Assessment
 
-Прод: **https://assestment.eltera-company.ru**
+Прод: **https://eltera-ai.ru**
 Сервер: `root@72.56.37.116` (Ubuntu 24.04, 2 vCPU / 2 GB RAM).
 
 ## Архитектура на сервере
@@ -43,7 +43,7 @@ ssh root@72.56.37.116 'bash /opt/eltera-assessment/deploy/deploy.sh'
 ## Первичный бутстрап сервера (делается один раз)
 
 Уже выполнено на 72.56.37.116. Инструкция — на случай переезда/пересоздания.
-Предполагается, что DNS `assestment.eltera-company.ru` уже указывает на IP сервера.
+Предполагается, что DNS `eltera-ai.ru` уже указывает на IP сервера.
 
 ```bash
 # 1. Пакеты
@@ -57,9 +57,9 @@ git clone https://github.com/roknyaz17/eltera /opt/eltera-assessment
 # 3. backend/.env — секреты + БАЗОВЫЕ ПУТИ на прод-домен.
 #    Скопировать из backend/.env.example и выставить ключи; критично:
 #      DEBUG=false
-#      APP_PUBLIC_URL=https://assestment.eltera-company.ru
-#      HH_REDIRECT_URI=https://assestment.eltera-company.ru/api/hh/callback
-#      MONETA_PUBLIC_URL=https://assestment.eltera-company.ru
+#      APP_PUBLIC_URL=https://eltera-ai.ru
+#      HH_REDIRECT_URI=https://eltera-ai.ru/api/hh/callback
+#      MONETA_PUBLIC_URL=https://eltera-ai.ru
 #    (DATABASE_URL внутри контейнера переопределяется compose-ом на db:5432.)
 nano /opt/eltera-assessment/backend/.env
 
@@ -70,7 +70,7 @@ rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl reload nginx
 
 # 5. TLS (Let's Encrypt). Допишет 443-блок и HTTP→HTTPS редирект в конфиг.
-certbot --nginx -d assestment.eltera-company.ru \
+certbot --nginx -d eltera-ai.ru -d www.eltera-ai.ru \
         --non-interactive --agree-tos -m knyazeff17@gmail.com --redirect
 
 # 6. Первый деплой
