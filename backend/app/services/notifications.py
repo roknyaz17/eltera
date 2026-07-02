@@ -40,18 +40,25 @@ async def _default_org_id(session: AsyncSession) -> str | None:
     return (await session.execute(select(Organization.id).limit(1))).scalar_one_or_none()
 
 
-async def _candidates(session: AsyncSession) -> list[dict]:
-    """Список «кандидатов в уведомления» из всех источников (без записи в БД)."""
+async def _candidates(session: AsyncSession, org_id: str | None) -> list[dict]:
+    """Список «кандидатов в уведомления» из всех источников (без записи в БД).
+
+    Все источники фильтруются по org_id, чтобы уведомления не смешивались
+    между организациями (иначе одна организация видит чужие события).
+    """
     out: list[dict] = []
 
     # 1. Пройденные оценки.
-    rows = (await session.execute(
+    sess_stmt = (
         select(AssessmentSession, Person.full_name)
         .join(Person, Person.id == AssessmentSession.person_id)
         .where(AssessmentSession.status.in_(DONE_STATUSES))
         .order_by(AssessmentSession.submitted_at.desc().nullslast(), AssessmentSession.created_at.desc())
         .limit(PER_SOURCE)
-    )).all()
+    )
+    if org_id is not None:
+        sess_stmt = sess_stmt.where(AssessmentSession.organization_id == org_id)
+    rows = (await session.execute(sess_stmt)).all()
     for s, name in rows:
         is_emp = s.respondent_type == "employee"
         out.append({
@@ -83,10 +90,13 @@ async def _candidates(session: AsyncSession) -> list[dict]:
 
     # 3. Новые сотрудники.
     from app.models.person import EmployeeProfile
-    emp_rows = (await session.execute(
+    emp_stmt = (
         select(Person).join(EmployeeProfile, EmployeeProfile.person_id == Person.id)
         .order_by(Person.created_at.desc()).limit(PER_SOURCE)
-    )).scalars().all()
+    )
+    if org_id is not None:
+        emp_stmt = emp_stmt.where(Person.organization_id == org_id)
+    emp_rows = (await session.execute(emp_stmt)).scalars().all()
     for p in emp_rows:
         out.append({
             "dedup_key": f"emp:{p.id}",
@@ -100,10 +110,13 @@ async def _candidates(session: AsyncSession) -> list[dict]:
         })
 
     # 4. Новые кандидаты.
-    cand_rows = (await session.execute(
+    cand_stmt = (
         select(Person).join(CandidateProfile, CandidateProfile.person_id == Person.id)
         .order_by(Person.created_at.desc()).limit(PER_SOURCE)
-    )).scalars().all()
+    )
+    if org_id is not None:
+        cand_stmt = cand_stmt.where(Person.organization_id == org_id)
+    cand_rows = (await session.execute(cand_stmt)).scalars().all()
     for p in cand_rows:
         out.append({
             "dedup_key": f"cand:{p.id}",
@@ -117,11 +130,14 @@ async def _candidates(session: AsyncSession) -> list[dict]:
         })
 
     # 5. Запущенные циклы адаптации.
-    cyc_rows = (await session.execute(
+    cyc_stmt = (
         select(AdaptationCycle, Person.full_name)
         .join(Person, Person.id == AdaptationCycle.person_id)
         .order_by(AdaptationCycle.created_at.desc()).limit(PER_SOURCE)
-    )).all()
+    )
+    if org_id is not None:
+        cyc_stmt = cyc_stmt.where(AdaptationCycle.organization_id == org_id)
+    cyc_rows = (await session.execute(cyc_stmt)).all()
     for c, name in cyc_rows:
         out.append({
             "dedup_key": f"cycle:{c.id}",
@@ -138,16 +154,27 @@ async def _candidates(session: AsyncSession) -> list[dict]:
 
 
 async def sync_notifications(session: AsyncSession) -> int:
-    """Создаёт недостающие уведомления (по dedup_key). Возвращает число новых."""
-    org_id = await _default_org_id(session)
+    """Создаёт недостающие уведомления (по dedup_key) для текущей организации.
+
+    org_id берётся из контекста запроса (get_current_org); вне запроса —
+    дефолтная организация. Раньше всегда бралась «первая» организация, из-за
+    чего уведомления второй организации писались не туда и не отображались.
+    """
+    from app.core.org_context import get_current_org
+
+    org_id = get_current_org() or await _default_org_id(session)
     if org_id is None:
         return 0
 
-    candidates = await _candidates(session)
+    candidates = await _candidates(session, org_id)
     if not candidates:
         return 0
 
-    existing = set((await session.execute(select(Notification.dedup_key))).scalars().all())
+    # dedup_key глобально уникален, но ключи строятся из UUID сущностей и не
+    # пересекаются между организациями — берём существующие только по текущей.
+    existing = set((await session.execute(
+        select(Notification.dedup_key).where(Notification.organization_id == org_id)
+    )).scalars().all())
     fresh_after = _now() - timedelta(days=FRESH_DAYS)
     created = 0
     for c in candidates:

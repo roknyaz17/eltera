@@ -28,6 +28,7 @@ from app.schemas.overview import (
     OverviewUpcoming,
 )
 from app.services.adaptation import sync_completions
+from app.services.pulse import build_pulse
 
 DONE_STATUSES = [SessionStatus.scored.value, SessionStatus.reviewed.value, SessionStatus.submitted.value]
 EVENTS_LIMIT = 10
@@ -308,11 +309,20 @@ async def build_overview(session: AsyncSession) -> Overview:
     attention = await _attention(session)
     events = await _events(session)
     upcoming = await _upcoming(session)
+    pulse = await build_pulse(
+        session,
+        candidates=candidates,
+        employees=employees,
+        adaptation=adaptation,
+        events=events,
+        today=_today(),
+    )
 
     return Overview(
         candidates=candidates,
         employees=employees,
         adaptation=adaptation,
+        pulse=pulse,
         attention=attention,
         events=events,
         upcoming_adaptation=upcoming,

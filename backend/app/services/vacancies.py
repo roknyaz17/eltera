@@ -632,6 +632,18 @@ async def converted_event_ids(session: AsyncSession, vacancy: Vacancy) -> set[st
     return {r for r in rows if r}
 
 
+async def converted_person_map(session: AsyncSession, vacancy: Vacancy) -> dict[str, str]:
+    """event_id → person_id для откликов вакансии, уже переведённых в кандидаты."""
+    rows = (await session.execute(
+        select(HHCandidateLink.response_event_id, HHCandidateLink.person_id).where(
+            HHCandidateLink.vacancy_id == vacancy.id,
+            HHCandidateLink.response_event_id.isnot(None),
+            HHCandidateLink.person_id.isnot(None),
+        )
+    )).all()
+    return {r[0]: r[1] for r in rows if r[0] and r[1]}
+
+
 async def get_response_event(session: AsyncSession, vacancy: Vacancy, event_id: str) -> HHResponseEvent | None:
     return (await session.execute(
         select(HHResponseEvent).where(

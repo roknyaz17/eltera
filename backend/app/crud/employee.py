@@ -2,7 +2,7 @@
 from collections.abc import Sequence
 
 from pydantic import ValidationError
-from sqlalchemy import and_, asc, case, desc, func, or_, select
+from sqlalchemy import and_, asc, case, desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.org_context import get_current_org
@@ -22,6 +22,7 @@ from app.models.test import Test, TestVersion
 from app.schemas.employee import (
     DepartmentCreate,
     DepartmentRead,
+    DepartmentUpdate,
     DeptBreakdown,
     EmployeeCreate,
     EmployeeRead,
@@ -400,12 +401,70 @@ async def update_employee(session: AsyncSession, person_id: str, data) -> bool:
 
 
 async def delete_employee(session: AsyncSession, person_id: str) -> bool:
+    """Жёсткое удаление (каскадом сносит отчёты). В UI НЕ используется — оставлено
+    для служебных нужд; пользователь удаляет мягко через archive_employee."""
     person = await session.get(Person, person_id)
     if person is None or person.employee_profile is None or not _owns(person.organization_id):
         return False
     await session.delete(person)
     await session.commit()
     return True
+
+
+async def archive_employee(session: AsyncSession, person_id: str, *, archived: bool = True) -> bool:
+    """Мягкое удаление сотрудника: archived_at = now (или сброс при restore).
+    Отчёты, история оценок и FK-ссылки сохраняются — ничего не рвётся."""
+    # include_archived=True: при restore человек уже архивный и иначе не найдётся.
+    person = await session.get(Person, person_id, execution_options={"include_archived": True})
+    if person is None or person.employee_profile is None or not _owns(person.organization_id):
+        return False
+    person.archived_at = utcnow() if archived else None
+    await session.commit()
+    return True
+
+
+async def list_archived(session: AsyncSession):
+    """Все архивные (soft-deleted) люди — сотрудники и кандидаты — для раздела
+    «Архив» с восстановлением. Обходим глобальный фильтр через include_archived."""
+    from app.schemas.archive import ArchiveList, ArchivedItem
+
+    _org = get_current_org()
+
+    e_stmt = (
+        select(Person, EmployeeProfile, Department.name.label("dept"))
+        .join(EmployeeProfile, EmployeeProfile.person_id == Person.id)
+        .outerjoin(Department, Department.id == EmployeeProfile.department_id)
+        .where(Person.archived_at.isnot(None))
+        .execution_options(include_archived=True)
+    )
+    c_stmt = (
+        select(Person, CandidateProfile)
+        .join(CandidateProfile, CandidateProfile.person_id == Person.id)
+        .where(Person.archived_at.isnot(None))
+        .execution_options(include_archived=True)
+    )
+    if _org is not None:
+        e_stmt = e_stmt.where(Person.organization_id == _org)
+        c_stmt = c_stmt.where(Person.organization_id == _org)
+
+    items: list[ArchivedItem] = []
+    for r in (await session.execute(e_stmt)).all():
+        ep = r.EmployeeProfile
+        subtitle = " · ".join(p for p in [ep.position, r.dept] if p) or "Сотрудник"
+        items.append(ArchivedItem(
+            id=r.Person.id, full_name=r.Person.full_name, kind="employee",
+            subtitle=subtitle, archived_at=r.Person.archived_at,
+        ))
+    for r in (await session.execute(c_stmt)).all():
+        items.append(ArchivedItem(
+            id=r.Person.id, full_name=r.Person.full_name, kind="candidate",
+            subtitle=r.CandidateProfile.source or "Кандидат",
+            archived_at=r.Person.archived_at,
+        ))
+
+    # Свежеархивированные — сверху.
+    items.sort(key=lambda i: i.archived_at or utcnow(), reverse=True)
+    return ArchiveList(items=items, total=len(items))
 
 
 def _slug(title: str) -> str:
@@ -499,9 +558,15 @@ async def get_employee_stats(session: AsyncSession) -> EmployeeStats:
         return stmt
 
     def _avg(col):
-        stmt = select(func.coalesce(func.avg(col), 0.0)).select_from(EmployeeProfile)
+        # Join к Person обязателен всегда — иначе глобальный фильтр архива не
+        # применится и в среднее попадут архивные сотрудники.
+        stmt = (
+            select(func.coalesce(func.avg(col), 0.0))
+            .select_from(EmployeeProfile)
+            .join(Person, Person.id == EmployeeProfile.person_id)
+        )
         if _org is not None:
-            stmt = stmt.join(Person, Person.id == EmployeeProfile.person_id).where(Person.organization_id == _org)
+            stmt = stmt.where(Person.organization_id == _org)
         return stmt
 
     # fit может быть NULL («не оценён») — такие сотрудники не попадают ни в один
@@ -561,10 +626,16 @@ async def get_employee_stats(session: AsyncSession) -> EmployeeStats:
 
 
 async def list_departments(session: AsyncSession) -> list[DepartmentRead]:
-    depts = (await session.execute(select(Department).order_by(Department.name))).scalars().all()
+    org_id = get_current_org()
+    stmt = select(Department).order_by(Department.name)
+    if org_id is not None:
+        stmt = stmt.where(Department.organization_id == org_id)
+    depts = (await session.execute(stmt)).scalars().all()
     head_names = await _names_map(session, [d.head_person_id for d in depts])
     counts = dict((await session.execute(
         select(EmployeeProfile.department_id, func.count())
+        # Join к Person, чтобы архивные сотрудники не считались в employees_count.
+        .join(Person, Person.id == EmployeeProfile.person_id)
         .group_by(EmployeeProfile.department_id)
     )).all())
     return [
@@ -587,6 +658,55 @@ async def create_department(session: AsyncSession, data: DepartmentCreate) -> st
     session.add(dept)
     await session.commit()
     return dept.id
+
+
+async def update_department(session: AsyncSession, dept_id: str, data: DepartmentUpdate) -> bool:
+    """Частичное обновление отдела. Возвращает False, если отдел не найден."""
+    dept = await session.get(Department, dept_id)
+    if dept is None:
+        return False
+    fields = data.model_dump(exclude_unset=True)
+    if "name" in fields and fields["name"]:
+        dept.name = fields["name"]
+    if "head_person_id" in fields:
+        dept.head_person_id = fields["head_person_id"] or None
+    if "parent_department_id" in fields:
+        # запрещаем зацикливание отдела на самого себя
+        dept.parent_department_id = (
+            fields["parent_department_id"] if fields["parent_department_id"] != dept_id else None
+        )
+    await session.commit()
+    return True
+
+
+async def delete_department(session: AsyncSession, dept_id: str) -> bool:
+    """Удалить отдел: открепить его сотрудников (department_id → NULL) и поднять
+    дочерние отделы на верхний уровень. Возвращает False, если отдел не найден."""
+    dept = await session.get(Department, dept_id)
+    if dept is None:
+        return False
+    await session.execute(
+        update(EmployeeProfile).where(EmployeeProfile.department_id == dept_id).values(department_id=None)
+    )
+    await session.execute(
+        update(Department).where(Department.parent_department_id == dept_id).values(parent_department_id=None)
+    )
+    await session.delete(dept)
+    await session.commit()
+    return True
+
+
+async def detach_employee_department(session: AsyncSession, person_id: str) -> bool:
+    """Убрать сотрудника из отдела (department_id → NULL), сам сотрудник остаётся.
+    Возвращает False, если профиль сотрудника не найден."""
+    ep = (await session.execute(
+        select(EmployeeProfile).where(EmployeeProfile.person_id == person_id)
+    )).scalar_one_or_none()
+    if ep is None:
+        return False
+    ep.department_id = None
+    await session.commit()
+    return True
 
 
 # --- Оргструктура ---

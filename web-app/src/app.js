@@ -1,7 +1,8 @@
 import { runPageAnimations } from "./ui/animations.js";
 import { renderCostPanel } from "./ui/cost-per-hire.js";
-import { initTeamSlice } from "./ui/team-slice.js";
+import { initTeamSlice, setTeamOpenCard } from "./ui/team-slice.js";
 import { initStructureChart } from "./ui/structure-chart.js";
+import { initPulse } from "./ui/pulse.js";
 import { initLanding, setupLoginMatrix } from "./ui/landing.js";
 import { initWizardController } from "./controllers/wizard.js";
 import { initFiltersController } from "./controllers/filters.js";
@@ -20,6 +21,11 @@ import {
   fetchCandidateHeatmap,
   createCandidate,
   convertCandidateToEmployee,
+  archiveCandidate,
+  restoreCandidate,
+  archiveEmployee,
+  restoreEmployee,
+  fetchArchive,
   createEmployee,
   startAdaptation,
   assistantChat,
@@ -81,6 +87,12 @@ import {
   recordEmployeeResult,
   fetchOrgTree,
   addStructureMember,
+  fetchDepartments,
+  createDepartment,
+  updateDepartment,
+  deleteDepartment,
+  detachEmployeeDepartment,
+  updateEmployee,
   fetchTests,
   fetchTest,
   createTest,
@@ -109,6 +121,7 @@ import {
   renderDashboard,
   renderOverview,
   renderEmployees,
+  renderArchive,
   renderGratitude,
   renderLanding,
   renderLinks,
@@ -187,8 +200,11 @@ state.cardData = null;
 state.employeesStatus = "idle";
 state.employeesApi = null;
 state.employeeStats = null;
+state.archiveStatus = "idle";
+state.archive = null;
 state.structureStatus = "idle";
 state.orgTree = null;
+state.departmentsApi = null;  // реальные отделы из /structure/departments (для управления)
 state.testsApi = null;
 state.constructorStatus = "idle";
 state.constructorTests = null;
@@ -202,6 +218,8 @@ state.taxonomyLoading = false;
 state.library = { section: "candidate", category: null, level: null, q: "", items: null, loading: false };
 state.reportsStatus = "idle";
 state.reportsApi = null;
+// Глобальный поиск в топбаре (по сотрудникам, кандидатам, разделам).
+state.search = { q: "", open: false };
 if (!state.linksFilter) state.linksFilter = "all"; // all | Кандидат | Сотрудник
 if (!state.company.planPrice || !state.company.planLimit) {
   state.company.tariff = "Start";
@@ -251,6 +269,16 @@ function defaultState() {
       contactEmail: "roman@eltera.ai",
       legalAddress: "Москва, ул. Примерная, 1",
       actualAddress: "Москва, офис 12"
+    },
+    // Переключатели страницы «Настройки» (тумблеры звука/прав доступа).
+    // Тема хранится отдельно в state.theme и синхронизируется с тумблером «Тёмная тема».
+    settings: {
+      sfx: true,
+      analytics: true,
+      employees: true,
+      assess: true,
+      tariffs: false,
+      sndName: "Стандартный звук"
     },
     // Стартовые значения до загрузки с бэкенда — пустой счёт без моков.
     // Реальные данные приходят из applyReferralSummary (GET /referrals).
@@ -480,6 +508,7 @@ function mergeState(base, saved) {
     ...base,
     ...saved,
     company: { ...base.company, ...saved.company },
+    settings: { ...base.settings, ...saved.settings },
     // referrals не берём из localStorage: единственный источник — бэкенд
     // (GET /referrals). Иначе устаревший кэш мог бы показать старые мок-данные.
     referrals: { ...base.referrals },
@@ -620,6 +649,19 @@ function mapApiEmployee(e) {
     satisfaction: e.satisfaction ?? 0,
     recommendation: e.recommendation || ""
   };
+}
+
+async function loadArchive() {
+  state.archiveStatus = "loading";
+  try {
+    state.archive = await fetchArchive();
+    state.archiveStatus = "ready";
+  } catch (error) {
+    console.warn("Не удалось загрузить архив:", error);
+    state.archive = null;
+    state.archiveStatus = "error";
+  }
+  render();
 }
 
 async function loadEmployeesFromApi() {
@@ -795,6 +837,38 @@ async function runConvertResponse(vacancyId, eventId, testId) {
     console.warn("Конвертация отклика не удалась:", error);
     showToast((error && error.message) || "Не удалось перевести отклик в кандидата", "error");
   }
+}
+
+// «В сотрудники» из откликов: гарантируем кандидата (person), затем открываем модалку перевода.
+async function runResponseToEmployee(vacancyId, eventId) {
+  const ev = (state.vacancyResponses?.items || []).find((x) => x.id === eventId);
+  if (!ev) return;
+  let personId = ev.person_id;
+  const fullName = ev.candidate_name || "";
+  // Отклик ещё не в кандидатах — сначала создаём кандидата (с выбранным/дефолтным тестом).
+  if (!personId) {
+    try {
+      const sel = document.querySelector("[data-convert-test]");
+      const r = await convertResponse(vacancyId, eventId, sel ? sel.value : "");
+      personId = r && r.person_id;
+      state.vacancyKpi = null;
+      showToast(
+        r && r.chat_sent ? "Кандидат создан, ссылка отправлена в чат HH" : "Кандидат создан",
+        r && r.chat_sent ? "success" : "info",
+      );
+    } catch (error) {
+      console.warn("Не удалось перевести отклик в кандидата:", error);
+      showToast((error && error.message) || "Не удалось перевести отклик", "error");
+      return;
+    }
+  }
+  if (!personId) return;
+  // Открываем ту же модалку перевода кандидата в сотрудники.
+  state.modal = { type: "convert-employee", personId, fullName };
+  if (!state.employeesApi && state.employeesStatus !== "loading") {
+    loadEmployeesFromApi().then(render);
+  }
+  render();
 }
 
 // Импорт выбранных вакансий из HH, затем обновление метрик.
@@ -1107,7 +1181,9 @@ async function loadOverview() {
 async function loadStructureFromApi() {
   state.structureStatus = "loading";
   try {
-    state.orgTree = await fetchOrgTree();
+    const [tree, depts] = await Promise.all([fetchOrgTree(), fetchDepartments().catch(() => null)]);
+    state.orgTree = tree;
+    if (depts) state.departmentsApi = depts;
     state.structureStatus = "ready";
   } catch (error) {
     console.warn("Не удалось загрузить структуру:", error);
@@ -1479,6 +1555,92 @@ async function removeProfileCompetencyFlow(testId, compId) {
   }
 }
 
+// morphdom-хук: решает, обновлять ли DOM-узел данными из нового шаблона.
+// Возвращаем false (т.е. «оставить как есть») для полей формы, которые
+// пользователь уже редактировал, чтобы фоновая перерисовка не стирала ввод.
+//
+// Ключевой признак — «неуправляемое» поле: в шаблоне у него НЕТ явного
+// value/checked (значение живёт только в DOM). У управляемых полей (поиск и
+// т.п.) шаблон всегда задаёт value — их отдаём morphdom как обычно.
+function preserveUserInput(fromEl, toEl) {
+  // «Пульс компании»: кольцо и лента дорисовываются JS в пустые контейнеры.
+  // Как только кольцо нарисовано (#pulseArc), замораживаем панель — иначе
+  // morphdom сотрёт вставленное и рестартнёт анимацию на каждой перерисовке.
+  if (fromEl.id === "pulsePanel" && fromEl.querySelector("#pulseArc")) return false;
+  const tag = fromEl.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA") {
+    const type = fromEl.type;
+    if (type === "checkbox" || type === "radio") {
+      // Пользователь переключил, а шаблон не навязывает своё состояние.
+      if (fromEl.checked !== fromEl.defaultChecked && !toEl.hasAttribute("checked")) {
+        return false;
+      }
+      return true;
+    }
+    // Активное поле бережём всегда (иначе прыгает курсор).
+    if (fromEl === document.activeElement) return false;
+    // «Грязное» неуправляемое поле: пользователь ввёл текст, шаблон value не задаёт.
+    if (fromEl.value !== fromEl.defaultValue && !toEl.hasAttribute("value")) {
+      return false;
+    }
+    return true;
+  }
+  if (tag === "SELECT") {
+    // Пользователь сменил выбор относительно варианта по умолчанию из шаблона.
+    const dirty = Array.from(fromEl.options).some((o) => o.selected !== o.defaultSelected);
+    if (dirty) return false;
+  }
+  return true;
+}
+
+// Логин/регистрация рисуются через innerHTML (полная замена узла), поэтому
+// morphdom их не защищает. Снимаем то, что ввёл пользователь, перед заменой и
+// возвращаем после — чтобы любая перерисовка (ошибка сабмита, догрузка, смена
+// хеша) не стирала длинную форму регистрации.
+function snapshotForm(root) {
+  const snap = [];
+  root.querySelectorAll("input[name], textarea[name], select[name]").forEach((el) => {
+    const name = el.getAttribute("name");
+    if (!name) return;
+    if (el.type === "checkbox" || el.type === "radio") {
+      if (el.checked !== el.defaultChecked) snap.push({ name, type: el.type, checked: el.checked });
+    } else if (el.value !== el.defaultValue) {
+      snap.push({
+        name, type: el.type, value: el.value,
+        active: el === document.activeElement,
+        selStart: el.selectionStart, selEnd: el.selectionEnd,
+      });
+    }
+  });
+  return snap;
+}
+
+function restoreForm(root, snap) {
+  for (const it of snap) {
+    const sel = it.type === "radio"
+      ? `input[type="radio"][name="${it.name}"][value="${it.value}"]`
+      : `[name="${it.name}"]`;
+    const el = root.querySelector(sel);
+    if (!el) continue;
+    if ("checked" in it) {
+      el.checked = it.checked;
+    } else {
+      el.value = it.value;
+      if (it.active) {
+        el.focus();
+        try { el.setSelectionRange(it.selStart, it.selEnd); } catch { /* поля без выделения */ }
+      }
+    }
+  }
+}
+
+function swapLoginHTML(html) {
+  const snap = snapshotForm(app);
+  app.innerHTML = html;
+  restoreForm(app, snap);
+  setupLoginMatrix();
+}
+
 function render() {
   const route = currentRoute();
   state.route = route.route;
@@ -1489,6 +1651,8 @@ function render() {
     // При входе на «Адаптацию» перезапрашиваем циклы — бэкенд при чтении сам
     // подтягивает свежие прохождения, поэтому данные всегда актуальны.
     if (route.view === "adaptation") state.adaptationStatus = "idle";
+    // Архив показываем актуальным при каждом входе.
+    if (route.view === "archive") state.archiveStatus = "idle";
     // На Главной показываем самое свежее: сводка пересчитывается при каждом входе.
     if (route.view === "dashboard") state.overviewStatus = "idle";
     state.view = route.view;
@@ -1528,15 +1692,13 @@ function render() {
 
   if (route.route === "login") {
     document.body.className = "landingBody";
-    app.innerHTML = renderLogin(state);
-    setupLoginMatrix();
+    swapLoginHTML(renderLogin(state));
     return;
   }
 
   if (route.route === "register") {
     document.body.className = "landingBody";
-    app.innerHTML = renderLogin(state);
-    setupLoginMatrix();
+    swapLoginHTML(renderLogin(state, { register: true }));
     return;
   }
 
@@ -1636,6 +1798,13 @@ function render() {
     }
     content = renderEmployees(state);
   }
+  if (state.view === "archive") {
+    if (!state.archiveStatus || state.archiveStatus === "idle") {
+      state.archiveStatus = "idle";
+      loadArchive();
+    }
+    content = renderArchive(state);
+  }
   if (state.view === "structure") {
     if (!state.structureStatus || state.structureStatus === "idle") {
       state.structureStatus = "idle";
@@ -1726,7 +1895,16 @@ function render() {
     content = renderReports(state);
   }
   if (state.view === "report") content = renderReport(state, state.sessions.find((item) => item.id === state.reportId));
-  if (state.view === "tariffs") content = renderTariffs(state, tariffs);
+  if (state.view === "tariffs") {
+    // Тарифы: подтягиваем текущий тариф из Organization и баланс из billing,
+    // чтобы карточка активного тарифа («✓ Ваш тариф») и баланс были актуальны.
+    if (!state.orgStatus || state.orgStatus === "idle") {
+      state.orgStatus = "idle";
+      loadOrganization();
+    }
+    if (!state.billingStatus) loadBilling({ silent: true }).then(render);
+    content = renderTariffs(state);
+  }
   if (state.view === "referrals") {
     if (!state.referralsStatus) loadReferrals();
     content = renderReferrals(state);
@@ -1757,19 +1935,12 @@ function render() {
       tmp.innerHTML = newHTML;
       morphdom(app, tmp, {
         childrenOnly: true,
-        // Не трогаем текстовое поле, которое пользователь редактирует прямо
-        // сейчас, — иначе сбрасывается значение и курсор прыгает в начало.
-        onBeforeElUpdated(fromEl, toEl) {
-          if (
-            fromEl === document.activeElement &&
-            (fromEl.tagName === "INPUT" || fromEl.tagName === "TEXTAREA") &&
-            fromEl.type !== "checkbox" &&
-            fromEl.type !== "radio"
-          ) {
-            return false;
-          }
-          return true;
-        },
+        // Сохраняем то, что пользователь уже ввёл в форму, при фоновой
+        // перерисовке (поллинг уведомлений раз в 60с, догрузка данных с API,
+        // открытие меню и т.п.). Раньше защищалось только активное поле —
+        // остальные заполненные поля модалки/правого меню (отдел, ФИО и т.д.)
+        // сбрасывались к пустому шаблону. Теперь бережём любое «грязное» поле.
+        onBeforeElUpdated: preserveUserInput,
       });
     } else {
       app.innerHTML = newHTML;
@@ -1789,6 +1960,10 @@ function render() {
     // Оргчарт «Структура»: SVG-коннекторы + зум + поиск после патча DOM.
     if (state.view === "structure" && document.getElementById("orgCanvas")) {
       initStructureChart();
+    }
+    // «Пульс компании» на «Главной»: кольцо индекса + живая лента.
+    if (state.view === "dashboard" && document.getElementById("pulsePanel")) {
+      initPulse();
     }
   }
 
@@ -2035,12 +2210,23 @@ function cancelAssistantProposal(idx) {
   }
 }
 
-function showToast(text, type = "success") {
+function showToast(text, type = "success", action = null) {
   const t = document.createElement("div");
   t.className = `elt-toast elt-toast-${type}`;
   t.textContent = text;
+  // Необязательная кнопка действия (например, «Отменить» после архивации).
+  if (action && action.label) {
+    const btn = document.createElement("button");
+    btn.className = "elt-toast-action";
+    btn.textContent = action.label;
+    btn.addEventListener("click", () => {
+      t.remove();
+      try { action.onClick?.(); } catch (e) { console.warn(e); }
+    });
+    t.appendChild(btn);
+  }
   document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3500);
+  setTimeout(() => t.remove(), action ? 7000 : 3500);
 }
 
 // «Отправить оценку» существующему кандидату из меню «три точки»: создаём
@@ -2232,6 +2418,22 @@ async function syncCandidateResult(link, person, result, answers = []) {
 }
 
 // Загрузка карточки с бэкенда: пробуем кандидата, затем сотрудника.
+// Открыть карточку участника (кандидат из API или сотрудник emp-/API-id).
+function openPersonCard(id) {
+  if (!id) return;
+  state.modal = { type: "card", id };
+  state.cardData = null;
+  render();
+  // Кандидат (API) — грузим карточку с бэка; сотрудник (emp-) — из локального стейта.
+  if (!id.startsWith("emp-")) loadCandidateCard(id);
+  // Отделы нужны для селекта смены отдела в карточке сотрудника.
+  if (!state.departmentsApi) {
+    fetchDepartments().then((depts) => { state.departmentsApi = depts; render(); }).catch(() => {});
+  }
+}
+// Строки списка в drawer'е «Срез команды» открывают карточку сотрудника.
+setTeamOpenCard(openPersonCard);
+
 async function loadCandidateCard(personId) {
   let data = null;
   try {
@@ -2619,6 +2821,34 @@ async function createWithdrawal(form) {
 }
 
 document.addEventListener("click", (event) => {
+  // ── Глобальный поиск в топбаре ──
+  const searchGo = event.target.closest("[data-search-go]");
+  if (searchGo) {
+    const id = searchGo.dataset.searchGo;
+    const kind = searchGo.dataset.searchKind;
+    state.search = { q: "", open: false };
+    if (kind === "nav") {
+      window.scrollTo(0, 0);
+      setHash(`#/app/${id}`);
+    } else {
+      openPersonCard(id);
+    }
+    return;
+  }
+  if (event.target.closest("[data-search-clear]")) {
+    state.search = { q: "", open: false };
+    render();
+    const inp = document.querySelector("[data-global-search]");
+    if (inp) inp.focus();
+    return;
+  }
+  // Клик вне поля поиска — закрываем выпадающий список.
+  if (state.search && state.search.open && !event.target.closest(".elt-search-wrap")) {
+    state.search = { ...state.search, open: false };
+    render();
+    // не return — клик мог быть по другому интерактивному элементу
+  }
+
   // ИИ-ассистент: открыть/закрыть и быстрые действия (чипы).
   if (event.target.closest("[data-assistant-toggle]")) { toggleAssistant(); return; }
   const chip = event.target.closest("[data-assistant-chip]");
@@ -2661,6 +2891,7 @@ document.addEventListener("click", (event) => {
 
   const route = event.target.closest("[data-route]")?.dataset.route;
   if (route === "login") setHash("#/login");
+  if (route === "register") setHash("#/register");
 
   // Auth interactions handled by authController
 
@@ -2678,6 +2909,54 @@ document.addEventListener("click", (event) => {
     state.theme = setTheme;
     saveState();
     render();
+    return;
+  }
+
+  // ── Тумблеры страницы «Настройки» ──
+  const setToggle = event.target.closest("[data-settings-toggle]")?.dataset.settingsToggle;
+  if (setToggle) {
+    if (setToggle === "theme") {
+      // «Тёмная тема»: вкл = dark, выкл = light.
+      state.theme = state.theme === "light" ? "dark" : "light";
+    } else {
+      if (!state.settings) state.settings = {};
+      state.settings[setToggle] = !state.settings[setToggle];
+    }
+    saveState();
+    render();
+    return;
+  }
+
+  // ── Свой звук клика (страница «Настройки») ──
+  const setSound = event.target.closest("[data-settings-sound]")?.dataset.settingsSound;
+  if (setSound) {
+    if (setSound === "play") {
+      settingsPlayClick();
+    } else if (setSound === "reset") {
+      if (!state.settings) state.settings = {};
+      state.settings.sndName = "Стандартный звук";
+      saveState();
+      render();
+    } else if (setSound === "upload") {
+      let inp = document.querySelector('[data-settings-sound-input]');
+      if (!inp) {
+        inp = document.createElement("input");
+        inp.type = "file";
+        inp.accept = "audio/*";
+        inp.style.display = "none";
+        inp.dataset.settingsSoundInput = "1";
+        document.body.appendChild(inp);
+        inp.addEventListener("change", () => {
+          const f = inp.files && inp.files[0];
+          if (!f) return;
+          if (!state.settings) state.settings = {};
+          state.settings.sndName = f.name;
+          saveState();
+          render();
+        });
+      }
+      inp.click();
+    }
     return;
   }
 
@@ -2848,8 +3127,111 @@ document.addEventListener("click", (event) => {
     // На вкладке «Сотрудники» оргструктура может быть ещё не загружена —
     // подтягиваем, чтобы в модалке были руководители и отделы.
     if (!state.orgTree) loadStructureFromApi();
-    state.modal = { type: "add-structure-member" };
+    // Если кнопку нажали в карточке отдела — сразу предвыбираем этот отдел.
+    const el = event.target.closest("[data-action='add-structure-member']");
+    const deptName = el?.dataset.deptName || null;
+    let draft = null;
+    if (deptName) {
+      const match = (state.departmentsApi || []).find((d) => d.name === deptName);
+      draft = { department_id: match ? match.id : `name:${deptName}` };
+    }
+    state.modal = { type: "add-structure-member", draft, contextDeptName: deptName };
     render();
+  }
+  // Управление отделами — как самостоятельная модалка (кнопка «+ Добавить отдел»).
+  if (action === "manage-departments") {
+    if (!state.orgTree || !state.departmentsApi) loadStructureFromApi();
+    state.modal = { type: "manage-departments" };
+    render();
+  }
+  // Переход в «Управление отделами» прямо из формы добавления сотрудника:
+  // сохраняем черновик, чтобы вернуться к нему без потери введённых данных.
+  if (action === "open-manage-departments") {
+    const form = document.querySelector("[data-add-structure-form]");
+    if (form) {
+      const fd = new FormData(form);
+      state.structureMemberDraft = {
+        full_name: String(fd.get("full_name") || ""),
+        position: String(fd.get("position") || ""),
+        role: String(fd.get("role") || "employee"),
+        department_id: String(fd.get("department_id") || ""),
+        manager_id: String(fd.get("manager_id") || ""),
+        project: String(fd.get("project") || ""),
+        send_adaptation: fd.get("send_adaptation") != null,
+      };
+    }
+    if (!state.departmentsApi) loadStructureFromApi();
+    state.modal = { type: "manage-departments", returnTo: "add-structure-member" };
+    render();
+    return;
+  }
+  // Возврат из «Управления отделами» к форме сотрудника с восстановлением черновика.
+  if (action === "back-to-structure-member") {
+    state.modal = { type: "add-structure-member", draft: state.structureMemberDraft || null };
+    render();
+    return;
+  }
+  // Удаление отдела: сотрудники открепляются, подотделы поднимаются на верх.
+  if (action === "delete-department") {
+    const el = event.target.closest("[data-action='delete-department']");
+    const deptId = el?.dataset.deptId;
+    if (!deptId) return;
+    const name = el.dataset.deptName || "отдел";
+    const count = Number(el.dataset.deptCount || 0);
+    const msg = count
+      ? `Удалить отдел «${name}»? ${count} сотр. станут «Без отдела», подотделы поднимутся на верхний уровень.`
+      : `Удалить отдел «${name}»?`;
+    if (!window.confirm(msg)) return;
+    if (state.modal?.type === "manage-departments") { state.modal.busy = true; state.modal.error = null; render(); }
+    (async () => {
+      try {
+        state.departmentsApi = await deleteDepartment(deptId);
+        state.structureStatus = "idle";  // дерево изменилось
+        state.employeesStatus = "idle";  // у сотрудников слетел отдел
+        if (state.modal?.type === "manage-departments") state.modal.busy = false;
+        render();
+        showToast(`Отдел «${name}» удалён`);
+      } catch (error) {
+        console.warn("Не удалось удалить отдел:", error);
+        if (state.modal?.type === "manage-departments") { state.modal.busy = false; state.modal.error = "Не удалось удалить отдел"; }
+        render();
+      }
+    })();
+    return;
+  }
+  // Открепление сотрудника от отдела (сам сотрудник остаётся в структуре).
+  if (action === "detach-employee") {
+    const el = event.target.closest("[data-action='detach-employee']");
+    const personId = el?.dataset.personId;
+    if (!personId) return;
+    const name = el.dataset.personName || "сотрудника";
+    if (!window.confirm(`Убрать «${name}» из отдела? Сотрудник останется в структуре.`)) return;
+    (async () => {
+      try {
+        await detachEmployeeDepartment(personId);
+        state.structureStatus = "idle";
+        state.employeesStatus = "idle";
+        render();
+        showToast("Сотрудник убран из отдела");
+      } catch (error) {
+        console.warn("Не удалось убрать сотрудника из отдела:", error);
+        showToast("Не удалось убрать из отдела", "info");
+      }
+    })();
+    return;
+  }
+  // Редактирование данных сотрудника (ФИО, должность, отдел, руководитель…).
+  // Данные берём из открытой карточки — там полный EmployeeRead с id-полями.
+  if (action === "edit-employee") {
+    const el = event.target.closest("[data-action='edit-employee']");
+    const personId = el?.dataset.personId;
+    if (!personId) return;
+    const emp = (state.cardData && state.cardData.id === personId) ? { ...state.cardData } : null;
+    if (!emp) { showToast("Откройте карточку сотрудника", "info"); return; }
+    if (!state.departmentsApi || !state.orgTree) loadStructureFromApi();
+    state.modal = { type: "edit-employee", emp };
+    render();
+    return;
   }
   if (action === "import-employees") {
     state.modal = { type: "import-employees" };
@@ -3037,6 +3419,81 @@ document.addEventListener("click", (event) => {
   }
 
   // «Перевести в сотрудники» из меню «три точки».
+  // Мягкое удаление («Убрать в архив») из карточки сотрудника/кандидата.
+  const archiveBtn = event.target.closest("[data-action='archive-person']");
+  if (archiveBtn) {
+    const id = archiveBtn.dataset.personId;
+    const kind = archiveBtn.dataset.personKind; // "employee" | "candidate"
+    const name = archiveBtn.dataset.personName || (kind === "candidate" ? "кандидата" : "сотрудника");
+    if (!id) return;
+    const who = kind === "candidate" ? "Кандидат" : "Сотрудник";
+    const where = kind === "candidate" ? "списков и воронки" : "списков, аналитики и оргструктуры";
+    const msg = `Убрать ${name} в архив?\n\n${who} исчезнет из ${where}. `
+      + `Отчёты и история оценок сохранятся, действие можно отменить.`;
+    if (!window.confirm(msg)) return;
+    const reloadLists = async () => {
+      state.candidatesStatus = "idle";
+      state.employeesStatus = "idle";
+      state.structureStatus = "idle";
+      if (kind === "candidate") await loadCandidatesFromApi();
+      else await loadEmployeesFromApi();
+      render();
+    };
+    (async () => {
+      try {
+        if (kind === "candidate") await archiveCandidate(id);
+        else await archiveEmployee(id);
+        state.modal = null;
+        state.cardData = null;
+        await reloadLists();
+        showToast(`${who} в архиве`, "success", {
+          label: "Отменить",
+          onClick: async () => {
+            try {
+              if (kind === "candidate") await restoreCandidate(id);
+              else await restoreEmployee(id);
+              await reloadLists();
+              showToast(`${who} восстановлен`);
+            } catch (e) {
+              console.warn("Не удалось восстановить:", e);
+              showToast("Не удалось восстановить", "info");
+            }
+          },
+        });
+      } catch (error) {
+        console.warn("Не удалось убрать в архив:", error);
+        showToast("Не удалось убрать в архив", "info");
+      }
+    })();
+    return;
+  }
+
+  // Восстановление из раздела «Архив».
+  const restoreBtn = event.target.closest("[data-action='restore-person']");
+  if (restoreBtn) {
+    const id = restoreBtn.dataset.personId;
+    const kind = restoreBtn.dataset.personKind; // "employee" | "candidate"
+    const name = restoreBtn.dataset.personName || (kind === "candidate" ? "кандидата" : "сотрудника");
+    if (!id) return;
+    (async () => {
+      try {
+        if (kind === "candidate") await restoreCandidate(id);
+        else await restoreEmployee(id);
+        // Обновляем архив и списки, куда человек вернулся.
+        state.candidatesStatus = "idle";
+        state.employeesStatus = "idle";
+        state.structureStatus = "idle";
+        state.archiveStatus = "idle";
+        await loadArchive();
+        showToast(`${name} восстановлен${kind === "candidate" ? "" : ""}`);
+      } catch (error) {
+        console.warn("Не удалось восстановить:", error);
+        showToast("Не удалось восстановить", "info");
+      }
+    })();
+    return;
+  }
+
   const convertBtn = event.target.closest("[data-convert-id]");
   if (convertBtn) {
     const id = convertBtn.dataset.convertId;
@@ -3110,15 +3567,9 @@ document.addEventListener("click", (event) => {
     render();
   }
 
-  const openCard = event.target.closest("[data-open-card]")?.dataset.openCard;
-  if (openCard) {
-    state.modal = { type: "card", id: openCard };
-    state.cardData = null;
-    render();
-    // Кандидат (API) — грузим карточку с бэка; сотрудник (emp-) — из локального стейта.
-    if (!openCard.startsWith("emp-")) loadCandidateCard(openCard);
-  }
-
+  // Проверяем «Ответы» до «Карточки»: у сотрудников кнопка «Ответы» лежит
+  // внутри кликабельной строки (data-open-card на <tr>), клик по ней не должен
+  // открывать карточку.
   const openAnswers = event.target.closest("[data-open-answers]")?.dataset.openAnswers;
   if (openAnswers) {
     state.modal = { type: "answers", id: openAnswers };
@@ -3126,6 +3577,12 @@ document.addEventListener("click", (event) => {
     state.answersList = null;
     render();
     loadAnswersFlow(openAnswers);
+    return;
+  }
+
+  const openCard = event.target.closest("[data-open-card]")?.dataset.openCard;
+  if (openCard) {
+    openPersonCard(openCard);
     return;
   }
 
@@ -3258,6 +3715,15 @@ document.addEventListener("click", (event) => {
     const vacancyId = state.modal && state.modal.id;
     const sel = document.querySelector("[data-convert-test]");
     runConvertResponse(vacancyId, eventId, sel ? sel.value : "");
+    return;
+  }
+
+  // «В сотрудники»: перевод отклика напрямую в сотрудника (при необходимости — через кандидата).
+  const respEmpBtn = event.target.closest("[data-resp-to-employee]");
+  if (respEmpBtn) {
+    const eventId = respEmpBtn.dataset.respToEmployee;
+    const vacancyId = state.modal && state.modal.id;
+    runResponseToEmployee(vacancyId, eventId);
     return;
   }
 
@@ -3473,16 +3939,21 @@ document.addEventListener("submit", (event) => {
     const fd = new FormData(event.target);
     const fullName = String(fd.get("full_name") || "").trim();
     if (!fullName) return;
+    // Отдел: реальный id из селекта, либо «name:<название>» (fallback без API),
+    // либо пусто. Раскладываем на department_id / department_name.
+    const deptVal = String(fd.get("department_id") || "").trim();
     const payload = {
       full_name: fullName,
       position: String(fd.get("position") || "").trim() || null,
       role: String(fd.get("role") || "employee"),
-      department_name: String(fd.get("department_name") || "").trim() || null,
+      department_id: deptVal && !deptVal.startsWith("name:") ? deptVal : null,
+      department_name: deptVal.startsWith("name:") ? deptVal.slice(5) || null : null,
       manager_id: String(fd.get("manager_id") || "") || null,
       project: String(fd.get("project") || "").trim() || null,
       send_adaptation: fd.get("send_adaptation") != null
     };
     state.modal = null;
+    state.structureMemberDraft = null;
     render();
     (async () => {
       try {
@@ -3503,7 +3974,131 @@ document.addEventListener("submit", (event) => {
       }
     })();
   }
+  // Создание отдела из модалки «Управление отделами».
+  if (event.target.matches("[data-create-department-form]")) {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+    const name = String(fd.get("name") || "").trim();
+    if (!name || state.modal?.type !== "manage-departments") return;
+    const payload = {
+      name,
+      head_person_id: String(fd.get("head_person_id") || "") || null,
+      parent_department_id: String(fd.get("parent_department_id") || "") || null,
+    };
+    state.modal.busy = true;
+    state.modal.error = null;
+    render();
+    (async () => {
+      try {
+        state.departmentsApi = await createDepartment(payload);
+        state.structureStatus = "idle";  // отдел мог получить руководителя — обновим дерево
+        if (state.modal?.type === "manage-departments") state.modal.busy = false;
+        render();
+        showToast(`Отдел «${name}» создан`);
+      } catch (error) {
+        console.warn("Не удалось создать отдел:", error);
+        if (state.modal?.type === "manage-departments") { state.modal.busy = false; state.modal.error = "Не удалось создать отдел"; }
+        render();
+      }
+    })();
+  }
+  // Изменение существующего отдела.
+  if (event.target.matches("[data-edit-department-form]")) {
+    event.preventDefault();
+    const deptId = event.target.dataset.deptId;
+    if (!deptId || state.modal?.type !== "manage-departments") return;
+    const fd = new FormData(event.target);
+    const name = String(fd.get("name") || "").trim();
+    if (!name) return;
+    const payload = {
+      name,
+      head_person_id: String(fd.get("head_person_id") || "") || null,
+      parent_department_id: String(fd.get("parent_department_id") || "") || null,
+    };
+    state.modal.busy = true;
+    state.modal.error = null;
+    render();
+    (async () => {
+      try {
+        state.departmentsApi = await updateDepartment(deptId, payload);
+        state.structureStatus = "idle";  // название/руководитель могли поменяться — обновим дерево
+        if (state.modal?.type === "manage-departments") state.modal.busy = false;
+        render();
+        showToast("Отдел обновлён");
+      } catch (error) {
+        console.warn("Не удалось обновить отдел:", error);
+        if (state.modal?.type === "manage-departments") { state.modal.busy = false; state.modal.error = "Не удалось обновить отдел"; }
+        render();
+      }
+    })();
+  }
+  // Сохранение отредактированных данных сотрудника.
+  if (event.target.matches("[data-edit-employee-form]")) {
+    event.preventDefault();
+    const personId = event.target.dataset.personId;
+    if (!personId || state.modal?.type !== "edit-employee") return;
+    const fd = new FormData(event.target);
+    const fullName = String(fd.get("full_name") || "").trim();
+    if (!fullName) return;
+    const payload = {
+      full_name: fullName,
+      position: String(fd.get("position") || "").trim() || null,
+      email: String(fd.get("email") || "").trim() || null,
+      phone: String(fd.get("phone") || "").trim() || null,
+      department_id: String(fd.get("department_id") || "") || null,
+      manager_id: String(fd.get("manager_id") || "") || null,
+      project: String(fd.get("project") || "").trim() || null,
+    };
+    state.modal.busy = true;
+    state.modal.error = null;
+    render();
+    (async () => {
+      try {
+        const updated = await updateEmployee(personId, payload);
+        // Обновляем открытую карточку, если она есть, и помечаем списки на перезагрузку.
+        if (state.cardData && state.cardData.id === personId) {
+          state.cardData = { ...state.cardData, ...updated, _kind: "employee", assessments: state.cardData.assessments };
+        }
+        state.structureStatus = "idle";
+        state.employeesStatus = "idle";
+        state.modal = null;
+        render();
+        showToast("Данные сотрудника обновлены");
+      } catch (error) {
+        console.warn("Не удалось обновить сотрудника:", error);
+        if (state.modal?.type === "edit-employee") { state.modal.busy = false; state.modal.error = "Не удалось сохранить изменения"; }
+        render();
+      }
+    })();
+  }
 });
+
+// ─── Проигрывание звука клика (страница «Настройки») ─────────────────────────
+let _settingsAudioCtx = null;
+function settingsPlayClick() {
+  try {
+    if (!_settingsAudioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      _settingsAudioCtx = new AC();
+    }
+    const ctx = _settingsAudioCtx;
+    if (ctx.state === "suspended") ctx.resume();
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(880, t);
+    osc.frequency.exponentialRampToValueAtTime(1600, t + 0.09);
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.05, t + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.11);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.13);
+  } catch (e) { /* аудио недоступно — тихо игнорируем */ }
+}
 
 // ─── Avatar Upload Handler ───────────────────────────────────────────────────
 function handleAvatarUpload(event) {
@@ -3563,6 +4158,19 @@ let _ctrProfileSearchTimer = null;
 let _candProfTimer = null;
 let _libSearchTimer = null;
 document.addEventListener("input", (event) => {
+  // Глобальный поиск в топбаре — сотрудники, кандидаты, разделы.
+  const gSearch = event.target.closest("[data-global-search]");
+  if (gSearch) {
+    const caret = gSearch.selectionStart;
+    state.search = { q: gSearch.value, open: true };
+    // Ленивая подгрузка данных, чтобы было по чему искать.
+    if (!state.employeesApi && state.employeesStatus !== "loading") loadEmployeesFromApi();
+    if (!state.candidatesApi && state.candidatesStatus !== "loading") loadCandidatesFromApi();
+    render();
+    const again = document.querySelector("[data-global-search]");
+    if (again) { again.focus(); try { again.setSelectionRange(caret, caret); } catch (e) { /* noop */ } }
+    return;
+  }
   // Поиск в модалке «Добавить из HeadHunter» — клиентская фильтрация по названию.
   const hhSearch = event.target.closest("[data-hh-search]");
   if (hhSearch) {
@@ -3614,6 +4222,30 @@ document.addEventListener("input", (event) => {
 document.addEventListener("change", (event) => {
   if (event.target.matches("[data-avatar-upload]")) {
     handleAvatarUpload(event);
+    return;
+  }
+  // Смена отдела сотрудника прямо из карточки (в т.ч. перевод из «без отдела»).
+  const deptSel = event.target.closest("[data-emp-dept]");
+  if (deptSel) {
+    const personId = deptSel.dataset.empDept;
+    const deptId = deptSel.value || null;
+    deptSel.disabled = true;
+    updateEmployee(personId, { department_id: deptId })
+      .then((updated) => {
+        // Обновляем открытую карточку и помечаем списки на перезагрузку.
+        if (state.cardData && state.cardData.id === personId) {
+          state.cardData = { ...state.cardData, ...updated, _kind: "employee", assessments: state.cardData.assessments };
+        }
+        state.employeesStatus = "idle";
+        state.structureStatus = "idle";
+        render();
+        showToast(deptId ? `Отдел изменён на «${updated.department}»` : "Сотрудник убран из отдела");
+      })
+      .catch((e) => {
+        console.warn("Не удалось сменить отдел:", e);
+        deptSel.disabled = false;
+        showToast("Не удалось сменить отдел", "error");
+      });
     return;
   }
   // Смена теста по умолчанию у HH-вакансии.

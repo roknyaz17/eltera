@@ -198,12 +198,24 @@ async def update_candidate(
 
 
 @router.delete(
-    "/{candidate_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Удалить кандидата"
+    "/{candidate_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Убрать кандидата в архив"
 )
-async def delete_candidate(candidate_id: str, session: AsyncSession = Depends(get_session)):
-    ok = await crud.delete_candidate(session, candidate_id)
+async def archive_candidate(candidate_id: str, session: AsyncSession = Depends(get_session)):
+    """Мягкое удаление: кандидат скрывается из списков и воронки, но ответы и
+    история оценок сохраняются, действие обратимо (см. /restore)."""
+    ok = await crud.archive_candidate(session, candidate_id)
     if not ok:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Кандидат не найден")
+
+
+@router.post(
+    "/{candidate_id}/restore", response_model=CandidateDetail, summary="Восстановить из архива"
+)
+async def restore_candidate(candidate_id: str, session: AsyncSession = Depends(get_session)):
+    ok = await crud.archive_candidate(session, candidate_id, archived=False)
+    if not ok:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Кандидат не найден")
+    return await crud.get_candidate(session, candidate_id)
 
 
 @router.post(

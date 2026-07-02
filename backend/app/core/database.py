@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, ORMExecuteState, Session, with_loader_criteria
 
 from app.core.config import get_settings
 
@@ -29,6 +29,31 @@ if settings.database_url.startswith("sqlite"):
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
+
+# --- Мягкое удаление людей ---------------------------------------------------
+# Любой SELECT, где участвует Person, автоматически получает условие
+# `archived_at IS NULL` — архивные (soft-deleted) люди не попадают ни в списки,
+# ни в счётчики, ни в аналитику, ни в оргструктуру, без правки каждого запроса.
+# Чтобы прочитать архивного человека (например, для восстановления), нужно
+# передать execution_option `include_archived=True`.
+@event.listens_for(Session, "do_orm_execute")
+def _hide_archived_people(state: ORMExecuteState) -> None:
+    if not state.is_select:
+        return
+    if state.execution_options.get("include_archived"):
+        return
+    # Ленивую догрузку колонок/связей не трогаем: критерий уже наложен на корневой
+    # запрос, а связи (напр. employee_profile → person) должны грузиться как есть.
+    if state.is_column_load or state.is_relationship_load:
+        return
+    from app.models.person import Person
+
+    state.statement = state.statement.options(
+        with_loader_criteria(
+            Person, lambda cls: cls.archived_at.is_(None), include_aliases=True
+        )
+    )
+
 
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,

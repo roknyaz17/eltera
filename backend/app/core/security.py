@@ -49,6 +49,41 @@ def decode_access_token(token: str) -> dict | None:
     return data
 
 
+def verify_admin_panel_credentials(username: str, password: str) -> bool:
+    """Сверка логина/пароля админ-панели (константное время). False, если пароль
+    не сконфигурирован — панель считается выключенной."""
+    expected_password = settings.admin_panel_password
+    if not expected_password:
+        return False
+    user_ok = hmac.compare_digest(username, settings.admin_panel_user)
+    pass_ok = hmac.compare_digest(password, expected_password)
+    return user_ok and pass_ok
+
+
+def create_admin_panel_token() -> tuple[str, int]:
+    """Токен доступа к админ-панели. Возвращает (token, ttl_seconds)."""
+    now = datetime.now(timezone.utc)
+    ttl = timedelta(hours=settings.admin_panel_token_ttl_hours)
+    payload = {
+        "sub": settings.admin_panel_user,
+        "type": "admin_panel",
+        "iat": int(now.timestamp()),
+        "exp": int((now + ttl).timestamp()),
+    }
+    token = jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+    return token, int(ttl.total_seconds())
+
+
+def decode_admin_panel_token(token: str) -> dict | None:
+    try:
+        data = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+    except jwt.PyJWTError:
+        return None
+    if data.get("type") != "admin_panel":
+        return None
+    return data
+
+
 def new_refresh_token() -> tuple[str, str, datetime]:
     raw = secrets.token_urlsafe(48)
     expires = datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_ttl_days)

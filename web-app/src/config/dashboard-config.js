@@ -39,6 +39,7 @@ export const navConfig = [
   { id: "api", label: "API-ключи", icon: svg.api, countKey: "", alertKey: "", group: "account", wip: true },
   { id: "support", label: "Поддержка", icon: svg.support, countKey: "", alertKey: "", group: "account" },
   { id: "gratitude", label: "Благодарности", icon: svg.gratitude, countKey: "", alertKey: "", group: "account" },
+  { id: "archive", label: "Архив", icon: svg.reports, countKey: "", alertKey: "", group: "account" },
   { id: "settings", label: "Настройки", icon: svg.settings, countKey: "", alertKey: "", group: "account" }
 ];
 

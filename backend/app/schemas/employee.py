@@ -173,6 +173,12 @@ class DepartmentCreate(BaseModel):
     parent_department_id: str | None = None
 
 
+class DepartmentUpdate(BaseModel):
+    name: str | None = Field(None, max_length=160)
+    head_person_id: str | None = None
+    parent_department_id: str | None = None
+
+
 # --- Оргструктура ---
 
 

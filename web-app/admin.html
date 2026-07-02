@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Eltera — Админ-панель профилей</title>
+  <style>
+    :root {
+      --bg: #0e1420; --card: #161f30; --card2: #1d2740; --line: #2a3550;
+      --text: #e7eefb; --muted: #9fb0cc; --accent: #4f8cff; --accent2: #3a6fd8;
+      --good: #35c17a; --bad: #e05555; --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: -apple-system, "Segoe UI", Roboto, Manrope, Arial, sans-serif;
+      font-size: 14px; line-height: 1.5;
+    }
+    a { color: var(--accent); }
+    button {
+      font: inherit; cursor: pointer; border: none; border-radius: 9px;
+      padding: 9px 16px; background: var(--accent); color: #fff; font-weight: 600;
+    }
+    button:hover { background: var(--accent2); }
+    button.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+    button.ghost:hover { background: var(--card2); color: var(--text); }
+    button.danger { background: transparent; color: #e05555; border: 1px solid #5a2a2a; }
+    button:disabled { opacity: .5; cursor: default; }
+    input, select, textarea {
+      font: inherit; width: 100%; padding: 9px 11px; border-radius: 9px;
+      border: 1px solid var(--line); background: var(--bg); color: var(--text);
+    }
+    textarea { min-height: 76px; resize: vertical; }
+    label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 5px; }
+    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); }
+    .muted { color: var(--muted); }
+    .hidden { display: none !important; }
+    .toast {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: var(--card2); border: 1px solid var(--line); color: var(--text);
+      padding: 11px 18px; border-radius: 10px; z-index: 50; box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    }
+    .toast.err { border-color: #5a2a2a; }
+
+    /* Login */
+    #login { max-width: 360px; margin: 12vh auto; padding: 28px; }
+    #login h1 { font-size: 20px; margin: 0 0 4px; }
+    #login p { margin: 0 0 18px; }
+
+    /* App shell */
+    header {
+      display: flex; align-items: center; gap: 16px; padding: 12px 22px;
+      border-bottom: 1px solid var(--line); background: var(--card);
+      position: sticky; top: 0; z-index: 10; flex-wrap: wrap;
+    }
+    header .brand { font-weight: 800; letter-spacing: .3px; }
+    header .spacer { flex: 1; }
+    header select { width: auto; min-width: 210px; }
+    .tabs { display: flex; gap: 4px; padding: 14px 22px 0; }
+    .tab {
+      padding: 9px 16px; border-radius: 9px 9px 0 0; background: transparent;
+      color: var(--muted); font-weight: 600; border: 1px solid transparent;
+    }
+    .tab.active { color: var(--text); background: var(--card); border-color: var(--line); border-bottom-color: var(--card); }
+    main { padding: 18px 22px 80px; max-width: 1200px; }
+    .split { display: grid; grid-template-columns: 340px 1fr; gap: 18px; align-items: start; }
+    @media (max-width: 820px) { .split { grid-template-columns: 1fr; } }
+
+    .list { max-height: 70vh; overflow: auto; }
+    .list-item {
+      padding: 11px 14px; border-bottom: 1px solid var(--line); cursor: pointer;
+    }
+    .list-item:hover { background: var(--card2); }
+    .list-item.active { background: var(--card2); box-shadow: inset 3px 0 0 var(--accent); }
+    .list-item .t { font-weight: 600; }
+    .list-item .s { font-size: 12px; color: var(--muted); }
+    .pad { padding: 16px; }
+    .pill {
+      display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px;
+      background: var(--card2); border: 1px solid var(--line); color: var(--muted); margin: 2px 4px 2px 0;
+    }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px;
+      border: 1px solid var(--line); border-radius: 9px; cursor: pointer; user-select: none;
+    }
+    .chip input { width: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+    th { color: var(--muted); font-weight: 600; font-size: 12px; }
+    td input { padding: 6px 8px; }
+    .scope-note { font-size: 12px; color: var(--muted); }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <!-- Экран входа -->
+  <div id="login" class="card hidden">
+    <h1>Админ-панель</h1>
+    <p class="muted">Управление профилями, направлениями и компетенциями.</p>
+    <form id="loginForm">
+      <label>Логин</label>
+      <input id="loginUser" autocomplete="username" autofocus>
+      <label>Пароль</label>
+      <input id="loginPass" type="password" autocomplete="current-password">
+      <div style="margin-top:18px;">
+        <button type="submit" style="width:100%">Войти</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Приложение -->
+  <div id="app" class="hidden">
+    <header>
+      <span class="brand">Eltera · Админ</span>
+      <div class="row" style="gap:8px;">
+        <span class="scope-note">Область:</span>
+        <select id="scope"></select>
+      </div>
+      <div class="spacer"></div>
+      <button class="ghost" id="logout">Выйти</button>
+    </header>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="profiles">Профили</button>
+      <button class="tab" data-tab="categories">Направления</button>
+      <button class="tab" data-tab="competencies">Компетенции</button>
+    </div>
+
+    <!-- Профили -->
+    <main id="tab-profiles">
+      <div class="split">
+        <div class="card">
+          <div class="pad">
+            <input id="profileSearch" placeholder="Поиск профиля…">
+          </div>
+          <div class="list" id="profileList"></div>
+        </div>
+        <div class="card pad" id="profileEditor">
+          <p class="muted">Выберите профиль слева, чтобы отредактировать его.</p>
+        </div>
+      </div>
+    </main>
+
+    <!-- Направления -->
+    <main id="tab-categories" class="hidden">
+      <div class="card pad">
+        <div class="row" style="justify-content:space-between; margin-bottom:12px;">
+          <b>Направления и универсальные черты</b>
+          <button class="ghost" id="catAdd">+ Добавить</button>
+        </div>
+        <table id="catTable"></table>
+      </div>
+    </main>
+
+    <!-- Компетенции -->
+    <main id="tab-competencies" class="hidden">
+      <div class="split">
+        <div class="card">
+          <div class="pad"><input id="compSearch" placeholder="Поиск компетенции…"></div>
+          <div class="list" id="compList"></div>
+        </div>
+        <div class="card pad" id="compEditor">
+          <p class="muted">Выберите компетенцию слева.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+  (function () {
+    // ── База API (dev: бэкенд на :8000; prod: тот же origin) ──
+    const API_BASE = window.ELTERA_API_BASE ||
+      (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)
+        ? "http://localhost:8000/api" : location.origin + "/api");
+    const TOKEN_KEY = "eltera_admin_token";
+    let token = localStorage.getItem(TOKEN_KEY) || null;
+
+    const $ = (s, r = document) => r.querySelector(s);
+    const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+    const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+    const TARGETS = [
+      ["candidate", "Кандидаты"], ["employee", "Сотрудники"],
+      ["group", "Группа"], ["universal", "Универсальный"],
+    ];
+
+    let taxonomy = { directions: [], universal: [], levels: [] };
+    let orgs = [];
+    let scope = "all";
+
+    function toast(msg, err) {
+      const el = document.createElement("div");
+      el.className = "toast" + (err ? " err" : "");
+      el.textContent = msg;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 2600);
+    }
+
+    async function api(path, opts = {}) {
+      const headers = { Accept: "application/json", ...(opts.headers || {}) };
+      if (token) headers.Authorization = "Bearer " + token;
+      if (opts.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
+      const res = await fetch(API_BASE + path, { ...opts, headers });
+      if (res.status === 401) { logout(); throw new Error("Требуется вход"); }
+      if (!res.ok) {
+        let detail = res.status;
+        try { detail = (await res.json()).detail || detail; } catch {}
+        throw new Error(typeof detail === "string" ? detail : "Ошибка " + res.status);
+      }
+      if (res.status === 204) return null;
+      return res.json();
+    }
+
+    // ── Вход/выход ──
+    function showLogin() { $("#login").classList.remove("hidden"); $("#app").classList.add("hidden"); }
+    function showApp() { $("#login").classList.add("hidden"); $("#app").classList.remove("hidden"); }
+    function logout() {
+      token = null; localStorage.removeItem(TOKEN_KEY); showLogin();
+    }
+
+    $("#loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try {
+        const data = await api("/admin/login", {
+          method: "POST",
+          body: JSON.stringify({ username: $("#loginUser").value, password: $("#loginPass").value }),
+        });
+        token = data.token; localStorage.setItem(TOKEN_KEY, token);
+        await boot();
+      } catch (err) { toast(err.message, true); }
+    });
+    $("#logout").addEventListener("click", logout);
+
+    // ── Вкладки ──
+    $$(".tab").forEach((t) => t.addEventListener("click", () => {
+      $$(".tab").forEach((x) => x.classList.toggle("active", x === t));
+      const name = t.dataset.tab;
+      ["profiles", "categories", "competencies"].forEach((n) =>
+        $("#tab-" + n).classList.toggle("hidden", n !== name));
+      if (name === "categories") loadCategories();
+      if (name === "competencies") loadCompetencies();
+    }));
+
+    // ── Scope ──
+    function renderScope() {
+      const opts = ['<option value="all">Все организации (общий каталог)</option>']
+        .concat(orgs.map((o) => `<option value="${esc(o.id)}">${esc(o.name)}</option>`));
+      $("#scope").innerHTML = opts.join("");
+      $("#scope").value = scope;
+    }
+    $("#scope").addEventListener("change", (e) => {
+      scope = e.target.value;
+      loadProfiles();
+      if (!$("#tab-competencies").classList.contains("hidden")) loadCompetencies();
+    });
+
+    // ── Профили ──
+    let profiles = [];
+    let selectedProfile = null;
+
+    async function loadProfiles() {
+      const q = $("#profileSearch").value.trim();
+      const path = `/admin/profiles?scope=${encodeURIComponent(scope)}` + (q ? `&q=${encodeURIComponent(q)}` : "");
+      profiles = await api(path);
+      renderProfileList();
+    }
+    function renderProfileList() {
+      const el = $("#profileList");
+      if (!profiles.length) { el.innerHTML = '<div class="pad muted">Ничего не найдено.</div>'; return; }
+      el.innerHTML = profiles.map((p) => `
+        <div class="list-item ${selectedProfile === p.id ? "active" : ""}" data-id="${p.id}">
+          <div class="t">${esc(p.title)}</div>
+          <div class="s">${esc((TARGETS.find((t) => t[0] === p.target_type) || [, p.target_type])[1])}
+            · ${p.questions_count} вопр.${p.category ? " · " + esc(p.category) : ""}</div>
+        </div>`).join("");
+      $$("#profileList .list-item").forEach((it) =>
+        it.addEventListener("click", () => openProfile(it.dataset.id)));
+    }
+
+    let searchTimer;
+    $("#profileSearch").addEventListener("input", () => {
+      clearTimeout(searchTimer); searchTimer = setTimeout(loadProfiles, 250);
+    });
+
+    async function openProfile(id) {
+      selectedProfile = id; renderProfileList();
+      const p = await api(`/admin/profiles/${id}`);
+      const catChecks = new Set(p.categories.map((c) => c.slug));
+      const lvlChecks = new Set(p.levels);
+      const allCats = taxonomy.directions.concat(taxonomy.universal);
+      const isShared = p.organization_id === null;
+
+      $("#profileEditor").innerHTML = `
+        <div class="row" style="justify-content:space-between;">
+          <b>Редактирование профиля</b>
+          <span class="pill">${isShared ? "Общий (все организации)" : "Организация"}</span>
+        </div>
+        <label>Название</label>
+        <input id="p_title" value="${esc(p.title)}">
+        <div class="grid2">
+          <div>
+            <label>Аудитория</label>
+            <select id="p_target">${TARGETS.map((t) =>
+              `<option value="${t[0]}" ${t[0] === p.target_type ? "selected" : ""}>${t[1]}</option>`).join("")}</select>
+          </div>
+          <div>
+            <label>Лимит времени, мин (пусто = без лимита)</label>
+            <input id="p_time" type="number" min="0" value="${p.time_limit_minutes ?? ""}">
+          </div>
+        </div>
+        <label>Категория (текстовая метка)</label>
+        <input id="p_category" value="${esc(p.category || "")}">
+        <label>Описание</label>
+        <textarea id="p_summary">${esc(p.summary || "")}</textarea>
+
+        <label>Направления и черты</label>
+        <div class="chips">${allCats.map((c) =>
+          `<label class="chip"><input type="checkbox" data-cat="${c.slug}" ${catChecks.has(c.slug) ? "checked" : ""}>${esc(c.title)}</label>`).join("")}</div>
+
+        <label>Уровни должности</label>
+        <div class="chips">${taxonomy.levels.map((l) =>
+          `<label class="chip"><input type="checkbox" data-lvl="${l.code}" ${lvlChecks.has(l.code) ? "checked" : ""}>${esc(l.title)}</label>`).join("")}</div>
+
+        <div class="row" style="margin-top:18px; justify-content:space-between;">
+          <button id="p_save">Сохранить</button>
+          <div class="row" style="gap:8px;">
+            <select id="p_cloneOrg" style="width:auto; min-width:180px;">
+              <option value="">— в организацию —</option>
+              ${orgs.map((o) => `<option value="${esc(o.id)}">${esc(o.name)}</option>`).join("")}
+            </select>
+            <button class="ghost" id="p_clone">Скопировать</button>
+          </div>
+        </div>
+        <p class="scope-note" style="margin-top:10px;">
+          «Скопировать» создаёт копию этого профиля в выбранной организации (вопросы общие), не меняя оригинал.
+        </p>`;
+
+      $("#p_save").addEventListener("click", () => saveProfile(id));
+      $("#p_clone").addEventListener("click", () => cloneProfile(id));
+    }
+
+    async function saveProfile(id) {
+      const time = $("#p_time").value.trim();
+      try {
+        await api(`/admin/profiles/${id}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            title: $("#p_title").value.trim(),
+            summary: $("#p_summary").value,
+            category: $("#p_category").value.trim() || null,
+            target_type: $("#p_target").value,
+            time_limit_minutes: time === "" ? null : Number(time),
+          }),
+        });
+        const slugs = $$("#profileEditor input[data-cat]:checked").map((c) => c.dataset.cat);
+        const levels = $$("#profileEditor input[data-lvl]:checked").map((c) => c.dataset.lvl);
+        await api(`/admin/profiles/${id}/categories`, { method: "PUT", body: JSON.stringify({ slugs }) });
+        await api(`/admin/profiles/${id}/levels`, { method: "PUT", body: JSON.stringify({ levels }) });
+        toast("Сохранено");
+        await loadProfiles();
+      } catch (err) { toast(err.message, true); }
+    }
+
+    async function cloneProfile(id) {
+      const org = $("#p_cloneOrg").value;
+      if (!org) { toast("Выберите организацию", true); return; }
+      try {
+        const res = await api(`/admin/profiles/${id}/clone`, {
+          method: "POST", body: JSON.stringify({ organization_id: org }),
+        });
+        toast("Скопировано в организацию");
+        scope = res.organization_id; renderScope();
+        await loadProfiles();
+        openProfile(res.id);
+      } catch (err) { toast(err.message, true); }
+    }
+
+    // ── Направления ──
+    async function loadCategories() {
+      const cats = await api("/admin/categories");
+      const rows = cats.map((c) => `
+        <tr data-id="${c.id}">
+          <td><input class="c_title" value="${esc(c.title)}"></td>
+          <td class="muted">${esc(c.slug)}</td>
+          <td>${c.kind === "universal" ? "Черта" : "Направление"}</td>
+          <td style="width:90px;"><input class="c_sort" type="number" value="${c.sort_order}"></td>
+          <td style="width:190px;"><div class="row">
+            <button class="c_save">Сохранить</button>
+            <button class="ghost c_del">Удалить</button>
+          </div></td>
+        </tr>`).join("");
+      $("#catTable").innerHTML =
+        `<tr><th>Название</th><th>Слаг</th><th>Тип</th><th>Порядок</th><th></th></tr>` + rows;
+      $$("#catTable tr[data-id]").forEach((tr) => {
+        $(".c_save", tr).addEventListener("click", async () => {
+          try {
+            await api(`/admin/categories/${tr.dataset.id}`, {
+              method: "PATCH",
+              body: JSON.stringify({
+                title: $(".c_title", tr).value.trim(),
+                sort_order: Number($(".c_sort", tr).value) || 0,
+              }),
+            });
+            toast("Сохранено"); loadTaxonomy();
+          } catch (err) { toast(err.message, true); }
+        });
+        $(".c_del", tr).addEventListener("click", async () => {
+          if (!confirm("Удалить направление/черту? Профили с этой меткой останутся, но метка исчезнет.")) return;
+          try { await api(`/admin/categories/${tr.dataset.id}`, { method: "DELETE" }); loadCategories(); loadTaxonomy(); }
+          catch (err) { toast(err.message, true); }
+        });
+      });
+    }
+
+    $("#catAdd").addEventListener("click", async () => {
+      const title = prompt("Название направления/черты:");
+      if (!title) return;
+      const slug = prompt("Слаг (латиницей, без пробелов):", title.toLowerCase().replace(/[^a-z0-9]+/g, "_"));
+      if (!slug) return;
+      const kind = confirm("Это универсальная черта? OK — черта, Отмена — направление.") ? "universal" : "direction";
+      try {
+        await api("/admin/categories", { method: "POST", body: JSON.stringify({ slug, title, kind, sort_order: 0 }) });
+        toast("Добавлено"); loadCategories(); loadTaxonomy();
+      } catch (err) { toast(err.message, true); }
+    });
+
+    // ── Компетенции ──
+    let comps = [];
+    let selectedComp = null;
+    async function loadCompetencies() {
+      const q = $("#compSearch").value.trim();
+      comps = await api(`/admin/competencies?scope=${encodeURIComponent(scope)}` + (q ? `&q=${encodeURIComponent(q)}` : ""));
+      const el = $("#compList");
+      if (!comps.length) { el.innerHTML = '<div class="pad muted">Ничего не найдено.</div>'; return; }
+      el.innerHTML = comps.map((c) => `
+        <div class="list-item ${selectedComp === c.id ? "active" : ""}" data-id="${c.id}">
+          <div class="t">${esc(c.title)}</div>
+          <div class="s">${c.kind === "common" ? "Общая" : "Профессиональная"}</div>
+        </div>`).join("");
+      $$("#compList .list-item").forEach((it) => it.addEventListener("click", () => openComp(it.dataset.id)));
+    }
+    let compTimer;
+    $("#compSearch").addEventListener("input", () => { clearTimeout(compTimer); compTimer = setTimeout(loadCompetencies, 250); });
+
+    function openComp(id) {
+      selectedComp = id;
+      const c = comps.find((x) => x.id === id);
+      $$("#compList .list-item").forEach((it) => it.classList.toggle("active", it.dataset.id === id));
+      $("#compEditor").innerHTML = `
+        <b>Редактирование компетенции</b>
+        <label>Название</label>
+        <input id="cm_title" value="${esc(c.title)}">
+        <label>Вид</label>
+        <select id="cm_kind">
+          <option value="professional" ${c.kind === "professional" ? "selected" : ""}>Профессиональная</option>
+          <option value="common" ${c.kind === "common" ? "selected" : ""}>Общая</option>
+        </select>
+        <label>Описание</label>
+        <textarea id="cm_desc">${esc(c.description || "")}</textarea>
+        <div style="margin-top:16px;"><button id="cm_save">Сохранить</button></div>`;
+      $("#cm_save").addEventListener("click", async () => {
+        try {
+          await api(`/admin/competencies/${id}`, {
+            method: "PATCH",
+            body: JSON.stringify({
+              title: $("#cm_title").value.trim(),
+              kind: $("#cm_kind").value,
+              description: $("#cm_desc").value,
+            }),
+          });
+          toast("Сохранено"); loadCompetencies();
+        } catch (err) { toast(err.message, true); }
+      });
+    }
+
+    // ── Загрузка ──
+    async function loadTaxonomy() { taxonomy = await api("/admin/taxonomy"); }
+
+    async function boot() {
+      try {
+        [taxonomy, orgs] = await Promise.all([api("/admin/taxonomy"), api("/admin/organizations")]);
+        renderScope();
+        showApp();
+        await loadProfiles();
+      } catch (err) {
+        if (String(err.message).includes("вход")) return; // logout уже сработал
+        toast(err.message, true); logout();
+      }
+    }
+
+    if (token) boot(); else showLogin();
+  })();
+  </script>
+</body>
+</html>

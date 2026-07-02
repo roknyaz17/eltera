@@ -59,7 +59,9 @@ export function funnelChart(items) {
   return `
     <div class="elt-funnel">
       ${items.map((item, idx) => {
-        const pctVal = Math.max(6, Math.min(100, Math.round((Number(item.value) / first) * 100)));
+        const pctVal = Math.min(100, Math.round((Number(item.value) / first) * 100)) || 0;
+        // ширина полоски: минимум 6% для видимости, но только когда есть кандидаты
+        const barWidth = pctVal > 0 ? Math.max(6, pctVal) : 0;
         const status = getConversionStatus(pctVal);
         const isLast = idx === items.length - 1;
         return `
@@ -69,7 +71,7 @@ export function funnelChart(items) {
               <b class="elt-funnel-count">${item.value}</b>
             </div>
             <div class="elt-funnel-bar">
-              <div class="elt-funnel-fill" style="width:${pctVal}%"></div>
+              <div class="elt-funnel-fill" style="width:${barWidth}%"></div>
             </div>
             <span class="elt-funnel-pct">${pctVal}%</span>
           </button>
@@ -90,14 +92,19 @@ export function barChart(items) {
         const value = item.value ?? item[1];
         const w = Math.max(6, Math.round((Number(value) / max) * 100));
         const status = item.status || "neutral";
+        // Кликабельная строка (дрилл-даун по этапу) — только если задан target.
+        const tag = item.target ? "button" : "div";
+        const attrs = item.target
+          ? `class="elt-bar-row elt-bar-row--clickable ${statusClass(status)}" data-open-list="${item.target}"`
+          : `class="elt-bar-row ${statusClass(status)}"`;
         return `
-          <div class="elt-bar-row ${statusClass(status)}">
+          <${tag} ${attrs}>
             <span class="elt-bar-label">${label}</span>
             <div class="elt-bar-track">
               <div class="elt-bar-fill" style="width:${w}%"></div>
             </div>
             <strong class="elt-bar-value">${value}</strong>
-          </div>
+          </${tag}>
         `;
       }).join("")}
     </div>

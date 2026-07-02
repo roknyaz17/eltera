@@ -213,13 +213,14 @@ async def vacancy_responses(
     if vacancy is None:
         raise HTTPException(404, "Вакансия не найдена")
     events = await svc.list_responses(session, vacancy, svc.parse_period(period))
-    converted = await svc.converted_event_ids(session, vacancy)
+    person_map = await svc.converted_person_map(session, vacancy)
     items = [
         ResponseEventOut(
             id=e.id, external_id=e.external_id, state=e.state,
             candidate_name=e.candidate_name, candidate_url=e.candidate_url,
             resume_id=e.resume_id, occurred_at=e.occurred_at,
-            converted=e.id in converted,
+            converted=e.id in person_map,
+            person_id=person_map.get(e.id),
         )
         for e in events
     ]

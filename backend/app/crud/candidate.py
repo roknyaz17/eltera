@@ -544,6 +544,18 @@ async def delete_candidate(session: AsyncSession, person_id: str) -> bool:
     return True
 
 
+async def archive_candidate(session: AsyncSession, person_id: str, *, archived: bool = True) -> bool:
+    """Мягкое удаление кандидата: archived_at = now (или сброс при restore).
+    Ответы, история оценок и стадии сохраняются — ничего не рвётся."""
+    # include_archived=True: при restore кандидат уже архивный и иначе не найдётся.
+    person = await session.get(Person, person_id, execution_options={"include_archived": True})
+    if person is None or person.candidate_profile is None:
+        return False
+    person.archived_at = utcnow() if archived else None
+    await session.commit()
+    return True
+
+
 async def _default_candidate_test(session: AsyncSession) -> tuple[str, str] | None:
     """Тест и его версия для записи результата (по умолчанию — первый кандидатский)."""
     test = (

@@ -160,6 +160,15 @@ export function recordCandidateResult(personId, payload) {
   return postJSON(`/candidates/${personId}/result`, payload);
 }
 
+// Мягкое удаление («в архив»): человек скрывается из списков и аналитики, но его
+// отчёты и история оценок сохраняются. Обратимо через restore*.
+export function archiveCandidate(personId) { return deleteJSON(`/candidates/${personId}`); }
+export function restoreCandidate(personId) { return postJSON(`/candidates/${personId}/restore`); }
+export function archiveEmployee(personId) { return deleteJSON(`/employees/${personId}`); }
+export function restoreEmployee(personId) { return postJSON(`/employees/${personId}/restore`); }
+// Раздел «Архив»: все архивные люди (сотрудники + кандидаты).
+export function fetchArchive() { return getJSON(`/archive`); }
+
 // Зарегистрировать ссылку-приглашение (для метрики «Оценка отправлена»).
 export function createLink(payload) {
   return postJSON(`/links`, payload);
@@ -283,6 +292,11 @@ export function fetchEmployee(personId) {
 // Создать сотрудника (Person + employee_profile). Отдел/руководитель — по имени.
 export function createEmployee(payload) {
   return postJSON(`/employees`, payload);
+}
+
+// Обновить сотрудника (частично). В т.ч. смена отдела: { department_id }.
+export function updateEmployee(personId, payload) {
+  return patchJSON(`/employees/${personId}`, payload);
 }
 
 // ИИ-ассистент: отправить историю сообщений, получить {reply, action}.
@@ -452,6 +466,27 @@ export function recordEmployeeResult(personId, payload) {
 
 export function fetchOrgTree() {
   return getJSON(`/structure`);
+}
+
+// --- Отделы (вкладка «Структура») ---
+export function fetchDepartments() {
+  return getJSON(`/structure/departments`);
+}
+// Создать отдел. Возвращает обновлённый список отделов.
+export function createDepartment(payload) {
+  return postJSON(`/structure/departments`, payload);
+}
+// Изменить отдел (название / руководитель / родитель). Возвращает список отделов.
+export function updateDepartment(deptId, payload) {
+  return patchJSON(`/structure/departments/${deptId}`, payload);
+}
+// Удалить отдел (сотрудники открепляются). Возвращает обновлённый список отделов.
+export function deleteDepartment(deptId) {
+  return deleteJSON(`/structure/departments/${deptId}`);
+}
+// Убрать сотрудника из отдела (сам сотрудник остаётся в структуре).
+export function detachEmployeeDepartment(personId) {
+  return deleteJSON(`/structure/members/${personId}/department`);
 }
 
 // Список тестов/профилей (для мастера, конструктора и библиотеки).

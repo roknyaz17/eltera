@@ -63,10 +63,29 @@ class OverviewUpcoming(BaseModel):
     status: str         # scheduled / sent
 
 
+class OverviewPulseFactor(BaseModel):
+    """Один фактор «Пульса компании»: значение + недельный спарклайн."""
+    label: str
+    value: float = 0.0
+    unit: str = ""            # "%", " чел." и т.п.
+    color: str = "#4ADE80"    # цвет дельты/линии (зелёный/жёлтый/красный)
+    delta: str = ""           # "+2", "−1" — изменение за неделю
+    spark: list[int] = Field(default_factory=list)  # 7 точек (недели)
+
+
+class OverviewPulse(BaseModel):
+    """Виджет «Пульс компании» на «Главной» — считается из реальных данных."""
+    index: int = 0            # интегральный индекс здоровья 0..100 (кольцо)
+    breakdown: str = ""       # текст «вклад в индекс здоровья»
+    factors: list[OverviewPulseFactor] = Field(default_factory=list)
+    ticker: list[str] = Field(default_factory=list)  # лента «только что»
+
+
 class Overview(BaseModel):
     candidates: OverviewCandidates = Field(default_factory=OverviewCandidates)
     employees: OverviewEmployees = Field(default_factory=OverviewEmployees)
     adaptation: OverviewAdaptation = Field(default_factory=OverviewAdaptation)
+    pulse: OverviewPulse = Field(default_factory=OverviewPulse)
     attention: list[OverviewAttentionItem] = Field(default_factory=list)
     events: list[OverviewEvent] = Field(default_factory=list)
     upcoming_adaptation: list[OverviewUpcoming] = Field(default_factory=list)

@@ -8,8 +8,11 @@
 
 let TD = null;          // { D, RISK, BEST, MID, LOW, BURN, ALL }
 let idx = 0, tile = null, dots = null, timer = null, clickBound = false;
+let openCardFn = null;  // колбэк из app.js: открыть карточку сотрудника по id
 
 export function setTeamData(data) { TD = data; }
+// Регистрируем обработчик клика по строке списка (открытие карточки сотрудника).
+export function setTeamOpenCard(fn) { openCardFn = fn; }
 
 function fc(v) { return v >= 80 ? "#4ADE80" : v >= 65 ? "#FACC15" : "#F87171"; }
 function inits(n) { return n.split(" ").slice(0, 2).map((w) => w[0] || "").join(""); }
@@ -53,11 +56,20 @@ function openList(eyebrow, title, subtitle, items) {
   const rows = items.length ? items.map((p) => {
     const col = fc(p[2]);
     const v = p[2] === 0 ? "не оценён" : "fit " + p[2] + "%";
-    return `<div style="display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03)"><span style="width:34px;height:34px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:12px;font-weight:800;color:#02121a;background:linear-gradient(135deg,#1E5BFF,#00E5D4)">${inits(p[0])}</span><span style="flex:1;min-width:0"><b style="display:block;font-size:13px;color:rgba(230,242,255,.82);font-weight:600">${p[0]}</b><span style="font-size:11.5px;color:rgba(230,242,255,.45)">${p[1]}</span></span><span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;color:${col}"><span style="width:7px;height:7px;border-radius:50%;background:${col}"></span>${v}</span></div>`;
+    const id = p[3];
+    return `<button type="button"${id ? ` data-emp-card="${id}"` : ""} class="elt-drawer-row" style="text-align:left;font-family:inherit;display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);cursor:${id ? "pointer" : "default"};transition:background .12s,border-color .12s"><span style="width:34px;height:34px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:12px;font-weight:800;color:#02121a;background:linear-gradient(135deg,#1E5BFF,#00E5D4)">${inits(p[0])}</span><span style="flex:1;min-width:0"><b style="display:block;font-size:13px;color:rgba(230,242,255,.82);font-weight:600">${p[0]}</b><span style="font-size:11.5px;color:rgba(230,242,255,.45)">${p[1]}</span></span><span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;color:${col}"><span style="width:7px;height:7px;border-radius:50%;background:${col}"></span>${v}</span></button>`;
   }).join("") : `<div style="padding:24px;text-align:center;color:rgba(230,242,255,.4);font-size:13px">Список пуст.</div>`;
   drw.innerHTML = `<div style="padding:22px 22px 14px;border-bottom:1px solid rgba(255,255,255,.08);flex:none"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-size:10.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#9B6BF2;margin-bottom:6px">${eyebrow}</div><h2 style="margin:0;color:#fff;font-size:18px;font-weight:800">${title}</h2></div><button id="eltDX" style="flex:none;width:32px;height:32px;border-radius:9px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#cdd9ee;cursor:pointer;font-size:14px">✕</button></div><p style="margin:10px 0 0;color:rgba(230,242,255,.5);font-size:12.5px">${subtitle}</p></div><div style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px">${rows}</div><div style="padding:14px 18px;border-top:1px solid rgba(255,255,255,.08);flex:none"><button id="eltBack" style="width:100%;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#E6F2FF;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer">← Назад</button></div>`;
   drw.querySelector("#eltDX").onclick = close;
   drw.querySelector("#eltBack").onclick = close;
+  // Клик по строке списка — закрываем drawer и открываем карточку сотрудника.
+  drw.querySelectorAll("[data-emp-card]").forEach((btn) => {
+    btn.onclick = () => {
+      const id = btn.getAttribute("data-emp-card");
+      close();
+      if (openCardFn && id) openCardFn(id);
+    };
+  });
 }
 
 // Клик по KPI-карточкам открывает соответствующий список (навешивается один раз).

@@ -1,4 +1,4 @@
-import { pageFilterConfig } from "../config/dashboard-config.js";
+import { pageFilterConfig, navConfig } from "../config/dashboard-config.js";
 import { filterModel, applyFilters } from "../domain/filtering.js";
 import {
   ActionButtonGroup,
@@ -279,8 +279,11 @@ function renderPasswordReset(pr) {
   return `<div class="modalBackdrop">${inner}</div>`;
 }
 
-export function renderLogin(state = {}) {
+export function renderLogin(state = {}, opts = {}) {
   const invited = Boolean(state.refCode);
+  // Вкладка регистрации открыта по умолчанию, если пришли по приглашению
+  // или явно с экрана «Попробовать».
+  const registerDefault = invited || Boolean(opts.register);
   return `
     <div class="authPage">
       <div class="authBg" aria-hidden="true"><canvas class="matrixCanvas loginMatrix"></canvas></div>
@@ -293,13 +296,13 @@ export function renderLogin(state = {}) {
         ${invited ? `<div class="authRefBanner">🎁 Вы регистрируетесь по приглашению. Создайте аккаунт, чтобы начать.</div>` : ``}
         <div class="authPill">
           <div class="authPillInner">
-            <button class="authPillBtn ${invited ? '' : 'active'}" data-auth-tab="login">Войти</button>
-            <button class="authPillBtn ${invited ? 'active' : ''}" data-auth-tab="register">Зарегистрироваться</button>
+            <button class="authPillBtn ${registerDefault ? '' : 'active'}" data-auth-tab="login">Войти</button>
+            <button class="authPillBtn ${registerDefault ? 'active' : ''}" data-auth-tab="register">Зарегистрироваться</button>
           </div>
         </div>
 
         <!-- Форма входа -->
-        <div class="authFormWrap ${invited ? '' : 'open'}" data-auth-panel="login">
+        <div class="authFormWrap ${registerDefault ? '' : 'open'}" data-auth-panel="login">
         <form data-login-form>
           <div class="authInputGroup">
             <label class="authLabel">Email или телефон</label>
@@ -316,7 +319,7 @@ export function renderLogin(state = {}) {
         </div>
 
         <!-- Форма регистрации -->
-        <div class="authFormWrap ${invited ? 'open' : ''}" data-auth-panel="register">
+        <div class="authFormWrap ${registerDefault ? 'open' : ''}" data-auth-panel="register">
         <form data-register-form>
           <div class="authInputRow">
             <div class="authInputGroup">
@@ -386,6 +389,77 @@ export function renderLogin(state = {}) {
   `;
 }
 
+// ─── Глобальный поиск (топбар) ───────────────────────────────────────────────
+// Клиентский поиск по уже загруженным сотрудникам, кандидатам и разделам.
+// Данные подгружаются лениво контроллером в app.js при первом вводе.
+export function computeSearchResults(state, rawQ) {
+  const q = (rawQ || "").trim().toLowerCase();
+  if (q.length < 2) return [];
+  const employees = [];
+  const candidates = [];
+  const sections = [];
+  (state.employeesApi || []).forEach((e) => {
+    const hay = [e.fullName, e.position, e.department, e.project].filter(Boolean).join(" ").toLowerCase();
+    if (hay.includes(q)) {
+      employees.push({
+        kind: "employee", id: e.id, title: e.fullName || "Без имени",
+        subtitle: [e.position, e.department].filter((x) => x && x !== "—").join(" · ")
+      });
+    }
+  });
+  (state.candidatesApi || []).forEach((c) => {
+    const p = c.person || {};
+    const hay = [p.fullName, c.vacancy, p.email, p.city].filter(Boolean).join(" ").toLowerCase();
+    if (hay.includes(q)) {
+      candidates.push({
+        kind: "candidate", id: c.id, title: p.fullName || "Без имени",
+        subtitle: ["Кандидат", c.vacancy].filter((x) => x && x !== "—").join(" · ")
+      });
+    }
+  });
+  navConfig.forEach((item) => {
+    if (item.wip) return;
+    if ((item.label || "").toLowerCase().includes(q)) {
+      sections.push({ kind: "nav", id: item.id, title: item.label, subtitle: "Перейти в раздел" });
+    }
+  });
+  return [...employees.slice(0, 6), ...candidates.slice(0, 6), ...sections.slice(0, 4)];
+}
+
+function searchKindIcon(kind) {
+  if (kind === "nav") return `<svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M3 3h8v8H3z" stroke="currentColor" stroke-width="1.2" opacity=".7"/><path d="M5.5 7h3M7 5.5v3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>`;
+  if (kind === "candidate") return `<svg width="13" height="13" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="5" r="2.2" stroke="currentColor" stroke-width="1.2"/><path d="M3 11.5c0-2.2 1.8-4 4-4s4 1.8 4 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>`;
+  return `<svg width="13" height="13" viewBox="0 0 14 14" fill="none"><circle cx="5" cy="5" r="2" stroke="currentColor" stroke-width="1.2"/><circle cx="10" cy="5" r="2" stroke="currentColor" stroke-width="1.2"/><path d="M1.5 11.5c0-1.9 1.5-3.4 3.5-3.4M9 8.1c2 0 3.5 1.5 3.5 3.4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>`;
+}
+
+function renderGlobalSearch(state) {
+  const s = state.search || { q: "", open: false };
+  const q = s.q || "";
+  const hasQuery = q.trim().length >= 2;
+  const results = hasQuery ? computeSearchResults(state, q) : [];
+  const showDrop = Boolean(s.open && hasQuery);
+  let drop = "";
+  if (showDrop) {
+    drop = results.length
+      ? `<div class="elt-search-drop">${results.map((r) => `
+          <button class="elt-search-item" data-search-go="${escapeHtml(r.id)}" data-search-kind="${r.kind}">
+            <span class="elt-search-item-ic">${searchKindIcon(r.kind)}</span>
+            <span class="elt-search-item-text">
+              <span class="elt-search-item-title">${escapeHtml(r.title || "")}</span>
+              ${r.subtitle ? `<span class="elt-search-item-sub">${escapeHtml(r.subtitle)}</span>` : ""}
+            </span>
+          </button>`).join("")}</div>`
+      : `<div class="elt-search-drop"><div class="elt-search-empty">Ничего не найдено</div></div>`;
+  }
+  return `
+    <div class="elt-search-wrap${showDrop ? " open" : ""}">
+      <svg class="elt-search-icon" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.4"/><line x1="9.5" y1="9.5" x2="12.5" y2="12.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      <input class="elt-search" data-global-search autocomplete="off" placeholder="Поиск по людям, вакансиям и отчетам" value="${escapeHtml(q)}">
+      ${q ? `<button class="elt-search-clear" data-search-clear aria-label="Очистить">×</button>` : ""}
+      ${drop}
+    </div>`;
+}
+
 export function renderAppShell(state, content) {
   const counts = navCounts(state);
   const navGroups = buildNavGroups(state, counts);
@@ -394,7 +468,7 @@ export function renderAppShell(state, content) {
     <div class="appShell ${isDark ? "darkTheme" : "lightTheme"}">
       <aside class="elt-sidebar">
         <div class="elt-sidebar-logo">
-          <img src="${isDark ? "/assets/eltera_logo_horizontal_on_dark.svg?v=4" : "/assets/eltera_logo_horizontal_on_light.svg?v=4"}" alt="Eltera" class="elt-logo-img">
+          <img src="${isDark ? "/assets/eltera_logo_horizontal_mono_white.svg?v=1" : "/assets/eltera_logo_horizontal_mono_dark.svg?v=1"}" alt="Eltera" class="elt-logo-img">
         </div>
         <nav class="elt-sidenav">
           ${navGroups.map((group) => `
@@ -410,16 +484,6 @@ export function renderAppShell(state, content) {
             <span class="elt-tariff-nav-label">Тариф</span>
             <span class="elt-tariff-nav-name">${state.company.tariff}</span>
           </button>
-          <div class="elt-account">
-            ${state.user && state.user.email ? `
-            <div class="elt-account-info" title="${escapeHtml(state.user.email)}">
-              <span class="elt-account-avatar">${escapeHtml(state.user.email.trim().charAt(0).toUpperCase())}</span>
-              <span class="elt-account-email">${escapeHtml(state.user.email)}</span>
-            </div>` : ""}
-            <button class="elt-account-logout" data-action="logout" title="Выйти из аккаунта" aria-label="Выйти из аккаунта">
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M6 2H3v12h3M10 11l3-3-3-3M13 8H6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-          </div>
         </div>
       </aside>
       <div class="appMain">
@@ -427,10 +491,7 @@ export function renderAppShell(state, content) {
           <div class="elt-topbar-left">
           </div>
           <div class="elt-topbar-center">
-            <div class="elt-search-wrap">
-              <svg class="elt-search-icon" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.4"/><line x1="9.5" y1="9.5" x2="12.5" y2="12.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-              <input class="elt-search" placeholder="Поиск по людям, вакансиям и отчетам">
-            </div>
+            ${renderGlobalSearch(state)}
           </div>
           <div class="elt-topbar-right">
             <div class="elt-balance-pill">
@@ -455,9 +516,15 @@ export function renderAppShell(state, content) {
               </button>
               ${state.notifPanelOpen ? renderNotifPanel(state) : ""}
             </div>
-            <button class="elt-avatar-btn" title="Профиль" data-oc-avatar="ceo" style="padding:0;overflow:hidden">
-              ${(state.employeePhotos || {})['ceo'] ? `<img class="oc-avatar-img" src="${(state.employeePhotos || {})['ceo']}" alt="Профиль" style="width:100%;height:100%;object-fit:cover;border-radius:50%">` : 'РК'}
-            </button>
+            <div class="elt-account elt-account-top">
+              <button class="elt-avatar-btn" title="Профиль" data-oc-avatar="ceo" style="padding:0;overflow:hidden">
+                ${(state.employeePhotos || {})['ceo'] ? `<img class="oc-avatar-img" src="${(state.employeePhotos || {})['ceo']}" alt="Профиль" style="width:100%;height:100%;object-fit:cover;border-radius:50%">` : 'РК'}
+              </button>
+              ${state.user && state.user.email ? `<span class="elt-account-email" title="${escapeHtml(state.user.email)}">${escapeHtml(state.user.email)}</span>` : ""}
+              <button class="elt-account-logout" data-action="logout" title="Выйти из аккаунта" aria-label="Выйти из аккаунта">
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M6 2H3v12h3M10 11l3-3-3-3M13 8H6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
           </div>
         </header>
         <main class="appContent">${content}${renderModal(state)}${renderKebabPopover(state)}${renderAssistant(state)}</main>
@@ -673,6 +740,73 @@ function _ovPanelIcon(path) {
   return `<svg width="15" height="15" viewBox="0 0 15 15" fill="none">${path}</svg>`;
 }
 
+// Мини-спарклайн для карточек факторов «Пульса» (порт из dashboard.dc.html).
+function _ovSpark(color, pts) {
+  const w = 72, h = 22;
+  const mx = Math.max(...pts), mn = Math.min(...pts), rg = (mx - mn) || 1;
+  const d = pts.map((v, i) => `${(i / (pts.length - 1) * w).toFixed(1)},${(h - ((v - mn) / rg) * h).toFixed(1)}`).join(" ");
+  return `<svg width="${w}" height="${h}" style="flex:none"><polyline points="${d}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
+
+// «Пульс компании» — полноширинная панель наверху аналитики «Главной».
+// Порт 1-в-1 из Claude Design (dashboard.dc.html): кольцо индекса здоровья +
+// 4 фактора со спарклайнами + разворачиваемый вклад в индекс + живая лента.
+// Индекс, факторы, спарклайны и лента приходят с бэкенда (ov.pulse) — кольцо и
+// тикер оживляет initPulse в pulse.js, читая данные из data-атрибутов панели.
+function pulsePanel(pulse) {
+  const factors = Array.isArray(pulse.factors) ? pulse.factors : [];
+
+  // Пусто = данных для пульса ещё нет (нет пройденных оценок / циклов адаптации):
+  // все факторы по нулям и индекс 0. Тогда вместо «сломанного» кольца с нулём и
+  // пустой колонки факторов показываем спокойную заглушку.
+  const hasData = factors.some(
+    (f) => Number(f.value) || (Array.isArray(f.spark) && f.spark.some((v) => v))
+  ) || Number(pulse.index) > 0;
+
+  const panelHeadHtml = `
+      <div class="elt-panel-head">
+        <div class="elt-panel-head-left">${_ovPanelIcon('<path d="M1.5 7.5h2.5l1.5-4 2.5 8 1.5-4h2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>')}<h2>Пульс компании</h2></div>
+        <span class="elt-panel-caption ov-pulse-live">● в реальном времени</span>
+      </div>`;
+
+  if (!hasData) {
+    return `
+    <article class="elt-panel elt-wide ov-pulse ov-pulse-empty" id="pulsePanel">
+      ${panelHeadHtml}
+      <div class="ov-empty">Пульс появится, когда накопятся данные — после первых пройденных оценок и запущенных циклов адаптации.</div>
+    </article>`;
+  }
+
+  const factorsHtml = factors.map((f) => {
+    const pts = Array.isArray(f.spark) && f.spark.length ? f.spark : [0, 0];
+    const val = Number.isInteger(f.value) ? f.value : Math.round(f.value);
+    return `
+    <div class="ov-pulse-factor">
+      <div class="ov-pulse-factor-head">
+        <span class="ov-pulse-factor-label">${escapeHtml(f.label)}</span>
+        <span class="ov-pulse-factor-delta" style="color:${escapeHtml(f.color)}">${escapeHtml(f.delta)}</span>
+      </div>
+      <div class="ov-pulse-factor-main">
+        <b class="ov-pulse-factor-val">${val}${escapeHtml(f.unit || "")}</b>
+        ${_ovSpark(f.color, pts)}
+      </div>
+    </div>`;
+  }).join("");
+
+  const tickerJson = escapeHtml(JSON.stringify(pulse.ticker || []));
+  return `
+    <article class="elt-panel elt-wide ov-pulse" id="pulsePanel"
+      data-pulse-index="${Number(pulse.index) || 0}" data-pulse-ticker="${tickerJson}">
+      ${panelHeadHtml}
+      <div class="ov-pulse-body">
+        <div class="ov-pulse-ring" id="pulseRingWrap"></div>
+        <div class="ov-pulse-factors">${factorsHtml}</div>
+      </div>
+      <div class="ov-pulse-break" id="pulseBreak" style="display:none">${escapeHtml(pulse.breakdown || "")}</div>
+      <div class="ov-pulse-ticker" id="pulseTicker"></div>
+    </article>`;
+}
+
 export function renderOverview(state) {
   const status = state.overviewStatus || "idle";
   const ov = state.overview;
@@ -806,6 +940,8 @@ export function renderOverview(state) {
     </section>
 
     <section class="elt-analytics-grid">
+      ${pulsePanel(ov.pulse || {})}
+
       <article class="elt-panel elt-chart-panel">
         ${panelHead('<path d="M2 2h11l-4 5v5l-3-2V7L2 2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>', "Воронка подбора", "кандидаты")}
         ${funnelChart(funnelItems)}
@@ -858,8 +994,7 @@ export function renderPeople(state) {
 }
 
 export function renderCandidates(state) {
-  // Демо-сид показываем ТОЛЬКО при явной ошибке API. Пока идёт загрузка —
-  // показываем API-режим с нулями, чтобы не мелькали демо-числа (133 и т.п.).
+  // Только данные из API. Пока идёт загрузка или при ошибке — нули, без демо-чисел.
   const EMPTY_STATS = {
     total: 0, assessment_sent: 0, assessment_passed: 0, fit: 0, conditional: 0,
     not_fit: 0, interview: 0, accepted: 0, stuck: 0, avg_percent: 0,
@@ -867,61 +1002,43 @@ export function renderCandidates(state) {
   };
   const ready = Boolean(state.candidateStats && state.candidatesApi);
   const failed = state.candidatesStatus === "error";
-  const usingApi = !failed; // API-режим, пока API не упал
   const stats = ready ? state.candidateStats : EMPTY_STATS;
-  const candidates = ready
-    ? state.candidatesApi
-    : failed
-      ? state.sessions.filter((item) => item.person.assessmentType === "Кандидат")
-      : [];
+  const candidates = ready ? state.candidatesApi : [];
   const fit = candidates
     .filter((item) => item.assessed && item.result.percent >= 68)
     .sort((a, b) => b.result.percent - a.result.percent);
-  const risky = candidates.filter((item) => item.assessed && item.result.percent < 55);
 
   const subtitle = failed
-    ? "API недоступен — показаны демо-данные"
+    ? "API недоступен — данные не загружены"
     : ready
       ? `Данные из API · ${stats.total} кандидатов`
       : "Загрузка данных из API…";
 
-  const kpiCards = usingApi
-    ? [
-        { label: "Всего кандидатов", value: stats.total, caption: "в базе", status: "neutral", target: "Кандидаты:Кандидатов всего", iconName: "candidates" },
-        { label: "Оценка отправлена", value: stats.assessment_sent, caption: "сгенерировано ссылок", status: "medium", target: "Кандидаты:Оценка отправлена", iconName: "link" },
-        { label: "Оценку прошли", value: stats.assessment_passed, caption: "готовы отчеты", status: getConversionStatus(72), target: "Кандидаты:Оценка пройдена", iconName: "completed" },
-        { label: "Подходят", value: stats.fit, caption: "под профиль", status: "good", target: "Кандидаты:Подходят", iconName: "fit" },
-        { label: "Условно подходят", value: stats.conditional, caption: "нужна проверка", status: "medium", target: "Кандидаты:Условно подходят", iconName: "balance" },
-        { label: "Не подходят", value: stats.not_fit, caption: "низкий балл", status: "bad", target: "Кандидаты:Не подходит", iconName: "risk" },
-        { label: "На интервью", value: stats.interview, caption: "следующий этап", status: "good", target: "Кандидаты:Интервью", iconName: "interview" },
-        { label: "Приняты", value: stats.accepted, caption: "выход", status: "neutral", target: "Кандидаты:Принят", iconName: "completed" },
-        { label: "Зависли", value: stats.stuck, caption: "нет движения", status: "bad", target: "Кандидаты:Зависли", iconName: "active" }
-      ]
-    : [
-        { label: "Всего кандидатов", value: candidates.length + 128, caption: "+24 за период", status: "neutral", target: "Кандидаты:Кандидатов всего", iconName: "candidates" },
-        { label: "Оценка отправлена", value: state.links.filter((x) => x.recipientType === "Кандидат").length, caption: "активные ссылки", status: "medium", target: "Кандидаты:Оценка отправлена", iconName: "link" },
-        { label: "Оценку прошли", value: candidates.length, caption: "готовы отчеты", status: getConversionStatus(72), target: "Кандидаты:Оценка пройдена", iconName: "completed" },
-        { label: "Подходят", value: fit.length + 24, caption: "под профиль", status: "good", target: "Кандидаты:Подходят", iconName: "fit" },
-        { label: "Условно подходят", value: 11, caption: "нужна проверка", status: "medium", target: "Кандидаты:Условно подходят", iconName: "balance" },
-        { label: "Не подходят", value: risky.length + 9, caption: "низкий балл", status: "bad", target: "Кандидаты:Не подходит", iconName: "risk" },
-        { label: "На интервью", value: 21, caption: "следующий этап", status: "good", target: "Кандидаты:Интервью", iconName: "interview" },
-        { label: "Приняты", value: 4, caption: "выход", status: "neutral", target: "Кандидаты:Принят", iconName: "completed" },
-        { label: "Зависли", value: 12, caption: "нет движения", status: "bad", target: "Кандидаты:Зависли", iconName: "active" }
-      ];
+  const conversion = stats.assessment_sent
+    ? Math.round((stats.assessment_passed / stats.assessment_sent) * 100)
+    : 0;
 
-  const sourceItems = usingApi
-    ? stats.by_source.map((s) => [s.source, s.count])
-    : [["HeadHunter", 44], ["SuperJob", 24], ["Ручная", 18], ["API", 12], ["Telegram", 9]];
+  const kpiCards = [
+    { label: "Всего кандидатов", value: stats.total, caption: "в базе", status: "neutral", target: "Кандидаты:Кандидатов всего", iconName: "candidates" },
+    { label: "Оценка отправлена", value: stats.assessment_sent, caption: "сгенерировано ссылок", status: "medium", target: "Кандидаты:Оценка отправлена", iconName: "link" },
+    { label: "Оценку прошли", value: stats.assessment_passed, caption: "готовы отчеты", status: getConversionStatus(conversion), target: "Кандидаты:Оценка пройдена", iconName: "completed" },
+    { label: "Подходят", value: stats.fit, caption: "под профиль", status: "good", target: "Кандидаты:Подходят", iconName: "fit" },
+    { label: "Условно подходят", value: stats.conditional, caption: "нужна проверка", status: "medium", target: "Кандидаты:Условно подходят", iconName: "balance" },
+    { label: "Не подходят", value: stats.not_fit, caption: "низкий балл", status: "bad", target: "Кандидаты:Не подходит", iconName: "risk" },
+    { label: "На интервью", value: stats.interview, caption: "следующий этап", status: "good", target: "Кандидаты:Интервью", iconName: "interview" },
+    { label: "Приняты", value: stats.accepted, caption: "выход", status: "neutral", target: "Кандидаты:Принят", iconName: "completed" },
+    { label: "Зависли", value: stats.stuck, caption: "нет движения", status: "bad", target: "Кандидаты:Зависли", iconName: "active" }
+  ];
 
-  const funnelItems = usingApi
-    ? [
-        ["Всего", stats.total],
-        ["Оценку прошли", stats.assessment_passed],
-        ["Подходят", stats.fit],
-        ["Интервью", stats.interview],
-        ["Приняты", stats.accepted]
-      ].map(([label, value]) => ({ label, value, target: `Кандидаты:${label}` }))
-    : dashboardData(state, "Кандидаты").funnel.map(([label, value]) => ({ label, value, target: `Кандидаты:${label}` }));
+  const sourceItems = stats.by_source.map((s) => [s.source, s.count]);
+
+  const funnelItems = [
+    ["Всего", stats.total],
+    ["Оценку прошли", stats.assessment_passed],
+    ["Подходят", stats.fit],
+    ["Интервью", stats.interview],
+    ["Приняты", stats.accepted]
+  ].map(([label, value]) => ({ label, value, target: `Кандидаты:${label}` }));
 
   // ── Разметка премиум (портирована из Claude Design — candidates.dc.html) ──
   const panelHead = (svg, title, caption) => `
@@ -1028,7 +1145,7 @@ export function renderEmployees(state) {
   ];
 
   // ── Данные виджета «Срез команды» (отделы + списки) из реальных сотрудников ──
-  const tup = (e, sub) => [e.fullName, sub !== undefined ? sub : (e.department || ""), e.fit == null ? 0 : e.fit];
+  const tup = (e, sub) => [e.fullName, sub !== undefined ? sub : (e.department || ""), e.fit == null ? 0 : e.fit, e.id];
   const assessed = employees.filter((e) => e.fit != null);
   const byDept = {};
   employees.forEach((e) => { const d = e.department || "Без отдела"; (byDept[d] = byDept[d] || []).push(e); });
@@ -1130,6 +1247,53 @@ export function renderEmployees(state) {
     </section>
 
     ${PremiumDataTable(employeesTableConfig(applyFilters("employees", employees, state.activeFilters?.employees)))}
+  </section>`;
+}
+
+export function renderArchive(state) {
+  const status = state.archiveStatus;
+  const data = state.archive;
+  const items = (data && data.items) || [];
+
+  let listHtml;
+  if (status === "loading" || (status !== "error" && !data)) {
+    listHtml = `<div class="ov-empty">Загрузка архива…</div>`;
+  } else if (status === "error") {
+    listHtml = `<div class="ov-empty">Не удалось загрузить архив (бэкенд недоступен).</div>`;
+  } else if (!items.length) {
+    listHtml = `<div class="ov-empty">Архив пуст — никто не удалён.</div>`;
+  } else {
+    listHtml = items.map((it) => {
+      const kindRu = it.kind === "candidate" ? "Кандидат" : "Сотрудник";
+      let when = "";
+      if (it.archived_at) { try { when = new Date(it.archived_at).toLocaleDateString("ru-RU"); } catch { when = ""; } }
+      return `<div class="gp-row" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03)">
+        <div style="flex:1 1 0%;min-width:0">
+          <b style="display:block;font-size:13px;color:#E6F2FF;font-weight:600">${escapeHtml(it.full_name || "—")}</b>
+          <span style="font-size:11px;color:rgba(230,242,255,.5)">${escapeHtml(kindRu)}${it.subtitle ? " · " + escapeHtml(it.subtitle) : ""}${when ? " · в архиве с " + when : ""}</span>
+        </div>
+        <button class="elt-btn-ghost" data-action="restore-person" data-person-id="${it.id}" data-person-kind="${it.kind}" data-person-name="${escapeHtml(it.full_name || "")}" style="flex:0 0 auto">Восстановить</button>
+      </div>`;
+    }).join("");
+  }
+
+  return `<section class="elt-dashboard">
+    <header class="elt-dash-header">
+      <div class="elt-dash-header-left">
+        <span class="elt-mini-label">Мягко удалённые</span>
+        <h1 class="elt-dash-title">Архив</h1>
+        <p class="elt-dash-subtitle">Скрытые из списков сотрудники и кандидаты. Отчёты и история сохранены — можно восстановить${data && data.total ? ` · ${data.total} в архиве` : ""}.</p>
+      </div>
+    </header>
+    <section class="elt-analytics-grid" style="grid-template-columns:1fr">
+      <article class="elt-panel">
+        <div class="elt-panel-head">
+          <div class="elt-panel-head-left"><h2>В архиве</h2></div>
+          <span class="elt-panel-caption">восстановление возвращает во все списки и аналитику</span>
+        </div>
+        <div class="gp-list" style="display:flex;flex-direction:column;gap:8px;margin-top:6px">${listHtml}</div>
+      </article>
+    </section>
   </section>`;
 }
 
@@ -1287,7 +1451,10 @@ export function renderStructure(state) {
   }).join("") || `<div class="oc2-empty">Никого не найдено</div>`;
 
   // ── Отделы для графа ──
+  // Сначала засеиваем реальными отделами из API (чтобы показывались и пустые,
+  // и те, где пока только руководитель) — затем раскладываем сотрудников.
   const byDept = {};
+  (state.departmentsApi || []).forEach((d) => { byDept[d.name] = []; });
   allNodes.filter((n) => n.id !== ceo.id).forEach((n) => {
     const d = n.department || "Без отдела";
     (byDept[d] = byDept[d] || []).push(n);
@@ -1339,6 +1506,7 @@ export function renderStructure(state) {
   const empRow = (n) => `<div class="org-emp" data-oc-select="${n.id}" style="display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:10px;cursor:pointer;transition:background .15s">
       <span style="width:30px;height:30px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-size:11px;font-weight:800;color:#02121A;background:${initG}">${initials(n.fullName)}</span>
       <span style="flex:1 1 0%;min-width:0"><b style="display:block;font-size:12.5px;color:#E6F2FF;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(n.fullName)}</b><span style="font-size:11px;color:rgba(230,242,255,.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block">${escapeHtml(n.position || "—")}</span></span>
+      <button type="button" class="org-emp-detach" data-action="detach-employee" data-person-id="${n.id}" data-person-name="${escapeHtml(n.fullName)}" title="Убрать из отдела" style="flex:0 0 auto;width:22px;height:22px;border-radius:6px;border:1px solid rgba(248,113,113,.3);background:transparent;color:#F87171;font-size:14px;line-height:1;cursor:pointer;padding:0">×</button>
     </div>`;
   const deptCol = ([name, nodes]) => {
     const color = deptColorFor(name);
@@ -1347,9 +1515,10 @@ export function renderStructure(state) {
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
           <span style="width:32px;height:32px;border-radius:9px;flex:0 0 auto;display:grid;place-items:center;background:${color}22;color:${color};font-weight:800">${deptLetter(name)}</span>
           <div style="flex:1 1 0%;min-width:0"><b style="font-size:13.5px;font-weight:800;color:#fff;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(name)}</b><span style="font-size:11px;color:rgba(230,242,255,.45)">${nodes.length} сотрудников</span></div>
+          ${name !== "Без отдела" ? `<button type="button" class="org-dept-edit" data-action="manage-departments" title="Переименовать / изменить отдел" style="flex:0 0 auto;width:26px;height:26px;border-radius:7px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#E6F2FF;cursor:pointer;font-size:12px;padding:0">✎</button>` : ""}
         </div>
         <div style="display:flex;flex-direction:column;gap:2px">${nodes.map(empRow).join("")}</div>
-        <button class="org-add" data-action="add-structure-member" style="width:100%;margin-top:8px;padding:8px;border-radius:9px;border:1px dashed rgba(0,229,212,.4);background:transparent;color:#00E5D4;font-family:inherit;font-weight:700;font-size:11.5px;cursor:pointer">+ Добавить сотрудника</button>
+        <button class="org-add" data-action="add-structure-member"${name !== "Без отдела" ? ` data-dept-name="${escapeHtml(name)}"` : ""} style="width:100%;margin-top:8px;padding:8px;border-radius:9px;border:1px dashed rgba(0,229,212,.4);background:transparent;color:#00E5D4;font-family:inherit;font-weight:700;font-size:11.5px;cursor:pointer">+ Добавить сотрудника</button>
       </article>
     </div>`;
   };
@@ -1364,9 +1533,9 @@ export function renderStructure(state) {
     </header>
 
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">
-      <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:200px;max-width:270px;padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04)">
-        <svg width="14" height="14" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="rgba(230,242,255,.4)" stroke-width="1.3"/><line x1="10" y1="10" x2="13" y2="13" stroke="rgba(230,242,255,.4)" stroke-width="1.3" stroke-linecap="round"/></svg>
-        <input id="orgSearch" placeholder="Поиск в структуре…" style="flex:1;border:none;background:transparent;color:#E6F2FF;font-family:inherit;font-size:12.5px;outline:none">
+      <div style="display:flex;align-items:center;gap:8px;flex:0 0 auto;width:200px;max-width:100%;height:32px;box-sizing:border-box;padding:0 12px;border-radius:20px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.05)">
+        <svg width="13" height="13" viewBox="0 0 15 15" fill="none" style="flex-shrink:0"><circle cx="6.5" cy="6.5" r="4.5" stroke="rgba(230,242,255,.4)" stroke-width="1.3"/><line x1="10" y1="10" x2="13" y2="13" stroke="rgba(230,242,255,.4)" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <input id="orgSearch" placeholder="Поиск в структуре…" style="flex:1;min-width:0;border:none;background:transparent;color:#E6F2FF;font-family:inherit;font-size:12.5px;outline:none">
       </div>
       <div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04)">
         <button id="orgZoomOut" style="width:26px;height:26px;border-radius:7px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#E6F2FF;cursor:pointer;font-size:15px">−</button>
@@ -1387,7 +1556,7 @@ export function renderStructure(state) {
             <div style="text-align:left"><b style="font-size:13.5px;color:#E6F2FF;font-weight:700;display:block">${escapeHtml(ceo.fullName)}</b><span style="font-size:11.5px;color:rgba(230,242,255,.45)">${escapeHtml(ceo.position || "Генеральный директор")}</span></div>
           </div>
           <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-            <button class="elt-btn-primary" data-action="add-structure-member" style="font-size:12px;padding:8px 13px">+ Добавить отдел</button>
+            <button class="elt-btn-primary" data-action="manage-departments" style="font-size:12px;padding:8px 13px">+ Добавить отдел</button>
             <button data-action="add-structure-member" style="display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border-radius:10px;border:1px solid rgba(0,229,212,.4);background:rgba(0,229,212,.1);color:#00E5D4;font-family:inherit;font-weight:700;font-size:12.5px;cursor:pointer">+ Добавить сотрудника</button>
           </div>
         </article>
@@ -2626,18 +2795,121 @@ export function renderReport(state, session) {
   `;
 }
 
-export function renderTariffs(state, tariffs) {
+// Тарифы — портированы 1-в-1 из офлайн-референса tariffs.dc.html.
+// key — ключ тарифа на бэкенде (services/tariffs.py): кнопка «Купить подписку»
+// уходит в startTariffPayment(key) → purchaseTariff(key) → оплата через Монету.
+const TARIFF_PLANS = [
+  {
+    key: "TalentCheck",
+    name: "TalentCheck",
+    price: "7 500 ₽",
+    desc: "Для малого бизнеса и небольших команд.",
+    included: "Включено",
+    popular: false,
+    features: [
+      "25 токенов в месяц",
+      "Оценка кандидатов и сотрудников",
+      "Готовые профили компетенций",
+      "AI-рекомендации по каждому человеку",
+      "Краткий отчёт для принятия решения",
+      "Базовая воронка оценки",
+    ],
+  },
+  {
+    key: "TalentPro",
+    name: "TalentPro",
+    price: "24 000 ₽",
+    desc: "Для рекрутинговых агентств и HR-отделов.",
+    included: "Всё из TalentCheck, плюс",
+    popular: true,
+    features: [
+      "100 токенов в месяц",
+      "Сравнение кандидатов между собой",
+      "Расширенные AI-отчёты",
+      "История результатов",
+      "Групповые оценки",
+      "Брендинг отчётов",
+      "Воронка найма и аналитика",
+    ],
+  },
+  {
+    key: "TalentStudio",
+    name: "Talent Studio",
+    price: "75 000 ₽",
+    desc: "Для компаний, которым нужна не просто оценка, а настройка системы под свои HR-процессы.",
+    included: "Всё из TalentPro, плюс",
+    popular: false,
+    features: [
+      "400 токенов в месяц",
+      "Конструктор компетенций",
+      "360-оценка",
+      "Собственные вопросы и шкалы",
+      "Корпоративные шаблоны оценки",
+      "Групповые отчёты по командам и отделам",
+      "Performance Review",
+      "Расширенная аналитика",
+    ],
+  },
+];
+
+// Нормализуем текущий тариф организации к ключу карточки (Start/Starter — не показываются).
+function normalizeTariffKey(t) {
+  const v = String(t || "").replace(/\s+/g, "").toLowerCase();
+  if (v === "talentcheck") return "TalentCheck";
+  if (v === "talentpro") return "TalentPro";
+  if (v === "talentstudio") return "TalentStudio";
+  return null;
+}
+
+function tariffFeatureRow(text) {
+  return `<div style="display:flex;align-items:flex-start;gap:9px"><span style="color:#00E5D4;font-size:13px;flex:none;line-height:1.3">✓</span><span style="font-size:13px;color:rgba(230,242,255,.82);line-height:1.4">${text}</span></div>`;
+}
+
+function tariffPlanCard(plan, currentKey) {
+  const isCurrent = plan.key === currentKey;
+  const badge = plan.popular
+    ? `<span style="position:absolute;top:-13px;left:50%;transform:translateX(-50%);z-index:5;padding:5px 16px;border-radius:999px;background:linear-gradient(135deg,#1E5BFF,#00E5D4);color:#02121a;font-size:11px;font-weight:800;letter-spacing:.08em;white-space:nowrap;box-shadow:0 6px 18px rgba(0,229,212,.4)">ПОПУЛЯРНЫЙ</span>`
+    : "";
+  // Кнопка: текущий тариф → «✓ Ваш тариф» (бирюзовая, без покупки), иначе «Купить подписку».
+  let button;
+  if (isCurrent) {
+    button = `<button class="tariff-buy tariff-current" title="Ваш текущий тариф" style="margin-top:auto;width:100%;padding:13px;border:1px solid rgba(0,229,212,.45);border-radius:11px;background:rgba(0,229,212,.1);color:#00E5D4;font-family:inherit;font-weight:800;font-size:13px;cursor:default">✓ Ваш тариф</button>`;
+  } else if (plan.popular) {
+    button = `<button class="tariff-buy" data-open-sbp="${plan.key}" data-price="${plan.price}" style="margin-top:auto;width:100%;padding:13px;border:none;border-radius:11px;background:linear-gradient(135deg,#1E5BFF,#00E5D4);color:#02121a;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer">Купить подписку</button>`;
+  } else {
+    button = `<button class="tariff-buy elt-btn-ghost" data-open-sbp="${plan.key}" data-price="${plan.price}" style="margin-top:auto;width:100%;padding:13px">Купить подписку</button>`;
+  }
   return `
-    <div class="elt-dashboard">
+    <article class="elt-panel${plan.popular ? " tariff-pop" : ""}" style="${plan.popular ? "position:relative;" : ""}padding:26px 24px;display:flex;flex-direction:column">
+      ${badge}
+      <h2 style="margin:0;font-size:21px;font-weight:800;color:#fff">${plan.name}</h2>
+      <div style="display:flex;align-items:baseline;gap:6px;margin:6px 0 14px">
+        <span style="font-size:34px;font-weight:800;color:#fff;letter-spacing:-.02em">${plan.price}</span>
+        <span style="font-size:14px;color:rgba(230,242,255,.5)">/ мес</span>
+      </div>
+      <p style="margin:0;font-size:13px;color:rgba(230,242,255,.55);line-height:1.5">${plan.desc}</p>
+      <div style="font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#00E5D4;margin:18px 0 12px">${plan.included}</div>
+      <div style="display:flex;flex-direction:column;gap:11px">${plan.features.map(tariffFeatureRow).join("")}</div>
+      ${button}
+    </article>`;
+}
+
+export function renderTariffs(state) {
+  const currentKey = normalizeTariffKey(state.company && state.company.tariff);
+  return `
+    <section class="elt-dashboard">
       <header class="elt-dash-header">
         <div class="elt-dash-header-left">
           <span class="elt-mini-label">Биллинг</span>
           <h1 class="elt-dash-title">Тарифы</h1>
           <p class="elt-dash-subtitle">Текущий план и пакеты токенов · 1 оценка = 1 токен</p>
         </div>
+        <div class="elt-dash-header-actions"></div>
       </header>
-      <div class="elt-tariff-grid">${tariffs.map((tariff) => renderTariffCard(tariff, true)).join('')}</div>
-    </div>
+      <section style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-items:stretch;margin-top:22px;overflow:visible">
+        ${TARIFF_PLANS.map((plan) => tariffPlanCard(plan, currentKey)).join("")}
+      </section>
+    </section>
   `;
 }
 
@@ -2783,10 +3055,29 @@ export function renderApiKeys(state) {
 }
 
 export function renderSettings(state) {
-  const c = state.company;
-  const v = (x) => escapeHtml(x == null ? "" : String(x));
-  const saveBtn = (card) => `<div><button class="elt-btn-primary" data-org-save="${card}">Сохранить</button></div>`;
-  const isLight = state.theme === "light";
+  const c = state.company || {};
+  const s = state.settings || {};
+  // Реальные значения аккаунта: почта из сессии, ФИО/роль из контактного лица.
+  const accEmail = (state.user && state.user.email) || c.contactEmail || "";
+  const accName = `${c.contactFirstName || ""} ${c.contactLastName || ""}`.trim() || "Администратор";
+  const accInits = ((c.contactFirstName || "Р")[0] + (c.contactLastName || "К")[0]).toUpperCase();
+  const photo = (state.employeePhotos || {}).ceo;
+  const on = (key, dflt) => (s[key] === undefined ? dflt : s[key] === true);
+  // Переключатель-«тумблер» — визуально совпадает с референсом; состояние в aria-pressed.
+  const sw = (key, isOn) => `<button class="set-sw" data-settings-toggle="${key}" aria-pressed="${isOn ? "true" : "false"}" style="position:relative;width:40px;height:22px;border-radius:999px;border:1px solid transparent;flex:none;cursor:pointer;padding:0;transition:background .15s"><span style="position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .15s"></span></button>`;
+  const row = (title, sub, right) => `<div class="gp-row"><div style="flex:1;min-width:0"><b>${title}</b><br><span>${sub}</span></div>${right || ""}</div>`;
+  const statusPill = (label, grad) => `<span style="display:inline-flex;align-items:center;gap:6px;margin-left:auto;font-size:11px;font-weight:600;color:#cdd9ee"><span style="width:8px;height:8px;border-radius:50%;flex:none;background:linear-gradient(135deg,${grad})"></span>${label}</span>`;
+  const SVG = {
+    company: `<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1.5" y="2.5" width="12" height="11" rx="1.5" stroke="currentColor" stroke-width="1.3"/><line x1="4" y1="6" x2="11" y2="6" stroke="currentColor" stroke-width="1.2"/><line x1="4" y1="9" x2="11" y2="9" stroke="currentColor" stroke-width="1.2"/></svg>`,
+    profile: `<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="5" r="2.6" stroke="currentColor" stroke-width="1.3"/><path d="M2.5 13c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>`,
+    sound: `<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 6v3h2.5L8 12V3L4.5 6H2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M10.5 5.5a3 3 0 0 1 0 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>`,
+    theme: `<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M8 1.5A5.5 5.5 0 1 0 13.5 8 4.3 4.3 0 0 1 8 1.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>`,
+    access: `<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="2.5" y="6.5" width="10" height="7" rx="1.3" stroke="currentColor" stroke-width="1.3"/><path d="M4.5 6.5V4.5a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.3"/></svg>`
+  };
+  const panelHead = (icon, title, caption) => `<div class="elt-panel-head"><div class="elt-panel-head-left">${icon}<h2>${title}</h2></div><span class="elt-panel-caption">${caption}</span></div>`;
+  const avatarInner = photo
+    ? `<img class="oc-avatar-img" src="${photo}" alt="${escapeHtml(accName)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+    : escapeHtml(accInits);
   return `
     <div class="elt-dashboard">
       <header class="elt-dash-header">
@@ -2795,50 +3086,60 @@ export function renderSettings(state) {
           <h1 class="elt-dash-title">Настройки</h1>
           <p class="elt-dash-subtitle">Компания, уведомления и доступы</p>
         </div>
+        <div class="elt-dash-header-actions"></div>
       </header>
-      <div class="elt-settings-grid">
-        <div class="elt-card" data-org-card="company">
-          <div class="elt-card-head"><h2>Компания</h2></div>
-          <div class="elt-form-grid">
-            <label class="elt-label">Название<input class="elt-input" data-org-field="name" value="${v(c.name)}"></label>
-            <label class="elt-label">ИНН<input class="elt-input" data-org-field="inn" value="${v(c.inn)}"></label>
-            <label class="elt-label">КПП<input class="elt-input" data-org-field="kpp" value="${v(c.kpp)}"></label>
-            <label class="elt-label">Официальный сайт<input class="elt-input" data-org-field="site" value="${v(c.site)}"></label>
-            <label class="elt-label">Email для отчетов<input class="elt-input" data-org-field="report_email" value="${v(c.reportEmail)}"></label>
-            <label class="elt-label">Телефон<input class="elt-input" data-org-field="phone" value="${v(c.phone)}"></label>
-            <label class="elt-label elt-label-full">Юридический адрес<input class="elt-input" data-org-field="legal_address" value="${v(c.legalAddress)}"></label>
-            <label class="elt-label elt-label-full">Фактический адрес<input class="elt-input" data-org-field="actual_address" value="${v(c.actualAddress)}"></label>
-            ${saveBtn("company")}
+      <section class="elt-analytics-grid">
+        <article class="elt-panel elt-chart-panel">
+          ${panelHead(SVG.company, "Компания", "основное")}
+          <div class="gp-list">
+            ${row("Название", escapeHtml(c.name || "Компания"))}
+            ${row("Тариф", escapeHtml(c.tariff || "—"))}
+            ${row("Часовой пояс", "GMT+3 · Москва")}
           </div>
-        </div>
-        <div class="elt-card" data-org-card="contact">
-          <div class="elt-card-head"><h2>Контактное лицо</h2></div>
-          <div class="elt-form-grid">
-            <label class="elt-label">Фамилия<input class="elt-input" data-org-field="contact_last_name" value="${v(c.contactLastName)}"></label>
-            <label class="elt-label">Имя<input class="elt-input" data-org-field="contact_first_name" value="${v(c.contactFirstName)}"></label>
-            <label class="elt-label">Отчество<input class="elt-input" data-org-field="contact_patronymic" value="${v(c.contactPatronymic)}"></label>
-            <label class="elt-label">Телефон<input class="elt-input" data-org-field="contact_phone" value="${v(c.contactPhone)}"></label>
-            <label class="elt-label">Email<input class="elt-input" data-org-field="contact_email" value="${v(c.contactEmail)}"></label>
-            ${saveBtn("contact")}
+        </article>
+        <article class="elt-panel elt-chart-panel">
+          ${panelHead(SVG.company, "Уведомления", "каналы")}
+          <div class="gp-list">
+            ${row("E-mail", "новые отчёты и алерты", statusPill("вкл", "#0E7490,#00E5D4"))}
+            ${row("Telegram-бот", "срочные сигналы", statusPill("выкл", "#475569,#8C9BB5"))}
           </div>
-        </div>
-        <div class="elt-card">
-          <div class="elt-card-head"><h2>Оформление</h2></div>
-          <div class="elt-form-grid">
-            <span class="elt-label-text">Тема интерфейса</span>
-            <div class="elt-theme-toggle">
-              <button type="button" class="elt-theme-opt${isLight ? " active" : ""}" data-set-theme="light">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
-                Светлая
-              </button>
-              <button type="button" class="elt-theme-opt${isLight ? "" : " active"}" data-set-theme="dark">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
-                Тёмная
-              </button>
+        </article>
+      </section>
+      <section class="elt-analytics-grid" style="margin-top:16px">
+        <article class="elt-panel elt-chart-panel">
+          ${panelHead(SVG.profile, "Профиль и аватар", "аккаунт")}
+          <div style="display:flex;align-items:center;gap:14px;padding:6px 2px">
+            <span id="setAv" data-oc-avatar="ceo" style="width:52px;height:52px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:16px;font-weight:800;color:#02121a;background:linear-gradient(135deg,#1E5BFF,#00E5D4);overflow:hidden;cursor:pointer">${avatarInner}</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;color:#E6F2FF;font-weight:700">${escapeHtml(accEmail)}</div>
+              <div style="font-size:11.5px;color:rgba(230,242,255,.5)">${escapeHtml(accName)} · Администратор</div>
             </div>
+            <button data-oc-avatar="ceo" style="flex:none;padding:8px 13px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#E6F2FF;font-family:inherit;font-weight:700;font-size:12.5px;cursor:pointer">Сменить фото</button>
           </div>
-        </div>
-      </div>
+        </article>
+        <article class="elt-panel elt-chart-panel">
+          ${panelHead(SVG.sound, "Звуки интерфейса", "аудио")}
+          <div class="gp-list">
+            ${row("Звуки интерфейса", "клики, уведомления, AI-терминал", sw("sfx", on("sfx", true)))}
+            <div class="gp-row"><div style="flex:1;min-width:0"><b>Свой звук клика</b><br><span id="setSndName">${escapeHtml(s.sndName || "Стандартный звук")}</span></div><div style="display:flex;gap:6px;flex:none"><button data-settings-sound="play" title="Прослушать" style="width:30px;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#cdd9ee;cursor:pointer;font-size:12px">▶</button><button data-settings-sound="upload" style="padding:7px 11px;border-radius:9px;border:1px solid rgba(0,229,212,.4);background:rgba(0,229,212,.1);color:#00E5D4;font-family:inherit;font-weight:700;font-size:11.5px;cursor:pointer">Загрузить</button><button data-settings-sound="reset" title="Сбросить" style="width:30px;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#cdd9ee;cursor:pointer;font-size:12px">↺</button></div></div>
+          </div>
+        </article>
+        <article class="elt-panel elt-chart-panel">
+          ${panelHead(SVG.theme, "Оформление", "тема")}
+          <div class="gp-list">
+            ${row("Тёмная тема", "тёмное оформление интерфейса", sw("theme", state.theme !== "light"))}
+          </div>
+        </article>
+        <article class="elt-panel elt-chart-panel">
+          ${panelHead(SVG.access, "Права доступа", "роль: администратор")}
+          <div class="gp-list">
+            ${row("Просмотр аналитики", "дашборды, отчёты, срезы", sw("analytics", on("analytics", true)))}
+            ${row("Управление сотрудниками", "добавление, редактирование, структура", sw("employees", on("employees", true)))}
+            ${row("Запуск оценок", "создание и отправка оценок", sw("assess", on("assess", true)))}
+            ${row("Тарифы и биллинг", "оплата, пополнение токенов", sw("tariffs", on("tariffs", false)))}
+          </div>
+        </article>
+      </section>
     </div>
   `;
 }
@@ -3211,6 +3512,7 @@ function renderModal(state) {
             ${e.converted
               ? `<span class="elt-action-pill" style="opacity:.6">✓ В кандидатах</span>`
               : `<button class="elt-action-pill" data-convert-response="${e.id}">В кандидаты</button>`}
+            <button class="elt-action-pill" data-resp-to-employee="${e.id}">В сотрудники</button>
             ${e.candidate_url ? `<a class="elt-action-pill" href="${e.candidate_url}" target="_blank" rel="noopener">Резюме ↗</a>` : ""}
           </div></td>
         </tr>`).join("")}</tbody>
@@ -3331,39 +3633,136 @@ function renderModal(state) {
   }
   if (state.modal?.type === "add-structure-member") {
     const people = [];
-    const depts = new Set();
+    const treeDepts = new Set();
     if (state.orgTree && Array.isArray(state.orgTree.nodes)) {
       const walk = (n) => {
         people.push({ id: n.id, name: n.full_name });
-        if (n.department) depts.add(n.department);
+        if (n.department) treeDepts.add(n.department);
         (n.children || []).forEach(walk);
       };
       state.orgTree.nodes.forEach(walk);
     }
+    // Черновик формы сохраняется при переходе в «Управление отделами» и обратно.
+    const draft = state.modal.draft || {};
     const managerOptions = ['<option value="">— не назначен —</option>',
-      ...people.map((p) => `<option value="${p.id}">${p.name}</option>`)].join("");
-    const deptOptions = [...depts].map((d) => `<option value="${d}">`).join("");
-    return `<div class="modalBackdrop"><form class="modal" data-add-structure-form>
+      ...people.map((p) => `<option value="${p.id}"${draft.manager_id === p.id ? " selected" : ""}>${escapeHtml(p.name)}</option>`)].join("");
+    // Реальные отделы из API; если их ещё нет — берём названия из дерева.
+    const realDepts = Array.isArray(state.departmentsApi) ? state.departmentsApi : [];
+    const deptOptions = realDepts.length
+      ? ['<option value="">— без отдела —</option>',
+         ...realDepts.map((d) => `<option value="${d.id}"${draft.department_id === d.id ? " selected" : ""}>${escapeHtml(d.name)}${d.employees_count ? ` · ${d.employees_count}` : ""}</option>`)].join("")
+      : ['<option value="">— без отдела —</option>',
+         ...[...treeDepts].map((d) => `<option value="name:${escapeHtml(d)}"${draft.department_id === `name:${d}` ? " selected" : ""}>${escapeHtml(d)}</option>`)].join("");
+    const roleSel = (v) => draft.role === v ? " selected" : "";
+    // Если открыли из карточки отдела — подсказываем, в какой отдел добавляем.
+    const ctxDept = state.modal.contextDeptName;
+    return `<div class="modalBackdrop"><form class="modal add-member-panel" data-add-structure-form>
       ${mHead('Добавить в структуру', '👤')}
       <div class="modal-inner">
-        <p class="modal-subtitle">Новый сотрудник или руководитель будет добавлен в оргструктуру.</p>
+        <p class="modal-subtitle">Новый сотрудник или руководитель будет добавлен в оргструктуру${ctxDept ? ` — в отдел «<b>${escapeHtml(ctxDept)}</b>»` : ""}.</p>
         <div class="elt-form-grid">
-          <label class="elt-label">ФИО<input class="elt-input" name="full_name" placeholder="Иван Иванов" required></label>
-          <label class="elt-label">Должность<input class="elt-input" name="position" placeholder="Менеджер по продажам"></label>
-          <label class="elt-label">Роль<select class="elt-select" name="role"><option value="employee">Сотрудник</option><option value="head">Руководитель отдела</option></select></label>
-          <label class="elt-label">Отдел<input class="elt-input" name="department_name" list="oc-depts" placeholder="Название отдела"><datalist id="oc-depts">${deptOptions}</datalist></label>
+          <label class="elt-label">ФИО<input class="elt-input" name="full_name" value="${escapeHtml(draft.full_name || "")}" placeholder="Иван Иванов" required></label>
+          <label class="elt-label">Должность<input class="elt-input" name="position" value="${escapeHtml(draft.position || "")}" placeholder="Менеджер по продажам"></label>
+          <label class="elt-label">Роль<select class="elt-select" name="role"><option value="employee"${roleSel("employee")}>Сотрудник</option><option value="head"${roleSel("head")}>Руководитель отдела</option></select></label>
+          <label class="elt-label">Отдел
+            <div class="am-dept-row">
+              <select class="elt-select" name="department_id">${deptOptions}</select>
+              <button type="button" class="elt-btn-ghost am-dept-cog" data-action="open-manage-departments" title="Создать или изменить отделы">⚙ Отделы</button>
+            </div>
+          </label>
           <label class="elt-label">Руководитель<select class="elt-select" name="manager_id">${managerOptions}</select></label>
-          <label class="elt-label">Проект<input class="elt-input" name="project" placeholder="Общий контур"></label>
+          <label class="elt-label">Проект<input class="elt-input" name="project" value="${escapeHtml(draft.project || "")}" placeholder="Общий контур"></label>
         </div>
         <label class="elt-checkbox-card">
-          <input type="checkbox" name="send_adaptation">
+          <input type="checkbox" name="send_adaptation"${draft.send_adaptation ? " checked" : ""}>
           <span class="elt-checkbox-box" aria-hidden="true"></span>
           <span class="elt-checkbox-text">
             <b>Выслать адаптационный тест</b>
             <small>Запустить цикл онбординга и сразу отправить сотруднику первый опрос.</small>
           </span>
         </label>
-        <button class="blueButton" type="submit" style="margin-top:8px;width:100%">Добавить</button>
+        <div class="am-footer">
+          <button class="blueButton" type="submit">Добавить</button>
+        </div>
+      </div>
+    </form></div>`;
+  }
+  if (state.modal?.type === "manage-departments") {
+    const m = state.modal;
+    const realDepts = Array.isArray(state.departmentsApi) ? state.departmentsApi : [];
+    // Люди для выбора руководителя отдела.
+    const people = [];
+    if (state.orgTree && Array.isArray(state.orgTree.nodes)) {
+      const walk = (n) => { people.push({ id: n.id, name: n.full_name }); (n.children || []).forEach(walk); };
+      state.orgTree.nodes.forEach(walk);
+    }
+    const headOptions = (selectedId) => ['<option value="">— не назначен —</option>',
+      ...people.map((p) => `<option value="${p.id}"${selectedId === p.id ? " selected" : ""}>${escapeHtml(p.name)}</option>`)].join("");
+    const parentOptions = (deptId, selectedId) => ['<option value="">— верхний уровень —</option>',
+      ...realDepts.filter((d) => d.id !== deptId).map((d) => `<option value="${d.id}"${selectedId === d.id ? " selected" : ""}>${escapeHtml(d.name)}</option>`)].join("");
+    const busy = m.busy ? "disabled" : "";
+    const deptRows = realDepts.length ? realDepts.map((d) => `
+      <form data-edit-department-form data-dept-id="${d.id}" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;padding:12px;border:1px solid rgba(255,255,255,.1);border-radius:10px;margin-bottom:8px">
+        <label class="elt-label" style="flex:2 1 150px;margin:0">Название<input class="elt-input" name="name" value="${escapeHtml(d.name)}" required></label>
+        <label class="elt-label" style="flex:2 1 150px;margin:0">Руководитель<select class="elt-select" name="head_person_id">${headOptions(d.head_person_id)}</select></label>
+        <label class="elt-label" style="flex:2 1 150px;margin:0">Входит в<select class="elt-select" name="parent_department_id">${parentOptions(d.id, d.parent_department_id)}</select></label>
+        <span style="flex:0 0 auto;font-size:11px;color:rgba(230,242,255,.45);align-self:center">${d.employees_count || 0} чел.</span>
+        <button class="elt-btn-ghost" type="submit" ${busy} style="flex:0 0 auto">Сохранить</button>
+        <button type="button" class="elt-btn-ghost" data-action="delete-department" data-dept-id="${d.id}" data-dept-name="${escapeHtml(d.name)}" data-dept-count="${d.employees_count || 0}" ${busy} title="Удалить отдел" style="flex:0 0 auto;color:#F87171;border-color:rgba(248,113,113,.4)">Удалить</button>
+      </form>`).join("")
+      : `<div class="elt-table-empty" style="padding:14px">Отделов пока нет — создайте первый выше.</div>`;
+    return `<div class="modalBackdrop"><div class="modal" style="max-width:660px">
+      ${mHead('Управление отделами', '🏢')}
+      <div class="modal-inner">
+        ${m.error ? `<div class="elt-import-error-box">${escapeHtml(m.error)}</div>` : ""}
+        <p class="modal-subtitle">Создавайте новые отделы и меняйте существующие — название, руководителя и вложенность.</p>
+        <form data-create-department-form style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;padding:12px;border:1px dashed rgba(0,229,212,.4);border-radius:10px;margin-bottom:16px">
+          <label class="elt-label" style="flex:2 1 150px;margin:0">Новый отдел<input class="elt-input" name="name" placeholder="Например, Маркетинг" required></label>
+          <label class="elt-label" style="flex:2 1 150px;margin:0">Руководитель<select class="elt-select" name="head_person_id">${headOptions(null)}</select></label>
+          <label class="elt-label" style="flex:2 1 150px;margin:0">Входит в<select class="elt-select" name="parent_department_id">${parentOptions(null, null)}</select></label>
+          <button class="blueButton" type="submit" ${busy} style="flex:0 0 auto">＋ Создать</button>
+        </form>
+        <div class="elt-panel-caption" style="margin-bottom:8px">Существующие отделы (${realDepts.length})</div>
+        ${deptRows}
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+          ${m.returnTo === "add-structure-member"
+            ? `<button class="elt-btn-primary" data-action="back-to-structure-member">← К сотруднику</button>`
+            : `<button class="elt-btn-primary" data-action="close-modal">Готово</button>`}
+        </div>
+      </div>
+    </div></div>`;
+  }
+  if (state.modal?.type === "edit-employee") {
+    const emp = state.modal.emp || {};
+    const realDepts = Array.isArray(state.departmentsApi) ? state.departmentsApi : [];
+    // Люди для выбора руководителя (кроме самого сотрудника).
+    const people = [];
+    if (state.orgTree && Array.isArray(state.orgTree.nodes)) {
+      const walk = (n) => { if (n.id !== emp.id) people.push({ id: n.id, name: n.full_name }); (n.children || []).forEach(walk); };
+      state.orgTree.nodes.forEach(walk);
+    }
+    const deptOpts = ['<option value="">— без отдела —</option>',
+      ...realDepts.map((d) => `<option value="${d.id}"${emp.department_id === d.id ? " selected" : ""}>${escapeHtml(d.name)}</option>`)].join("");
+    const mgrOpts = ['<option value="">— не назначен —</option>',
+      ...people.map((p) => `<option value="${p.id}"${emp.manager_id === p.id ? " selected" : ""}>${escapeHtml(p.name)}</option>`)].join("");
+    const busy = state.modal.busy ? "disabled" : "";
+    return `<div class="modalBackdrop"><form class="modal" data-edit-employee-form data-person-id="${emp.id}">
+      ${mHead('Редактировать сотрудника', '✎')}
+      <div class="modal-inner">
+        ${state.modal.error ? `<div class="elt-import-error-box">${escapeHtml(state.modal.error)}</div>` : ""}
+        <div class="elt-form-grid">
+          <label class="elt-label">ФИО<input class="elt-input" name="full_name" value="${escapeHtml(emp.full_name || "")}" required></label>
+          <label class="elt-label">Должность<input class="elt-input" name="position" value="${escapeHtml(emp.position || "")}" placeholder="Менеджер по продажам"></label>
+          <label class="elt-label">Email<input class="elt-input" name="email" type="email" value="${escapeHtml(emp.email || "")}" placeholder="name@company.ru"></label>
+          <label class="elt-label">Телефон<input class="elt-input" name="phone" value="${escapeHtml(emp.phone || "")}" placeholder="+7…"></label>
+          <label class="elt-label">Отдел<select class="elt-select" name="department_id">${deptOpts}</select></label>
+          <label class="elt-label">Руководитель<select class="elt-select" name="manager_id">${mgrOpts}</select></label>
+          <label class="elt-label">Проект<input class="elt-input" name="project" value="${escapeHtml(emp.project || "")}" placeholder="Общий контур"></label>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <button type="button" class="elt-btn-ghost" data-action="close-modal">Отмена</button>
+          <button class="blueButton" type="submit" ${busy}>Сохранить</button>
+        </div>
       </div>
     </form></div>`;
   }
@@ -3457,8 +3856,8 @@ function renderModal(state) {
     let cardTitle = "Карточка кандидата";
     if (!state.cardData) body = `<p class="modal-subtitle">Загрузка карточки…</p>`;
     else if (state.cardData.error) body = `<p class="modal-subtitle">Не удалось загрузить карточку (бэкенд недоступен).</p>`;
-    else if (state.cardData._kind === "employee") { body = employeeCardApi(state.cardData); cardTitle = state.cardData.full_name || "Карточка сотрудника"; }
-    else { body = candidateCard(state.cardData); cardTitle = state.cardData.full_name || "Карточка кандидата"; }
+    else if (state.cardData._kind === "employee") { body = employeeCardApi(state.cardData, state.employeePhotos, state.departmentsApi); cardTitle = state.cardData.full_name || "Карточка сотрудника"; }
+    else { body = candidateCard(state.cardData, state.employeePhotos); cardTitle = state.cardData.full_name || "Карточка кандидата"; }
     return `<div class="modalBackdrop"><div class="modal">${mHead(cardTitle, '👤')}<div class="modal-inner">${body}</div></div></div>`;
   }
   if (state.modal?.type === "answers") {
@@ -3871,21 +4270,6 @@ function renderReportTable(state) {
   return `<table><thead><tr><th>Дата</th><th>Тип</th><th>ФИО / группа</th><th>Вакансия / отдел</th><th>Статус</th><th>Доступ</th></tr></thead><tbody>${completed.map((session) => `<tr><td>${new Date(session.completedAt).toLocaleDateString("ru-RU")}</td><td>${session.person.assessmentType}</td><td>${session.person.fullName}</td><td>${session.vacancy || session.professionTitle}</td><td><span class="status completed">${session.result.recommendation}</span></td><td><div class="rowActions"><button class="button subtle" data-report-id="${session.id}">PDF</button><button class="button subtle" data-open-answers="${session.id}">Ответы</button><button class="button subtle" data-open-card="${session.id}">Открыть</button></div></td></tr>`).join("") || `<tr><td colspan="6">Готовых отчетов пока нет.</td></tr>`}</tbody></table>`;
 }
 
-function renderTariffCard(tariff, inApp = false) {
-  const accentColor = tariff.highlight ? '#00E5D4' : '#1E5BFF';
-  const borderStyle = tariff.highlight ? 'border-color:rgba(0,229,212,.4);' : '';
-  return `
-    <div class="elt-card elt-tariff-card" style="${borderStyle}">
-      <div class="elt-tariff-tag" style="color:${accentColor}">${tariff.tag}</div>
-      <div class="elt-tariff-name">${tariff.name}</div>
-      <div class="elt-tariff-price">${tariff.price}</div>
-      <p class="elt-tariff-desc">${tariff.description}</p>
-      <ul class="elt-tariff-features">${tariff.features.map((f) => `<li>${f}</li>`).join('')}</ul>
-      ${tariff.locked?.length ? `<div class="elt-tariff-locked"><span>Не входит:</span><div class="elt-tariff-locked-tags">${tariff.locked.map((item) => `<em>${item}</em>`).join('')}</div></div>` : ''}
-      <button class="elt-btn-primary elt-btn-wide" ${inApp ? `data-open-sbp="${tariff.name}"` : `data-route="login"`}>${tariff.cta}</button>
-    </div>
-  `;
-}
 
 function metric(title, value, width) { return `<div class="metric"><div><span>${title}</span><b>${value}</b></div><i><em style="width:${width}%"></em></i></div>`; }
 function product(title, text) { return `<article class="productCard glass"><h3>${title}</h3><p>${text}</p></article>`; }
@@ -4159,19 +4543,23 @@ function employeesTableConfig(employees) {
     title: "Таблица сотрудников",
     caption: "риски, оценка, ответы и рекомендации",
     columns: ["Сотрудник", "Отдел", "Руководитель", "Тип", "Соответствие", "Риск", "Рекомендация", "Действия"],
-    rows: employees.map((item) => [
-      EmployeePreview(item),
-      item.department,
-      item.manager,
-      item.position.includes("Руководитель") ? "руководитель" : item.startDate > "2026-03-01" ? "новый" : "офисный",
-      StatusBadge(fitLabel(item.fit), getFitStatus(item.fit)),
-      StatusBadge(item.turnoverRisk, item.turnoverRisk === "низкий" ? "good" : item.turnoverRisk === "средний" ? "medium" : item.turnoverRisk === "—" ? "neutral" : "bad"),
-      item.recommendation,
-      ActionButtonGroup([
-        { label: "Карточка", attrs: `data-open-card="${item.id}"` },
-        { label: "Ответы", attrs: `data-open-answers="${item.id}"` }
-      ])
-    ])
+    rows: employees.map((item) => ({
+      // Клик по строке открывает карточку сотрудника (кнопки «Карточка» больше нет).
+      attrs: `data-open-card="${item.id}" class="elt-row-clickable"`,
+      cells: [
+        EmployeePreview(item),
+        item.department,
+        item.manager,
+        item.position.includes("Руководитель") ? "руководитель" : item.startDate > "2026-03-01" ? "новый" : "офисный",
+        StatusBadge(fitLabel(item.fit), getFitStatus(item.fit)),
+        StatusBadge(item.turnoverRisk, item.turnoverRisk === "низкий" ? "good" : item.turnoverRisk === "средний" ? "medium" : item.turnoverRisk === "—" ? "neutral" : "bad"),
+        item.recommendation,
+        // «Ответы» — только если сотрудник прошёл оценку (есть результат fit).
+        item.fit != null
+          ? ActionButtonGroup([{ label: "Ответы", attrs: `data-open-answers="${item.id}"` }])
+          : "—"
+      ]
+    }))
   };
 }
 
@@ -4382,10 +4770,17 @@ function fitLabel(fit) {
 const CARD_FC = (v) => v == null ? "#6E7C97" : v >= 80 ? "#4ADE80" : v >= 60 ? "#FACC15" : "#F87171";
 const cardInitials = (n) => (n || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0] || "").join("").toUpperCase();
 const cardSecLabel = (t) => `<div style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#9B6BF2;margin:20px 0 10px">${t}</div>`;
-function cardHero(name, role, fit) {
+function cardHero(name, role, fit, id, photos) {
   const c = CARD_FC(fit);
+  const photo = id ? (photos || {})[id] : null;
+  const avatarInner = photo
+    ? `<img class="oc-avatar-img" src="${photo}" alt="${escapeHtml(name || "")}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+    : cardInitials(name);
+  const avatar = id
+    ? `<span class="card-hero-avatar" data-oc-avatar="${id}" title="Нажмите, чтобы загрузить фото" style="position:relative;width:46px;height:46px;border-radius:50%;flex:none;overflow:hidden;display:grid;place-items:center;font-size:16px;font-weight:800;color:#02121a;background:linear-gradient(135deg,#1E5BFF,#00E5D4);cursor:pointer">${avatarInner}<span class="oc-avatar-upload-hint">📷</span></span>`
+    : `<span style="width:46px;height:46px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:16px;font-weight:800;color:#02121a;background:linear-gradient(135deg,#1E5BFF,#00E5D4)">${avatarInner}</span>`;
   return `<div style="display:flex;align-items:center;gap:14px;padding:14px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04)">
-    <span style="width:46px;height:46px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:16px;font-weight:800;color:#02121a;background:linear-gradient(135deg,#1E5BFF,#00E5D4)">${cardInitials(name)}</span>
+    ${avatar}
     <div style="flex:1 1 0%;min-width:0"><div style="font-size:12px;color:rgba(230,242,255,.5)">Соответствие профилю</div><div style="font-size:13px;color:#E6F2FF;font-weight:600">${escapeHtml(role || "—")}</div></div>
     <div style="font-size:30px;font-weight:800;color:${c};letter-spacing:-.02em">${fit == null ? "—" : fit + "%"}</div>
   </div>`;
@@ -4394,7 +4789,21 @@ function cardDetails(rows) {
   return `<div>${rows.map(([k, v]) => `<div style="display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05)"><span style="font-size:12.5px;color:rgba(230,242,255,.5)">${k}</span><b style="font-size:12.5px;color:#E6F2FF;font-weight:600;text-align:right">${escapeHtml(String(v))}</b></div>`).join("")}</div>`;
 }
 
-function employeeCardApi(d) {
+// Инлайн-селект отдела в карточке — смена отдела сотрудника (в т.ч. из «без отдела»)
+// без отдельной модалки. Меняет department_id через PATCH /employees/{id} (app.js).
+function cardDeptSelect(d, departments) {
+  const depts = Array.isArray(departments) ? departments : [];
+  const options = [
+    `<option value=""${!d.department_id ? " selected" : ""}>— без отдела —</option>`,
+    ...depts.map((x) => `<option value="${x.id}"${d.department_id === x.id ? " selected" : ""}>${escapeHtml(x.name)}</option>`),
+  ].join("");
+  return `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+    <span style="font-size:12.5px;color:rgba(230,242,255,.5);flex:none">Отдел</span>
+    <select class="elt-select" data-emp-dept="${d.id}" style="flex:1;max-width:200px;font-size:12.5px;padding:6px 8px">${options}</select>
+  </div>`;
+}
+
+function employeeCardApi(d, photos, departments) {
   const riskRu = { none: "—", low: "низкий", medium: "средний", high: "повышенный" };
   const role = `${d.position || "Сотрудник"}${d.department ? " · " + d.department : ""}`;
   const a = d.assessments;
@@ -4404,11 +4813,12 @@ function employeeCardApi(d) {
       ? a.items.map((it) => { const c = CARD_FC(it.percent); return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:11px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03)"><span style="flex:1 1 0%;min-width:0"><b style="display:block;font-size:13px;color:#E6F2FF;font-weight:600">${escapeHtml(it.test_title || it.category || "Тест")}</b></span><span style="font-size:12px;font-weight:800;padding:3px 9px;border-radius:999px;background:${c}22;color:${c}">${it.percent}%</span></div>`; }).join("")
       : `<div class="ov-empty">Сотрудник пока не проходил тесты.</div>`;
   return `<div>
-    ${cardHero(d.full_name, role, d.fit)}
+    ${cardHero(d.full_name, role, d.fit, d.id, photos)}
     ${cardSecLabel("Тесты и оценки")}
     <div style="display:flex;flex-direction:column;gap:8px">${testRows}</div>
     ${a && a.count ? `<button class="elt-btn-ghost" data-open-answers="${d.id}" style="margin-top:12px;width:100%">Посмотреть ответы по тесту →</button>` : ""}
     ${cardSecLabel("Детали")}
+    ${cardDeptSelect(d, departments)}
     ${cardDetails([
       ["Руководитель", d.manager || "—"],
       ["Риск увольнения", riskRu[d.turnover_risk] || d.turnover_risk || "—"],
@@ -4416,10 +4826,22 @@ function employeeCardApi(d) {
       ["Удовлетворённость", d.satisfaction != null ? d.satisfaction + "%" : "—"],
       ["Рекомендация", d.recommendation || "—"]
     ])}
+    ${d.id ? `<button class="elt-btn-ghost" data-action="edit-employee" data-person-id="${d.id}" style="margin-top:16px;width:100%">✎ Редактировать данные</button>` : ""}
+    ${cardArchiveBtn(d, "employee")}
   </div>`;
 }
 
-function candidateCard(d) {
+// Кнопка мягкого удаления в подвале карточки. Действие + подтверждение — в app.js
+// (data-action="archive-person"): отчёты сохраняются, действие обратимо.
+function cardArchiveBtn(d, kind) {
+  if (!d.id) return "";
+  const label = kind === "candidate" ? "Убрать кандидата в архив" : "Убрать сотрудника в архив";
+  return `<button class="elt-btn-ghost" data-action="archive-person" data-person-id="${d.id}"
+    data-person-kind="${kind}" data-person-name="${escapeHtml(d.full_name || "")}"
+    style="margin-top:16px;width:100%;color:#F87171;border-color:rgba(248,113,113,.4)">${label}</button>`;
+}
+
+function candidateCard(d, photos) {
   const a = d.assessment;
   const percent = a ? a.percent : null;
   const passed = a && (a.status === "scored" || a.status === "reviewed" || a.status === "submitted");
@@ -4438,7 +4860,7 @@ function candidateCard(d) {
     `<button type="button" class="cardStageBtn${d.stage === val ? " active" : ""}" data-stage-id="${d.id}" data-stage-action="${val}">${label}</button>`
   ).join("");
   return `<div>
-    ${cardHero(d.full_name, d.vacancy_title || "Кандидат", percent)}
+    ${cardHero(d.full_name, d.vacancy_title || "Кандидат", percent, d.id, photos)}
     ${cardSecLabel("Решение по кандидату")}
     <div class="cardStageRow">${stageBtns}</div>
     <button class="elt-btn-primary" data-convert-id="${d.id}" style="margin-top:10px;width:100%">Перевести в сотрудники →</button>
@@ -4453,6 +4875,7 @@ function candidateCard(d) {
       ["Источник", d.source || "—"],
       ["Рекомендация", recText]
     ])}
+    ${cardArchiveBtn(d, "candidate")}
   </div>`;
 }
 

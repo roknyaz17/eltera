@@ -304,7 +304,11 @@ export function PremiumDataTable(table) {
         <table class="elt-table">
           <thead><tr>${table.columns.map((col) => `<th>${col}</th>`).join("")}</tr></thead>
           <tbody>
-            ${table.rows.map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${table.columns.length}" class="elt-table-empty">Нет данных</td></tr>`}
+            ${table.rows.map((row) => {
+              const cells = Array.isArray(row) ? row : row.cells;
+              const attrs = Array.isArray(row) ? "" : (row.attrs || "");
+              return `<tr ${attrs}>${cells.map((cell) => `<td>${cell}</td>`).join("")}</tr>`;
+            }).join("") || `<tr><td colspan="${table.columns.length}" class="elt-table-empty">Нет данных</td></tr>`}
           </tbody>
         </table>
       </div>

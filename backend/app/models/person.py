@@ -25,6 +25,12 @@ class Person(TimestampMixin, Base):
     email: Mapped[str | None] = mapped_column(String(200), index=True, default=None)
     phone: Mapped[str | None] = mapped_column(String(40), default=None)
     city: Mapped[str | None] = mapped_column(String(120), index=True, default=None)
+    # Мягкое удаление («в архив»): NULL = активен. Архивные люди скрыты из всех
+    # списков/аналитики глобальным фильтром (см. core.database), но их отчёты и
+    # история оценок сохраняются, а FK на них остаются валидными — ничего не рвётся.
+    archived_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), default=None, index=True
+    )
 
     candidate_profile: Mapped["CandidateProfile | None"] = relationship(
         back_populates="person",

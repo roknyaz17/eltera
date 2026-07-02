@@ -22,7 +22,7 @@ export function renderLanding() {
   </header>
 
   <section class="hero eltHero" style="position: relative">
-    <div class="heroBg" style="position:absolute; inset:0; z-index:0; will-change:transform;">
+    <div class="heroBg" style="position:absolute; top:0; bottom:0; left:50%; width:100vw; margin-left:-50vw; z-index:0; will-change:transform;">
       <canvas class="heroMatrix matrixCanvas"></canvas>
       <div class="heroScrim"></div>
       <div class="eltOrb" style="width:420px; height:420px; left:-120px; top:-60px; background:rgba(30,91,255,.32); animation:eltDrift 14s ease-in-out infinite;"></div>
@@ -33,7 +33,7 @@ export function renderLanding() {
       <h1 style="margin:18px 0 18px; font-size:clamp(40px,4.6vw,58px); line-height:1.08; font-weight:900;">Оценивайте людей <span class="authGradientText">объективно</span> — за минуты</h1>
       <p style="font-weight: 300"></p><p class="p1"><b style="font-weight: 200">Платформа для быстрой оценки кандидатов и сотрудников: компетенции, fit-профиль, 360°, вовлечённость и Performance Review — с готовыми AI-рекомендациями.</b></p><p></p>
       <div class="heroButtons" style="margin-top:26px;">
-        <a class="blueButton large" data-route="login">Попробовать за 990 руб.</a>
+        <a class="blueButton large" data-route="register">Попробовать за 990 руб.</a>
         <a class="ghostOnDark large">Пройти демо-оценку</a>
       </div>
       <span class="underCta" style="font-weight: 300"><br></span>
@@ -110,7 +110,7 @@ export function renderLanding() {
             </div>
             <div data-elt-cand="2" style="position:absolute; inset:0; transition:opacity .55s ease; opacity:0; display:grid; gap:16px; align-content:start;">
               <div style="display:flex; align-items:center; gap:13px;">
-                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%231b2440'/%3E%3Ccircle cx='32' cy='25' r='11' fill='%235b6b8c'/%3E%3Cpath d='M13 55c0-11 8-17 19-17s19 6 19 17z' fill='%235b6b8c'/%3E%3C/svg%3E" alt="" style="width:58px; height:58px; border-radius:50%; object-fit:cover; display:block;">
+                <img src="/public/assets/org/maria.jpg" alt="Мария Орлова" style="width:58px; height:58px; border-radius:50%; object-fit:cover; display:block;">
                 <div style="flex:1; min-width:0;"><div style="color:#fff; font-weight:800; font-size:16px;">Мария Орлова</div><div style="color:#8FA3C2; font-size:13px;">UX Researcher · сотрудник</div></div>
                 <span class="statusBadge status-good">Fit 90%</span>
               </div>
@@ -127,26 +127,26 @@ export function renderLanding() {
 
           <div class="liveView" data-elt-view="2" style="position:absolute; inset:0; transition:opacity .7s ease; opacity:0; pointer-events:none; display:grid; gap:9px; align-content:start;">
             <div class="liveRow" style="border-color: #05e5d494">
-              <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%231b2440'/%3E%3Ccircle cx='32' cy='25' r='11' fill='%235b6b8c'/%3E%3Cpath d='M13 55c0-11 8-17 19-17s19 6 19 17z' fill='%235b6b8c'/%3E%3C/svg%3E" alt="" style="width:40px; height:40px; border-radius:50%; object-fit:cover; display:block;">
+              <img src="/public/assets/org/ekaterina.jpg" alt="Екатерина Власова" style="width:40px; height:40px; border-radius:50%; object-fit:cover; display:block;">
               <div style="flex:1; min-width:0;"><div style="color:#fff; font-weight:700; font-size:13.5px;">Екатерина Власова</div><div style="color:#8FA3C2; font-size:11.5px;">Frontend Lead</div></div>
               <div style="width:64px;"><div class="compBar barGood"><i><em style="width:91%"></em></i></div></div>
               <span class="statusBadge status-good" style="font-size:11px;">91</span>
             </div>
             <div class="liveRow">
-              <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%231b2440'/%3E%3Ccircle cx='32' cy='25' r='11' fill='%235b6b8c'/%3E%3Cpath d='M13 55c0-11 8-17 19-17s19 6 19 17z' fill='%235b6b8c'/%3E%3C/svg%3E" alt="" style="width:40px; height:40px; border-radius:50%; object-fit:cover; display:block;">
+              <img src="/public/assets/org/pavel.jpg" alt="Павел Гусев" style="width:40px; height:40px; border-radius:50%; object-fit:cover; display:block;">
               <div style="flex:1; min-width:0;"><div style="color:#fff; font-weight:700; font-size:13.5px;">Павел Гусев</div><div style="color:#8FA3C2; font-size:11.5px;">Sales Manager</div></div>
               <div style="width:64px;"><div class="compBar barWarn"><i><em style="width:73%"></em></i></div></div>
               <span class="statusBadge status-medium" style="font-size:11px;">73</span>
             </div>
             <div class="liveRow">
-              <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%231b2440'/%3E%3Ccircle cx='32' cy='25' r='11' fill='%235b6b8c'/%3E%3Cpath d='M13 55c0-11 8-17 19-17s19 6 19 17z' fill='%235b6b8c'/%3E%3C/svg%3E" alt="" style="width:40px; height:40px; border-radius:50%; object-fit:cover; display:block;">
+              <img src="/public/assets/org/irina.jpg" alt="Ирина Лебедева" style="width:40px; height:40px; border-radius:50%; object-fit:cover; display:block;">
               <div style="flex:1; min-width:0;"><div style="color:#fff; font-weight:700; font-size:13.5px;">Ирина Лебедева</div><div style="color:#8FA3C2; font-size:11.5px;">HR Partner</div></div>
               <div style="width:64px;"><div class="compBar barGood"><i><em style="width:88%"></em></i></div></div>
               <span class="statusBadge status-good" style="font-size:11px;">88</span>
             </div>
             
             <div class="liveRow riskRow" style="position: static">
-              <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23301622'/%3E%3Ccircle cx='32' cy='25' r='11' fill='%238c5b6b'/%3E%3Cpath d='M13 55c0-11 8-17 19-17s19 6 19 17z' fill='%238c5b6b'/%3E%3C/svg%3E" alt="" style="width:40px; height:40px; box-shadow:none !important; border-radius:50%; object-fit:cover; display:block;">
+              <img src="/public/assets/org/oleg.jpg" alt="Олег Туров" style="width:40px; height:40px; box-shadow:none !important; border-radius:50%; object-fit:cover; display:block;">
               <div style="flex:1; min-width:0;"><div style="color:#fff; font-weight:700; font-size:13.5px;">Олег Туров</div><div style="color:#8FA3C2; font-size:11.5px;">Support Specialist</div></div>
               <div style="width:64px;"><div class="compBar barRisk"><i><em style="width:54%"></em></i></div></div>
               <span class="statusBadge status-bad" style="font-size:11px;">54</span>
@@ -427,7 +427,7 @@ export function renderLanding() {
     <span class="pillEy">Готовы начать?</span><h2 style="margin:16px 0 12px; color:#fff; font-size:42px; line-height:1.1; font-weight:900;">Перестаньте гадать. Начните оценивать.</h2>
     <p style="color: #D6E2F5; max-width: 560px; margin: 0 auto 24px; font-size: 17px; font-weight: 200">Купите подписку Eltera и оцените первого кандидата или сотрдника.</p>
     <div class="heroButtons" style="justify-content:center;">
-      <a class="blueButton large" data-route="login">Попробовать за 990 руб.</a>
+      <a class="blueButton large" data-route="register">Попробовать за 990 руб.</a>
       
     </div>
   </div>

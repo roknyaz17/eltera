@@ -153,11 +153,21 @@ async def update_employee(employee_id: str, data: EmployeeUpdate, session: Async
     return await crud.get_employee(session, employee_id)
 
 
-@router.delete("/{employee_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Удалить сотрудника")
-async def delete_employee(employee_id: str, session: AsyncSession = Depends(get_session)):
-    ok = await crud.delete_employee(session, employee_id)
+@router.delete("/{employee_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Убрать сотрудника в архив")
+async def archive_employee(employee_id: str, session: AsyncSession = Depends(get_session)):
+    """Мягкое удаление: сотрудник скрывается из списков и аналитики, но его отчёты
+    и история оценок сохраняются, действие обратимо (см. /restore)."""
+    ok = await crud.archive_employee(session, employee_id)
     if not ok:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Сотрудник не найден")
+
+
+@router.post("/{employee_id}/restore", response_model=EmployeeRead, summary="Восстановить из архива")
+async def restore_employee(employee_id: str, session: AsyncSession = Depends(get_session)):
+    ok = await crud.archive_employee(session, employee_id, archived=False)
+    if not ok:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Сотрудник не найден")
+    return await crud.get_employee(session, employee_id)
 
 
 @router.post("/{employee_id}/result", response_model=EmployeeRead, summary="Записать результат оценки")

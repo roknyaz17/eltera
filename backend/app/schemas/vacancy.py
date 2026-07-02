@@ -78,6 +78,7 @@ class ResponseEventOut(BaseModel):
     resume_id: str | None = None
     occurred_at: datetime
     converted: bool = False  # локальный статус: отклик переведён в кандидата
+    person_id: str | None = None  # id кандидата, если отклик уже переведён
 
 
 class ResponsesOut(BaseModel):

@@ -28,6 +28,13 @@ class Settings(BaseSettings):
     access_token_ttl_min: int = 30        # время жизни access-токена, минут
     refresh_token_ttl_days: int = 30      # время жизни refresh-токена, дней
 
+    # Отдельная админ-панель (управление профилями/направлениями/компетенциями).
+    # Вход по одному спец-логину/паролю, не связан с аккаунтами организаций.
+    # Пока ADMIN_PANEL_PASSWORD не задан — вход в панель запрещён.
+    admin_panel_user: str = "admin"
+    admin_panel_password: str | None = None
+    admin_panel_token_ttl_hours: int = 8  # время жизни токена панели, часов
+
     # Глобальный выключатель ИИ. False — ИИ не вызывается вообще
     # (детерминированный fallback / «Доделать»), даже если задан ключ.
     ai_enabled: bool = True

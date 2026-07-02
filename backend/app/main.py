@@ -8,6 +8,8 @@ from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.api.routes import (
     adaptation,
+    admin,
+    archive,
     assessment,
     assistant,
     auth,
@@ -61,10 +63,15 @@ Instrumentator().instrument(app).expose(app, include_in_schema=False)
 app.include_router(auth.router, prefix=settings.api_prefix)
 app.include_router(assessment.router, prefix=settings.api_prefix)
 
+# Админ-панель: своя авторизация внутри роутера (Depends(get_admin_panel)),
+# поэтому НЕ под глобальным _auth (иначе требовался бы токен организации).
+app.include_router(admin.router, prefix=settings.api_prefix)
+
 # Управленческие роутеры — только с валидным access-токеном.
 _auth = [Depends(get_current_user)]
 app.include_router(candidates.router, prefix=settings.api_prefix, dependencies=_auth)
 app.include_router(employees.router, prefix=settings.api_prefix, dependencies=_auth)
+app.include_router(archive.router, prefix=settings.api_prefix, dependencies=_auth)
 app.include_router(structure.router, prefix=settings.api_prefix, dependencies=_auth)
 app.include_router(tests.router, prefix=settings.api_prefix, dependencies=_auth)
 app.include_router(competencies.router, prefix=settings.api_prefix, dependencies=_auth)

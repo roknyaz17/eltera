@@ -20,9 +20,12 @@ export function initFiltersController({ getState, setState, render, saveState })
   document.addEventListener("click", (event) => {
     const state = getState();
 
-    // Open filters modal
-    if (event.target.closest("[data-action='open-filters']")) {
-      const page = state.view || "candidates";
+    // Open filters modal.
+    // Кнопки на страницах шлют data-open-filters="<page>" (см. render.js),
+    // а дашборд — data-action="open-filters"; поддерживаем оба варианта.
+    const openBtn = event.target.closest("[data-open-filters], [data-action='open-filters']");
+    if (openBtn) {
+      const page = openBtn.dataset.openFilters || state.view || "candidates";
       const filters = PAGE_FILTER_MAP[page] || PAGE_FILTER_MAP.candidates;
       setState(s => ({
         ...s,
