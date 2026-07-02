@@ -173,7 +173,10 @@ export function initAuthController({ getState, setState, render, saveState, setH
       const lastName = String(fd.get("lastName") || "").trim();
       const company = String(fd.get("company") || "").trim();
       const contact = String(fd.get("contact") || "").trim();
-      const role = String(fd.get("role") || "").trim();
+      const inn = String(fd.get("inn") || "").trim();
+      const phone = String(fd.get("phone") || "").trim();
+      const position = String(fd.get("position") || "").trim();
+      const companySize = String(fd.get("companySize") || "").trim();
       const password = String(fd.get("password") || "");
       const fullName = `${lastName} ${firstName}`.trim() || firstName || lastName;
       if (!contact || !password || !company || !fullName) {
@@ -182,12 +185,20 @@ export function initAuthController({ getState, setState, render, saveState, setH
       }
       const btn = form.querySelector('button[type="submit"], button:not([type])');
       if (btn) { btn.disabled = true; btn.dataset._t = btn.textContent; btn.textContent = "Создаём…"; }
-      authRegister({ email: contact, password, full_name: fullName, company, ref_code: getState().refCode || null })
+      authRegister({
+        email: contact, password, full_name: fullName, company,
+        ref_code: getState().refCode || null,
+        inn: inn || null, phone: phone || null,
+        position: position || null, company_size: companySize || null,
+      })
         .then((resp) => {
           setState((s) => ({
             ...s,
             authChallenge: toAuthChallenge(resp),
-            company: { ...s.company, name: company, contactName: fullName, contactEmail: contact, contactRole: role },
+            company: {
+              ...s.company, name: company, contactName: fullName, contactEmail: contact,
+              contactPosition: position, contactPhone: phone, inn, size: companySize,
+            },
           }));
           saveState();
           render();

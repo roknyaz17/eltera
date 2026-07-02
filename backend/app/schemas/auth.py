@@ -9,6 +9,11 @@ class RegisterIn(BaseModel):
     company: str = Field(min_length=1, max_length=200)
     # Код реферальной ссылки (#/ref/<code>), если регистрация по приглашению.
     ref_code: str | None = Field(default=None, max_length=40)
+    # Дополнительные поля из формы регистрации (референс «Eltera Login»).
+    inn: str | None = Field(default=None, max_length=20)
+    phone: str | None = Field(default=None, max_length=50)
+    position: str | None = Field(default=None, max_length=100)
+    company_size: str | None = Field(default=None, max_length=20)
 
 
 class LoginIn(BaseModel):

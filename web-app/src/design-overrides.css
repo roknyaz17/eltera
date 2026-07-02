@@ -111,8 +111,10 @@ html, body { margin: 0; padding: 0; background: rgb(10, 15, 30); font-family: Ma
 }
 /* Широкие модалки (таблицы, отклики, импорт) — панель пошире. */
 .modal.modalWide, .modal.hh-import-modal { width: 680px !important; }
-/* Тело панели скроллится, шапка закреплена. */
-.modal > .modal-inner, .modal > .topup-inner { overflow-y: auto !important; max-height: none !important; }
+/* Тело панели скроллится, шапка закреплена. Контент прижат к верху:
+   .modal-inner — grid высотой во всю панель (1fr), поэтому без align-content:start
+   его строки растягиваются по вертикали (гигантские отступы, раздутый инпут кода). */
+.modal > .modal-inner, .modal > .topup-inner { overflow-y: auto !important; max-height: none !important; align-content: start !important; }
 
 /* Шапка панели — в стиле drawer'ов Claude Design: без эмодзи-квадрата,
    крупный заголовок, светлая ✕, светлый border-bottom. */

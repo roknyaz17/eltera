@@ -125,6 +125,10 @@ async def register(data: RegisterIn, session: AsyncSession = Depends(get_session
             "full_name": data.full_name.strip(),
             "password_hash": hash_password(data.password),
             "ref_code": (data.ref_code or "").strip() or None,
+            "inn": (data.inn or "").strip() or None,
+            "phone": (data.phone or "").strip() or None,
+            "position": (data.position or "").strip() or None,
+            "company_size": (data.company_size or "").strip() or None,
         },
     )
     return ChallengeOut(

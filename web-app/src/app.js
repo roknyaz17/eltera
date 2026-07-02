@@ -2,7 +2,7 @@ import { runPageAnimations } from "./ui/animations.js";
 import { renderCostPanel } from "./ui/cost-per-hire.js";
 import { initTeamSlice } from "./ui/team-slice.js";
 import { initStructureChart } from "./ui/structure-chart.js";
-import { initLanding } from "./ui/landing.js";
+import { initLanding, setupLoginMatrix } from "./ui/landing.js";
 import { initWizardController } from "./controllers/wizard.js";
 import { initFiltersController } from "./controllers/filters.js";
 import { initAuthController, getDevLibrary } from "./controllers/auth.js";
@@ -1529,12 +1529,14 @@ function render() {
   if (route.route === "login") {
     document.body.className = "landingBody";
     app.innerHTML = renderLogin(state);
+    setupLoginMatrix();
     return;
   }
 
   if (route.route === "register") {
     document.body.className = "landingBody";
     app.innerHTML = renderLogin(state);
+    setupLoginMatrix();
     return;
   }
 

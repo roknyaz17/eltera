@@ -15,6 +15,8 @@ class Organization(TimestampMixin, Base):
     inn: Mapped[str | None] = mapped_column(String(20), default=None)
     kpp: Mapped[str | None] = mapped_column(String(20), default=None)
     tariff: Mapped[str] = mapped_column(String(40), default="Start")
+    # Размер компании (из формы регистрации): «1–10» / «10–50» / «50–100» / «от 100».
+    size: Mapped[str | None] = mapped_column(String(20), default=None)
 
     # Реквизиты компании (вкладка «Настройки»).
     site: Mapped[str | None] = mapped_column(String(200), default=None)
@@ -27,6 +29,7 @@ class Organization(TimestampMixin, Base):
     contact_last_name: Mapped[str | None] = mapped_column(String(100), default=None)
     contact_first_name: Mapped[str | None] = mapped_column(String(100), default=None)
     contact_patronymic: Mapped[str | None] = mapped_column(String(100), default=None)
+    contact_position: Mapped[str | None] = mapped_column(String(100), default=None)
     contact_phone: Mapped[str | None] = mapped_column(String(50), default=None)
     contact_email: Mapped[str | None] = mapped_column(String(200), default=None)
 

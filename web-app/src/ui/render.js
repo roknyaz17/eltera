@@ -283,6 +283,7 @@ export function renderLogin(state = {}) {
   const invited = Boolean(state.refCode);
   return `
     <div class="authPage">
+      <div class="authBg" aria-hidden="true"><canvas class="matrixCanvas loginMatrix"></canvas></div>
       <section class="authBrand">
         <img src="/assets/eltera_logo_horizontal_on_dark.svg?v=5" alt="Eltera">
         <h1><span class="authGradientText">Интеллект в оценке.</span><br><span class="authWhiteText">Уверенность в решениях.</span></h1>
@@ -301,12 +302,12 @@ export function renderLogin(state = {}) {
         <div class="authFormWrap ${invited ? '' : 'open'}" data-auth-panel="login">
         <form data-login-form>
           <div class="authInputGroup">
-            <label class="authLabel">Email</label>
-            <input name="email" type="email" value="hr@eltera.ai" placeholder="name@company.ru" autocomplete="email" class="authInput">
+            <label class="authLabel">Email или телефон</label>
+            <input name="email" type="text" placeholder="name@company.ru или +7..." autocomplete="username" class="authInput">
           </div>
           <div class="authInputGroup">
             <label class="authLabel">Пароль</label>
-            <input name="password" type="password" value="demo" placeholder="Введите пароль" autocomplete="current-password" class="authInput">
+            <input name="password" type="password" placeholder="Введите пароль" autocomplete="current-password" class="authInput">
             <a href="#" class="authForgot" data-forgot-password>Забыли пароль?</a>
           </div>
           <button class="authSubmitBtn" type="submit">Войти в кабинет</button>
@@ -333,27 +334,38 @@ export function renderLogin(state = {}) {
               <input name="company" type="text" placeholder="ООО Ромашка" class="authInput" required>
             </div>
             <div class="authInputGroup">
-              <label class="authLabel">Ваша роль</label>
+              <label class="authLabel">ИНН компании</label>
+              <input name="inn" type="text" inputmode="numeric" placeholder="10 или 12 цифр" class="authInput">
+            </div>
+          </div>
+          <div class="authInputRow">
+            <div class="authInputGroup">
+              <label class="authLabel">Телефон</label>
+              <input name="phone" type="tel" inputmode="tel" placeholder="+7 900 000-00-00" autocomplete="tel" class="authInput">
+            </div>
+            <div class="authInputGroup">
+              <label class="authLabel">Email</label>
+              <input name="contact" type="email" placeholder="name@company.ru" autocomplete="email" class="authInput" required>
+            </div>
+          </div>
+          <div class="authInputRow">
+            <div class="authInputGroup">
+              <label class="authLabel">Должность</label>
+              <input name="position" type="text" placeholder="HR-менеджер" class="authInput">
+            </div>
+            <div class="authInputGroup">
+              <label class="authLabel">Размер компании</label>
               <div class="authSelectWrap">
-                <select name="role" class="authInput authSelect" required>
-                  <option value="" disabled selected>Выберите роль</option>
-                  <option value="owner">Собственник</option>
-                  <option value="ceo">Генеральный директор</option>
-                  <option value="hrd">Директор по персоналу</option>
-                  <option value="hr_manager">HR-менеджер</option>
-                  <option value="recruiter">Рекрутер</option>
-                  <option value="team_lead">Руководитель отдела</option>
-                  <option value="coo">Операционный директор</option>
-                  <option value="business_partner">HR Business Partner</option>
-                  <option value="other">Другое</option>
+                <select name="companySize" class="authInput authSelect">
+                  <option value="" disabled selected>Выберите размер</option>
+                  <option value="1–10">1–10 человек</option>
+                  <option value="10–50">10–50 человек</option>
+                  <option value="50–100">50–100 человек</option>
+                  <option value="от 100">от 100 человек</option>
                 </select>
                 <svg class="authSelectChevron" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </div>
             </div>
-          </div>
-          <div class="authInputGroup">
-            <label class="authLabel">Email для входа</label>
-            <input name="contact" type="email" placeholder="name@company.ru" autocomplete="email" class="authInput" required>
           </div>
           <div class="authInputGroup">
             <label class="authLabel">Пароль</label>

@@ -397,6 +397,12 @@ async def _provision_registration(session: AsyncSession, payment: Payment) -> bo
         id=gen_uuid(),
         name=str(payload.get("company") or "").strip() or email,
         tariff=payment.tariff or "Starter",
+        # Поля из формы регистрации (референс «Eltera Login»); все опциональны.
+        inn=(str(payload.get("inn")).strip() or None) if payload.get("inn") else None,
+        size=(str(payload.get("company_size")).strip() or None) if payload.get("company_size") else None,
+        contact_position=(str(payload.get("position")).strip() or None) if payload.get("position") else None,
+        contact_phone=(str(payload.get("phone")).strip() or None) if payload.get("phone") else None,
+        contact_email=email,
     )
     session.add(org)
     await session.flush()

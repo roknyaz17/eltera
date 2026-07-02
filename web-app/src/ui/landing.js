@@ -278,16 +278,16 @@ export function renderLanding() {
             <a class="blueButton wide">Вывести на кошелёк</a>
           </div>
           <div data-elt-ref="1" style="position:absolute; inset:0; opacity:0; transition:opacity .6s ease; pointer-events:none;">
-            <div style="width:100%; height:100%; border-radius:20px; display:grid; place-items:center; text-align:center; background:linear-gradient(135deg, rgba(0,229,212,.18), rgba(30,91,255,.18)); color:#8FA3C2; font-size:11px; font-weight:600; padding:6px; box-sizing:border-box;">Перетащите фото</div>
+            <img src="/public/assets/brandbook_dashboard_reference.webp" alt="Кабинет партнёра Eltera" loading="lazy" style="width:100%; height:100%; object-fit:cover; object-position:top; border-radius:20px; display:block; border:1px solid rgba(255,255,255,.12);">
           </div>
           <div data-elt-ref="2" style="position:absolute; inset:0; opacity:0; transition:opacity .6s ease; pointer-events:none;">
-            <div style="width:100%; height:100%; border-radius:20px; display:grid; place-items:center; text-align:center; background:linear-gradient(135deg, rgba(0,229,212,.18), rgba(30,91,255,.18)); color:#8FA3C2; font-size:11px; font-weight:600; padding:6px; box-sizing:border-box;">Перетащите фото</div>
+            <img src="/public/assets/brandbook_dashboard_reference.webp" alt="Аналитика Eltera" loading="lazy" style="width:100%; height:100%; object-fit:cover; object-position:bottom; border-radius:20px; display:block; border:1px solid rgba(255,255,255,.12);">
           </div>
         </div>
         <div style="display:flex; gap:8px; justify-content:center; margin-top:16px;">
           <span data-elt-ref-dot="0" style="height:6px; width:26px; border-radius:3px; background:#00E5D4; transition:background .4s, width .4s; cursor:pointer;" title="Баланс партнёра"></span>
-          <span data-elt-ref-dot="1" style="height:6px; width:22px; border-radius:3px; background:rgba(255,255,255,.18); transition:background .4s, width .4s; cursor:pointer;" title="Фото 1"></span>
-          <span data-elt-ref-dot="2" style="height:6px; width:22px; border-radius:3px; background:rgba(255,255,255,.18); transition:background .4s, width .4s; cursor:pointer;" title="Фото 2"></span>
+          <span data-elt-ref-dot="1" style="height:6px; width:22px; border-radius:3px; background:rgba(255,255,255,.18); transition:background .4s, width .4s; cursor:pointer;" title="Кабинет партнёра"></span>
+          <span data-elt-ref-dot="2" style="height:6px; width:22px; border-radius:3px; background:rgba(255,255,255,.18); transition:background .4s, width .4s; cursor:pointer;" title="Аналитика"></span>
         </div>
       </div>
     </div>
@@ -478,7 +478,7 @@ export function renderLanding() {
           </div>
         </div>
 
-        <div class="pulseSlide" data-elt-pulse="0" style="opacity:1; pointer-events:auto;">
+        <div class="pulseSlide pulseSlide-active" data-elt-pulse="0" style="opacity:1; pointer-events:auto;">
           <div class="pulseGrid">
             <div>
               <span class="pill" style="color:var(--cyan)">Благодарности</span>
@@ -837,6 +837,9 @@ function setupPulseSlider(root) {
       const on = +s.dataset.eltPulse === pulse;
       s.style.opacity = on ? 1 : 0;
       s.style.pointerEvents = on ? "auto" : "none";
+      // На мобиле слайды не наложены (position:absolute), а показывается только
+      // активный (display) — класс переключает видимость, см. media ≤900px.
+      s.classList.toggle("pulseSlide-active", on);
     });
     dots.forEach((d) => setDot(d, +d.dataset.eltPulseDot === pulse));
   };
@@ -983,6 +986,56 @@ function setupMatrix() {
     };
     _rafs.push(requestAnimationFrame(draw));
   });
+}
+
+// Матрица-фон для экрана логина/регистрации (референс «Eltera Login»).
+// Самоочищается: rAF-цикл останавливается, как только canvas уходит из DOM
+// (навигация в кабинет/лендинг), поэтому не нужен внешний teardown.
+export function setupLoginMatrix() {
+  const canvas = document.querySelector(".loginMatrix");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const host = canvas.parentElement;
+  const glyphs = "アイウエオカキクケコサシスセソ0123456789ELTERA<>/{}".split("");
+  const fontSize = 16;
+  let cols, drops, w, h;
+  const resize = () => {
+    w = host.clientWidth; h = host.clientHeight;
+    if (!w || !h) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    canvas.style.width = w + "px"; canvas.style.height = h + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    cols = Math.ceil(w / fontSize);
+    drops = new Array(cols).fill(0).map(() => Math.random() * -40);
+  };
+  resize();
+  window.addEventListener("resize", resize);
+  let last = 0;
+  const draw = (t) => {
+    if (!canvas.isConnected) { window.removeEventListener("resize", resize); return; }
+    requestAnimationFrame(draw);
+    if (!w || !h) { resize(); return; }
+    if (t - last < 58) return;
+    last = t;
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.fillStyle = "rgba(0,0,0,0.12)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.globalCompositeOperation = "source-over";
+    ctx.font = fontSize + "px 'Courier New', monospace";
+    for (let i = 0; i < cols; i++) {
+      const x = i * fontSize, y = drops[i] * fontSize;
+      if (y > 0) {
+        ctx.fillStyle = "rgba(190,245,255,0.9)";
+        ctx.fillText(glyphs[(Math.random() * glyphs.length) | 0], x, y);
+        ctx.fillStyle = "rgba(0,210,200,0.5)";
+        ctx.fillText(glyphs[(Math.random() * glyphs.length) | 0], x, y - fontSize);
+      }
+      if (y > h && Math.random() > 0.975) drops[i] = Math.random() * -20;
+      drops[i] += 1;
+    }
+  };
+  requestAnimationFrame(draw);
 }
 
 function setupBentoFit() {
